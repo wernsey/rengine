@@ -1,0 +1,2 @@
+
+* Changing the Working Directory affects the tilesets, so you should rather set the working directory when you start a new project.
