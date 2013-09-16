@@ -33,9 +33,12 @@ debug:
 profile:
 	make "BUILD=profile"
 
-game: $(OBJECTS)
-	$(CC) -o $@ $(OBJECTS) $(LFLAGS) 
+game: $(OBJECTS) bin
+	$(CC) -o bin/$@ $(OBJECTS) $(LFLAGS) 
 	
+bin:
+	mkdir $@
+
 .c.o:
 	$(CC) -c $(CFLAGS) $< -o $@
 
@@ -64,6 +67,6 @@ mustate.o : bmp.h states.h musl.h game.h ini.h resources.h utils.h
 .PHONY : clean
 
 clean:
-	-rm -rf game game.exe
+	-rm -rf bin/game bin/game.exe
 	-rm -rf *.o 
 	-rm -rf *~ gmon.out
