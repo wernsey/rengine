@@ -12,14 +12,15 @@
  * http://damieng.com/blog/2011/02/20/typography-in-8-bits-system-fonts
  * The Apple ][ font turned out to be the nicest normal font.
  * The bold font was inspired by Commodore 64.
+ * I later added some others for a bit of variety.
  */
-#include "bold.xbm"
-#include "circuit.xbm"
-#include "hand.xbm"
-#include "normal.xbm"
-#include "small.xbm"
-#include "smallinv.xbm"
-#include "thick.xbm"
+#include "fonts/bold.xbm"
+#include "fonts/circuit.xbm"
+#include "fonts/hand.xbm"
+#include "fonts/normal.xbm"
+#include "fonts/small.xbm"
+#include "fonts/smallinv.xbm"
+#include "fonts/thick.xbm"
 
 #define FONT_WIDTH 96
 

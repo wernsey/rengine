@@ -21,8 +21,8 @@ LFLAGS += `sdl-config --libs` -lopengl32
 SOURCES= bmp.c game.c ini.c utils.c pak.c particles.c \
 	states.c demo.c resources.c musl.c mustate.c hash.c
 
-#SOURCES= bmp.c fillfix.c ini.c utils.c pak.c
-#SOURCES= bmp.c pakfix.c ini.c utils.c pak.c
+FONTS = fonts/bold.xbm fonts/circuit.xbm fonts/hand.xbm \
+		fonts/normal.xbm fonts/small.xbm fonts/smallinv.xbm fonts/thick.xbm
 
 OBJECTS=$(SOURCES:.c=.o)
 all: game 
@@ -39,7 +39,7 @@ game: $(OBJECTS)
 .c.o:
 	$(CC) -c $(CFLAGS) $< -o $@
 
-bmp.o : bmp.h bold.xbm circuit.xbm hand.xbm normal.xbm small.xbm smallinv.xbm thick.xbm
+bmp.o : bmp.h $(FONTS)
 
 game.o : bmp.h ini.h game.h particles.h utils.h states.h resources.h
 
