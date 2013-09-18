@@ -47,6 +47,9 @@ tileset.o : ../tileset.c ../tileset.h ../bmp.h
 	
 map.o : ../map.c ../map.h ../tileset.h ../bmp.h
 	gcc -c $(CFLAGS) -o $@ $<
+	
+lexer.o : ../lexer.c ../lexer.h
+	gcc -c $(CFLAGS) -o $@ $<
 
 .PHONY : clean
 

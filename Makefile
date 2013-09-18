@@ -19,7 +19,8 @@ endif
 CFLAGS += `sdl-config --cflags`
 LFLAGS += `sdl-config --libs` -lopengl32
 SOURCES= bmp.c game.c ini.c utils.c pak.c particles.c \
-	states.c demo.c resources.c musl.c mustate.c hash.c
+	states.c demo.c resources.c musl.c mustate.c hash.c \
+	lexer.c
 
 FONTS = fonts/bold.xbm fonts/circuit.xbm fonts/hand.xbm \
 		fonts/normal.xbm fonts/small.xbm fonts/smallinv.xbm fonts/thick.xbm
@@ -61,6 +62,8 @@ demo.o : states.h bmp.h game.h resources.h
 musl.o : musl.h
 
 mustate.o : bmp.h states.h musl.h game.h ini.h resources.h utils.h
+
+lexer.c : lexer.h
 
 ###############################################
 
