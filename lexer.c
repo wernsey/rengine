@@ -103,9 +103,8 @@ start:
 		}
 		
 	} else if(isdigit(lx->in[0])) {
-		/* I had to decide here whether number tokens are allowed to
-			start with -, eg -123.4. I have decided no for now. Users
-			of the lexer should handle those cases separately.
+		/* Note that we don't handle negative numbers here.
+			you have to do that at a higher level.
 		*/
 		int i = 0;
 		lx->sym = LX_NUMBER;
@@ -130,13 +129,27 @@ start:
 				}
 			}
 		}
-		if(tolower(lx->in[0]) == 'f') {
+		if(tolower(lx->in[0]) == 'e') {
 			lx->text[i++] = *lx->in++;
 			if(i == MAX_BUFFER - 1) {
 				snprintf(lx->text, MAX_BUFFER, "number too long");				
 				return (lx->sym = LX_ERROR);
 			}
-		}
+			if(strchr("+-", lx->in[0])) {
+				lx->text[i++] = *lx->in++;
+				if(i == MAX_BUFFER - 1) {
+					snprintf(lx->text, MAX_BUFFER, "number too long");				
+					return (lx->sym = LX_ERROR);
+				}
+			}
+			while(isdigit(lx->in[0])) {
+				lx->text[i++] = *lx->in++;
+				if(i == MAX_BUFFER - 1) {
+					snprintf(lx->text, MAX_BUFFER, "number too long");				
+					return (lx->sym = LX_ERROR);
+				}
+			}
+		}		
 		lx->text[i] = '\0';
 	} else if(lx->in[0] == '"') {
 		int i = 0;
@@ -158,6 +171,10 @@ start:
 									snprintf(lx->text, MAX_BUFFER, "unterminated string literal");				
 									return (lx->sym = LX_ERROR);
 								}
+							case '/' : lx->text[i++] = '/'; break;
+							case '\\' : lx->text[i++] = '\\'; break;
+							case 'b' : lx->text[i++] = '\b'; break;
+							case 'f' : lx->text[i++] = '\f'; break;
 							case 'n' : lx->text[i++] = '\n'; break;
 							case 'r' : lx->text[i++] = '\r'; break;
 							case 't' : lx->text[i++] = '\t'; break;
@@ -198,7 +215,7 @@ const char *in = "  matrix foo bar   \n"
 					"\"string\\tin \\\"quotes\\\"\"\n"
 					"3 {} 4\n"
 					"\"Another\nString\"\n"
-					"vertex { 5 6 7.6f }\n";
+					"vertex { 5 6 7.6e+3 12.3e-2 }\n";
 					
 struct lx_keywords keywds[] = {
 	{"vertex", 256},

@@ -22,7 +22,7 @@ all: editor
 debug:
 	make "BUILD=debug"
 
-editor: main.o BMCanvas.o LevelCanvas.o TileCanvas.o bmp.o tileset.o map.o
+editor: main.o BMCanvas.o LevelCanvas.o TileCanvas.o bmp.o tileset.o map.o lexer.o json.o hash.o utils.o
 	g++ -o $@  $^ $(LDFLAGS)
 		
 .c.o:
@@ -42,13 +42,22 @@ BMCanvas.o : BMCanvas.cpp BMCanvas.h
 bmp.o : ../bmp.c ../bmp.h
 	gcc -c $(CFLAGS) -o $@ $<
 	
-tileset.o : ../tileset.c ../tileset.h ../bmp.h
+tileset.o : ../tileset.c ../tileset.h ../bmp.h ../lexer.h ../json.h
 	gcc -c $(CFLAGS) -o $@ $<
 	
 map.o : ../map.c ../map.h ../tileset.h ../bmp.h
 	gcc -c $(CFLAGS) -o $@ $<
 	
 lexer.o : ../lexer.c ../lexer.h
+	gcc -c $(CFLAGS) -o $@ $<
+	
+json.o : ../json.c ../json.h ../lexer.h ../hash.h ../utils.h
+	gcc -c $(CFLAGS) -o $@ $<
+	
+utils.o : ../utils.c ../utils.h
+	gcc -c $(CFLAGS) -o $@ $<
+	
+hash.o : ../hash.c ../hash.h
 	gcc -c $(CFLAGS) -o $@ $<
 
 .PHONY : clean

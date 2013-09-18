@@ -16,6 +16,7 @@ struct map *map_create(int nr, int nc, int tw, int th, int nl) {
 	m->tw = tw;
 	m->th = th;
 	m->nl = nl;
+	m->dirty = 0;
 	m->layers = calloc(nl, sizeof *m->layers);
 	if(!m->layers) {
 		free(m);
@@ -53,27 +54,10 @@ void map_set(struct map *m, int layer, int x, int y, int tsi, int ti) {
 	
 	tile->si = tsi;
 	tile->ti = ti;
+	
+	m->dirty = 1;
 }
 
-/*
-struct map_tile {
-	char si;
-	short ti;	
-	char flags;
-	char *clas, *id;
-}
-
-struct map_layer {
-	struct map_tile *tiles;
-};
-
-struct map {
-	int nr, nc;
-	int tw, th;
-	int nl;
-	struct map_layer *layers;
-};
-*/
 void map_render(struct map *m, struct bitmap *bmp, int layer, int scroll_x, int scroll_y) {
 	struct map_layer *l;
 	
@@ -90,8 +74,7 @@ void map_render(struct map *m, struct bitmap *bmp, int layer, int scroll_x, int 
 	
 	/* FIXME: The transparent color ought to be part of the 
 		tileset.
-	*/
-	
+	*/	
 	y = -scroll_y;	
 	for(j = 0; j < m->nr; j++) {
 		x = -scroll_x;

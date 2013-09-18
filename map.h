@@ -16,6 +16,7 @@ struct map_layer {
 struct map {
 	int nr, nc;
 	int tw, th;
+	char dirty;
 	int nl;
 	struct map_layer *layers;
 };

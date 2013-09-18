@@ -5,6 +5,8 @@
 
 #include "bmp.h"
 #include "tileset.h"
+#include "lexer.h"
+#include "json.h"
 
 #define TILE_FILE_VERSION	1.0f
 
@@ -180,6 +182,7 @@ int ts_save_all(const char *filename) {
 
 int ts_write_all(FILE *f) {
 	int i, j;
+	/*
 	fprintf(f, "TILESET\n%5.2f %d\n", TILE_FILE_VERSION, ntilesets);
 	for(i = 0; i < ntilesets; i++) {
 		struct tileset *t = tilesets[i];
@@ -192,6 +195,38 @@ int ts_write_all(FILE *f) {
 				fprintf(f, "%d %s %04X\n", m->num, m->clas, m->flags);
 		}
 	}
+	*/
+	
+	char buffer[128];
+	
+	//json_escape(const char *in, char *out, size_t len);
+	fprintf(f, "{\n");	
+	fprintf(f, "\"type\" : \"TILESET\",\n");
+	fprintf(f, "\"version\" : %.2f,\n", TILE_FILE_VERSION);
+	fprintf(f, "\"count\" : %d,\n", ntilesets);
+	fprintf(f, "\"tilesets\": [\n");
+	for(i = 0; i < ntilesets; i++) {
+		struct tileset *t = tilesets[i];
+		fprintf(f, "  {\n");
+		
+		fprintf(f, "  \"name\" : \"%s\",\n", json_escape(t->name, buffer, sizeof buffer));
+		fprintf(f, "  \"tw\" : %d,\n  \"th\" : %d, \n", t->tw, t->th);
+		fprintf(f, "  \"border\" : %d,\n  \"nmeta\" : %d, \n", t->border, t->nmeta);
+		fprintf(f, "  \"meta\" : [\n");
+		for(j = 0; j < t->nmeta; j++) {
+			struct tile_meta *m = &t->meta[j];
+			fprintf(f, "    {\n");
+			fprintf(f, "    \"num\" : %d,\n", m->num);
+			fprintf(f, "    \"class\" : \"%s\",\n", json_escape(m->clas, buffer, sizeof buffer));
+			fprintf(f, "    \"flags\" : %d\n", m->flags);
+			fprintf(f, "    }%c\n", (j < t->nmeta - 1) ? ',' : ' ');
+		}
+		fprintf(f, "  ]\n");
+		fprintf(f, "  }%c\n", (i < ntilesets - 1) ? ',' : ' ');		
+	}
+	fprintf(f, "]\n");
+	fprintf(f, "}\n");
+	
 	return 1;
 }
 
