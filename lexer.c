@@ -207,7 +207,7 @@ start:
 	return lx->sym;
 }
 
-#ifdef TEST
+#ifdef LTEST
 const char *in = "  matrix foo bar   \n"
 					" f_00 _quux\n"
 					" # This is a comment\n"

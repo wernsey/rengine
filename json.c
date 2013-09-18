@@ -2,6 +2,8 @@
  * Disclaimer: I'm not really making an effort at this point in time
  * to be fully compliant with the JSON specs.
  * For now I just need my own tools to work.
+ * 
+ * TODO: Run through Valgrind.
  */
 #include <stdio.h>
 #include <stdlib.h>

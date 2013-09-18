@@ -11,7 +11,9 @@ enum json_type {
 struct json_value {
 	enum json_type type;
 	void *value;
-	struct json_value *next; /* For now, I store arrays in a linked list. Fix later */
+	
+	/* For now, I store arrays in a linked list. Fix later */
+	struct json_value *next; 
 };
 
 char *json_escape(const char *in, char *out, size_t len);
