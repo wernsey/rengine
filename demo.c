@@ -5,18 +5,17 @@
 #include "game.h"
 #include "resources.h"
 
-static int ax, ay, dx, dy;
+#include "rengine.xbm"
+
 static struct bitmap *dummy;
 
 static int dem_init(struct game_state *s) {
-	dummy = re_get_bmp("alien.bmp");
+	dummy = bm_fromXbm(rengine_width, rengine_height, rengine_bits);
 	if(!dummy) {
-		fprintf(log_file, "error: unable to load alien.bmp");
+		fprintf(log_file, "error: unable to load rengine.xbm");
 		return 0;
 	}
-	bm_set_color_s(dummy, "#FF00FF");
-	ax = 160; ay = 120;
-	dx = 1; dy = 2;
+	bm_set_color_s(dummy, "#000000");
 	return 1;
 }
 
@@ -41,32 +40,12 @@ static int dem_update(struct game_state *s, struct bitmap *bmp) {
 	bm_line(bmp, 0, 40, 40, 0);
 	bm_fill(bmp, 35, 0);
 	
-	bm_set_color_s(bmp, "blue");
-	bm_fillroundrect(bmp, 100, 100, 200, 200, 7); 
-	
-	bm_set_color_s(bmp, "silver");
-	bm_roundrect(bmp, 100, 100, 200, 200, 7); 
-	bm_roundrect(bmp, 102, 102, 198, 198, 5); 
-	
-	bm_set_color_s(bmp, "black");
-	bm_printf(bmp, 106, 107, "Hello\nWorld!");
-	bm_set_color_s(bmp, "white");
-	bm_printf(bmp, 107, 107, "Hello\nWorld!");
-	
 	bm_set_color_s(bmp, "grey");
-	bm_printfs(bmp, 42, 37, 2, "Rengine'80");
+	bm_printfs(bmp, 72, 37, 2, "Rengine");
 	bm_set_color_s(bmp, "white");
-	bm_printfs(bmp, 40, 35, 2, "Rengine'80");
+	bm_printfs(bmp, 70, 35, 2, "Rengine");
 	
-	if(ax + dx < -20 || ax + dx >= bmp->w - 20)
-		dx = -dx;
-	ax += dx;
-	
-	if(ay + dy < -20 || ay + dy >= bmp->h - 20)
-		dy = -dy;
-	ay += dy;
-	
-	bm_maskedblit(bmp, ax, ay, dummy, 0, 0, 33, 34);
+	bm_maskedblit(bmp, (bmp->w - dummy->w)>>1, (bmp->h - dummy->h)>>1, dummy, 0, 0, dummy->w, dummy->h);
 	return 1;
 }
 
