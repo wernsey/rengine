@@ -98,9 +98,9 @@ void json_free(struct json *v) {
 			 ht_free(h, json_free_member);
 		} break;
 		case j_array: {
-			while(v->next) {
-				struct json *t = v->next;
-				v->next = t->next;
+			while(v->value) {
+				struct json *t = v->value;
+				v->value = t->next;
 				json_free(t);
 			} 
 			
@@ -133,6 +133,7 @@ static struct json *json_parse_object(struct lexer *lx) {
 	
 	if(!lx_expect(lx, '{')) {
 		fprintf(stderr, "error:%d: %s\n", lx_lineno(lx), lx_text(lx));
+		free(v);
 		return NULL;
 	}
 	if(lx_sym(lx) != '}') {
@@ -143,8 +144,11 @@ static struct json *json_parse_object(struct lexer *lx) {
 			key = strdup(lx_text(lx));
 			lx_accept(lx, ':');		
 			value = json_parse_value(lx);
-			if(!value)
+			if(!value) {
+				free(key);
+				free(v);
 				return NULL;
+			}
 			
 			ht_insert (h, key, value);
 			
@@ -154,6 +158,7 @@ static struct json *json_parse_object(struct lexer *lx) {
 	}
 	if(!lx_expect(lx, '}')) {
 		fprintf(stderr, "error:%d: %s\n", lx_lineno(lx), lx_text(lx));
+		free(v);
 		return NULL;
 	}
 		
@@ -244,7 +249,7 @@ static void json_dump_L(struct json *v, int L) {
 			const char *key = ht_next (h, NULL);			
 			puts("{");
 			while(key) {
-				printf("%*c\"%s\" : ", L*2, ' ', json_escape(key, buffer, sizeof buffer));
+				printf("%*c\"%s\" : ", L*2 + 1, ' ', json_escape(key, buffer, sizeof buffer));
 				json_dump_L(ht_find(h, key), L + 1);
 				key = ht_next(h, key);
 				if(key) 
@@ -364,7 +369,7 @@ struct json *json_array_nth(struct json *j, int n) {
 }
 
 /*
-gcc -o json -DJTEST ../json.c ../lexer.c ../hash.c ../utils.c
+gcc -o json -DJTEST json.c lexer.c hash.c utils.c
 */
 #ifdef JTEST
 int main(int argc, char *argv[]) {
