@@ -228,44 +228,38 @@ int ts_load_all(const char *filename) {
 }
 
 int ts_read_all(const char *text) {
-	/*char buffer[128];
-	int i, n;*/
 	double version;
 	
 	struct json *j, *a, *e;
-	
-	FILE *f = fopen("open.log", "w");
 	
 	/* Depending on what you want to do, you may
 		want to call ts_free_all() first */
 
 	j = json_parse(text);
 	if(!j) {
-		fprintf(f, "Unable to parse text \"\"\"%s\"\"\"\n", text);
-		fclose(f);
+		printf("Unable to parse text \"\"\"%s\"\"\"\n", text);
 		return 0;
 	}
+	
+	json_dump(j);
 	
 	version = json_get_number(j, "version");
 	
 	if(!json_get_string(j, "type")) {
-		fprintf(f, "No type\n");
-		fclose(f);
+		fprintf(stderr, "No type\n");
 		return 0;
 	}
 	
 	if(strcmp(json_get_string(j, "type"), "TILESET")) {
-		fprintf(f, "Not a tileset: '%s'\n", json_get_string(j, "type"));
-		fclose(f);
+		fprintf(stderr, "Not a tileset: '%s'\n", json_get_string(j, "type"));
 		return 0;
 	}
 	
-	fprintf(f, "TILESET %.2f\n", version);
+	printf("TILESET %.2f\n", version);
 	
 	a = json_get_array(j, "tilesets");
 	if(!a) {
-		fprintf(f, "No tilesets");
-		fclose(f);
+		fprintf(stderr, "No tilesets");
 		return 0;
 	}
 	
@@ -282,7 +276,7 @@ int ts_read_all(const char *text) {
 		border = json_get_number(e, "border");
 		nmeta = json_get_number(e, "nmeta");
 		
-		fprintf(f, "'%s' %d %d %d %d\n", name, tw, th, border, nmeta);
+		printf("'%s' %d %d %d %d\n", name, tw, th, border, nmeta);
 		
 		y = ts_add(name, tw, th, border);
 		if(y < 0) {
@@ -293,32 +287,32 @@ int ts_read_all(const char *text) {
 		t->nmeta = 0;
 		t->meta = NULL;
 		
-		aa = json_get_array(j, "meta");
-		if(!aa)
-			continue;
-		
-		t->nmeta = json_array_len(aa);
-		t->meta = malloc(t->nmeta * sizeof *t->meta);
-		
-		assert(t->nmeta == nmeta);
-		
-		ee = aa->value;
-		y = 0;
-		while(ee) {			
-			struct tile_meta *m = &t->meta[y++];
-			const char *clas = json_get_string(ee, "class");
+		aa = json_get_array(e, "meta");
+		if(aa) {
+			t->nmeta = json_array_len(aa);
+			t->meta = malloc(t->nmeta * sizeof *t->meta);
 			
-			m->num = json_get_number(ee, "num");
-			m->flags = json_get_number(ee, "flags");
-			m->clas = strdup(clas?clas:"");
+			assert(t->nmeta == nmeta);
 			
-			ee = ee->next;
+			ee = aa->value;
+			y = 0;
+			while(ee) {			
+				struct tile_meta *m = &t->meta[y++];
+				const char *clas = json_get_string(ee, "class");
+				
+				m->num = json_get_number(ee, "num");
+				m->flags = json_get_number(ee, "flags");
+				m->clas = strdup(clas?clas:"");
+				
+				printf("    '%s' %d %d\n", m->clas, m->num, m->flags);
+				
+				ee = ee->next;
+			}
 		}
 		
 		e = e->next;
 	}
 	
-		fclose(f);
 	/*
 	fscanf(f,"%s", buffer);
 	if(strcmp(buffer, "TILESET")) {

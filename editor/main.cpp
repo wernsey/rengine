@@ -10,6 +10,10 @@
 #include <FL/Fl_Box.H>
 #include <FL/Fl_File_Chooser.H>
 
+#ifndef _WIN32
+#include <unistd.h>
+#endif
+
 #include "LevelCanvas.h"
 #include "TileCanvas.h"
 

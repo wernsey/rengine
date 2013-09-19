@@ -19,7 +19,9 @@ int LevelCanvas::handle(int event) {
 	switch(event) {
 		case FL_RELEASE: {
 				take_focus();
-					
+				
+				if(!_map) return 1;
+			
 				tileset *ts = tc->getTileset();
 				if(!ts) 
 					return 1;
@@ -33,10 +35,10 @@ int LevelCanvas::handle(int event) {
 				int col = mx/_map->tw;
 				int row = my/_map->th;					
 				
-				if(_map && Fl::event_button() == FL_LEFT_MOUSE) {
+				if(Fl::event_button() == FL_LEFT_MOUSE) {
 					int ti = tc->selectedIndex();
 					map_set(_map, layer, col, row, tsi, ti);
-				} else if(_map && Fl::event_button() == FL_RIGHT_MOUSE) {
+				} else if(Fl::event_button() == FL_RIGHT_MOUSE) {
 					map_set(_map, layer, col, row, tsi, -1);
 				}				
 				
