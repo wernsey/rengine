@@ -233,33 +233,27 @@ int ts_read_all(const char *text) {
 	struct json *j, *a, *e;
 	
 	/* Depending on what you want to do, you may
-		want to call ts_free_all() first */
+	 *	want to call ts_free_all() first.
+	 */
 
 	j = json_parse(text);
 	if(!j) {
-		printf("Unable to parse text \"\"\"%s\"\"\"\n", text);
+		/* TODO: Error handling can be better. */
 		return 0;
 	}
 	
 	json_dump(j);
 	
 	version = json_get_number(j, "version");
+	if(version < 1.0) 
+		return 0;
 	
-	if(!json_get_string(j, "type")) {
-		fprintf(stderr, "No type\n");
+	if(!json_get_string(j, "type") || strcmp(json_get_string(j, "type"), "TILESET")) {
 		return 0;
 	}
-	
-	if(strcmp(json_get_string(j, "type"), "TILESET")) {
-		fprintf(stderr, "Not a tileset: '%s'\n", json_get_string(j, "type"));
-		return 0;
-	}
-	
-	printf("TILESET %.2f\n", version);
 	
 	a = json_get_array(j, "tilesets");
 	if(!a) {
-		fprintf(stderr, "No tilesets");
 		return 0;
 	}
 	
@@ -275,9 +269,7 @@ int ts_read_all(const char *text) {
 		th = json_get_number(e, "th");
 		border = json_get_number(e, "border");
 		nmeta = json_get_number(e, "nmeta");
-		
-		printf("'%s' %d %d %d %d\n", name, tw, th, border, nmeta);
-		
+				
 		y = ts_add(name, tw, th, border);
 		if(y < 0) {
 			return 0;
@@ -304,53 +296,12 @@ int ts_read_all(const char *text) {
 				m->flags = json_get_number(ee, "flags");
 				m->clas = strdup(clas?clas:"");
 				
-				printf("    '%s' %d %d\n", m->clas, m->num, m->flags);
-				
 				ee = ee->next;
 			}
 		}
 		
 		e = e->next;
 	}
-	
-	/*
-	fscanf(f,"%s", buffer);
-	if(strcmp(buffer, "TILESET")) {
-		return 0;
-	}
-		
-	fscanf(f, "%f %d", &version, &n);
-	for(i = 0; i < n; i++) {
-		int tw, th, border, nmeta, j;
-		struct tileset *t;
-		fgets(buffer, sizeof buffer, f);
-		fgets(buffer, sizeof buffer, f);
-		for(j = 0; buffer[j]; j++) {
-			if(buffer[j] == '\n')
-				buffer[j] = '\0';
-		}
-		fscanf(f, "%d %d %d %d", &tw, &th, &border, &nmeta);
-		j = ts_add(buffer, tw, th, border);
-		if(j < 0) {
-			return 0;
-		}
-		t = ts_get(j);
-		
-		t->nmeta = nmeta;
-		t->meta = malloc(nmeta * sizeof *t->meta);
-		if(!t->meta) {
-			t->nmeta = 0;
-			return 0;
-		}
-		for(j = 0; j < nmeta; j++) {
-			struct tile_meta *m = &t->meta[j];
-			fscanf(f, "%d %s %x", &m->num, buffer, &m->flags);
-			if(!strcmp(buffer, "#null#"))
-				buffer[0] = '\0';				
-			m->clas = strdup(buffer);
-		}
-	}
-	*/
 	
 	return 1;
 }
