@@ -295,13 +295,13 @@ const char *json_as_string(struct json *j) {
 
 struct json *json_as_object(struct json *j) {
 	if(j->type == j_object)
-		return j->value;
+		return j;
 	return NULL;	
 }
 
 struct json *json_as_array(struct json *j) {
 	if(j->type == j_array)
-		return j->value;
+		return j;
 	return NULL;
 }
 
