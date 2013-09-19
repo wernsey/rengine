@@ -24,7 +24,7 @@ LFLAGS += `sdl-config --libs` -lGL
 
 SOURCES= bmp.c game.c ini.c utils.c pak.c particles.c \
 	states.c demo.c resources.c musl.c mustate.c hash.c \
-	lexer.c
+	lexer.c tileset.c map.c json.c
 
 FONTS = fonts/bold.xbm fonts/circuit.xbm fonts/hand.xbm \
 		fonts/normal.xbm fonts/small.xbm fonts/smallinv.xbm fonts/thick.xbm
@@ -67,7 +67,13 @@ musl.o : musl.h
 
 mustate.o : bmp.h states.h musl.h game.h ini.h resources.h utils.h
 
-lexer.c : lexer.h
+lexer.o : lexer.h
+
+tileset.o : tileset.h bmp.h lexer.h json.h utils.h
+
+map.o : map.h tileset.h bmp.h
+
+json.o : json.h lexer.h hash.h utils.h
 
 ###############################################
 
@@ -79,9 +85,6 @@ LPPFLAGS = `$(fltk-config) --ldflags`
 # Link with static libstdc++, otherwise you need to have
 # libstdc++-6.dll around.
 LPPFLAGS += -static-libstdc++
-
-.cpp.o:
-	g++ -c $(CPPFLAGS) $< -o $@
 
 editor: editor.o BMCanvas.o LevelCanvas.o TileCanvas.o bmp.o tileset.o map.o lexer.o json.o hash.o utils.o
 	g++ -o bin/$@  $^ $(LPPFLAGS)
