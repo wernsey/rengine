@@ -22,7 +22,7 @@ all: editor
 debug:
 	make "BUILD=debug"
 
-editor: main.o BMCanvas.o LevelCanvas.o TileCanvas.o bmp.o tileset.o map.o lexer.o json.o hash.o utils.o
+editor: editor.o BMCanvas.o LevelCanvas.o TileCanvas.o bmp.o tileset.o map.o lexer.o json.o hash.o utils.o
 	g++ -o $@  $^ $(LDFLAGS)
 		
 .c.o:
@@ -31,7 +31,7 @@ editor: main.o BMCanvas.o LevelCanvas.o TileCanvas.o bmp.o tileset.o map.o lexer
 .cpp.o:
 	g++ -c $(CPPFLAGS) $< -o $@
 
-main.o : main.cpp ../bmp.h LevelCanvas.h
+editor.o : editor.cpp ../bmp.h LevelCanvas.h
 
 LevelCanvas.o : LevelCanvas.cpp LevelCanvas.h BMCanvas.h ../map.h TileCanvas.h
 
