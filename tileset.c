@@ -2,11 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <assert.h>
 
 #include "bmp.h"
 #include "tileset.h"
 #include "lexer.h"
 #include "json.h"
+#include "utils.h"
 
 #define TILE_FILE_VERSION	1.0f
 
@@ -182,24 +184,9 @@ int ts_save_all(const char *filename) {
 
 int ts_write_all(FILE *f) {
 	int i, j;
-	/*
-	fprintf(f, "TILESET\n%5.2f %d\n", TILE_FILE_VERSION, ntilesets);
-	for(i = 0; i < ntilesets; i++) {
-		struct tileset *t = tilesets[i];
-		fprintf(f, "%s\n%d %d %d %d\n", t->name, t->tw, t->th, t->border, t->nmeta);
-		for(j = 0; j < t->nmeta; j++) {
-			struct tile_meta *m = &t->meta[j];
-			if(m->clas[0] == '\0')
-				fprintf(f, "%d %s %04X\n", m->num, "#null#", m->flags);
-			else
-				fprintf(f, "%d %s %04X\n", m->num, m->clas, m->flags);
-		}
-	}
-	*/
 	
 	char buffer[128];
 	
-	//json_escape(const char *in, char *out, size_t len);
 	fprintf(f, "{\n");	
 	fprintf(f, "\"type\" : \"TILESET\",\n");
 	fprintf(f, "\"version\" : %.2f,\n", TILE_FILE_VERSION);
@@ -231,19 +218,108 @@ int ts_write_all(FILE *f) {
 }
 
 int ts_load_all(const char *filename) {
-	FILE *f = fopen(filename, "r");
-	int r = ts_read_all(f);
-	fclose(f);
+	int r;
+	char *text = my_readfile (filename);
+	if(!text)
+		return 0;
+	r = ts_read_all(text);
+	free(text);
 	return r;
 }
 
-int ts_read_all(FILE *f) {
-	char buffer[128];
-	int i, n;
-	float version;
+int ts_read_all(const char *text) {
+	/*char buffer[128];
+	int i, n;*/
+	double version;
+	
+	struct json *j, *a, *e;
+	
+	FILE *f = fopen("open.log", "w");
 	
 	/* Depending on what you want to do, you may
 		want to call ts_free_all() first */
+
+	j = json_parse(text);
+	if(!j) {
+		fprintf(f, "Unable to parse text \"\"\"%s\"\"\"\n", text);
+		fclose(f);
+		return 0;
+	}
+	
+	version = json_get_number(j, "version");
+	
+	if(!json_get_string(j, "type")) {
+		fprintf(f, "No type\n");
+		fclose(f);
+		return 0;
+	}
+	
+	if(strcmp(json_get_string(j, "type"), "TILESET")) {
+		fprintf(f, "Not a tileset: '%s'\n", json_get_string(j, "type"));
+		fclose(f);
+		return 0;
+	}
+	
+	fprintf(f, "TILESET %.2f\n", version);
+	
+	a = json_get_array(j, "tilesets");
+	if(!a) {
+		fprintf(f, "No tilesets");
+		fclose(f);
+		return 0;
+	}
+	
+	e = a->value;
+	while(e) {
+		int tw, th, border, nmeta, y;
+		const char *name;
+		struct tileset *t;
+		struct json *aa, *ee;
+		
+		name = json_get_string(e, "name");
+		tw = json_get_number(e, "tw");
+		th = json_get_number(e, "th");
+		border = json_get_number(e, "border");
+		nmeta = json_get_number(e, "nmeta");
+		
+		fprintf(f, "'%s' %d %d %d %d\n", name, tw, th, border, nmeta);
+		
+		y = ts_add(name, tw, th, border);
+		if(y < 0) {
+			return 0;
+		}
+		t = ts_get(y);
+		
+		t->nmeta = 0;
+		t->meta = NULL;
+		
+		aa = json_get_array(j, "meta");
+		if(!aa)
+			continue;
+		
+		t->nmeta = json_array_len(aa);
+		t->meta = malloc(t->nmeta * sizeof *t->meta);
+		
+		assert(t->nmeta == nmeta);
+		
+		ee = aa->value;
+		y = 0;
+		while(ee) {			
+			struct tile_meta *m = &t->meta[y++];
+			const char *clas = json_get_string(ee, "class");
+			
+			m->num = json_get_number(ee, "num");
+			m->flags = json_get_number(ee, "flags");
+			m->clas = strdup(clas?clas:"");
+			
+			ee = ee->next;
+		}
+		
+		e = e->next;
+	}
+	
+		fclose(f);
+	/*
 	fscanf(f,"%s", buffer);
 	if(strcmp(buffer, "TILESET")) {
 		return 0;
@@ -280,6 +356,7 @@ int ts_read_all(FILE *f) {
 			m->clas = strdup(buffer);
 		}
 	}
+	*/
 	
 	return 1;
 }

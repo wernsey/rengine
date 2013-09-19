@@ -46,7 +46,7 @@ int ts_write_all(FILE *file);
 
 int ts_load_all(const char *filename);
 
-int ts_read_all(FILE *f);
+int ts_read_all(const char *text);
 
 int ts_valid_class(const char *clas);
  

@@ -42,7 +42,7 @@ BMCanvas.o : BMCanvas.cpp BMCanvas.h
 bmp.o : ../bmp.c ../bmp.h
 	gcc -c $(CFLAGS) -o $@ $<
 	
-tileset.o : ../tileset.c ../tileset.h ../bmp.h ../lexer.h ../json.h
+tileset.o : ../tileset.c ../tileset.h ../bmp.h ../lexer.h ../json.h ../utils.h
 	gcc -c $(CFLAGS) -o $@ $<
 	
 map.o : ../map.c ../map.h ../tileset.h ../bmp.h
