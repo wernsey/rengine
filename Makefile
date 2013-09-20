@@ -19,8 +19,11 @@ endif
 CFLAGS += `sdl-config --cflags`
 
 # -lopengl32 is required for Windows
-#LFLAGS += `sdl-config --libs` -lopengl32
+ifeq ($(OS),Windows_NT)
+LFLAGS += `sdl-config --libs` -lopengl32
+else
 LFLAGS += `sdl-config --libs` -lGL
+endif
 
 SOURCES= bmp.c game.c ini.c utils.c pak.c particles.c \
 	states.c demo.c resources.c musl.c mustate.c hash.c \
@@ -71,7 +74,7 @@ lexer.o : lexer.h
 
 tileset.o : tileset.h bmp.h lexer.h json.h utils.h
 
-map.o : map.h tileset.h bmp.h
+map.o : map.h tileset.h bmp.h json.h
 
 json.o : json.h lexer.h hash.h utils.h
 

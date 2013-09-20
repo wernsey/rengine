@@ -1,3 +1,7 @@
 
 * Changing the Working Directory affects the tilesets, so you should rather set the working directory when you start a new project.
 
+I should rethink the way the class and id is handled.
+The specific problem is that each tile can only have one class and id, regardless of the number of layers.
+I think they should be stored more like the meta data in the tilesets.
+If I do this before I implement loading of the maps it may save me some trouble later.

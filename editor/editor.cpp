@@ -38,6 +38,8 @@ Fl_Button *new_btn_ok, *new_btn_cancel;
 
 Fl_Select_Browser *tileSetSelect;
 
+char *map_file = NULL;
+
 char *tileset_file = NULL;
 
 int g_mapwidth = 20, g_mapheight = 20;
@@ -48,6 +50,7 @@ int g_tilewidth = 16, g_tileheight = 16;
 void tileset_cb(Fl_Widget*w, void*p);
 void tile_select_cb(TileCanvas *canvas);
 void tilesetsaveas_cb(Fl_Widget* w, void*);
+void saveas_cb(Fl_Widget* w, void*);
 
 // CALLBACKS //////////////////////////////////////////////////////
 
@@ -95,13 +98,32 @@ void new_cb(Fl_Widget* w, void*) {
 void open_cb(Fl_Widget* w, void*) {
 }
 
-void save_cb(Fl_Widget* w, void*) {
+void save_cb(Fl_Widget* w, void*p) {
+	map *m = canvas->getMap();
+	if(!m) 
+		return;
+	if(map_file)
+		map_save(m, map_file);
+	else
+		saveas_cb(w, p);
 }
 
 void saveas_cb(Fl_Widget* w, void*) {
+	map *m = canvas->getMap();
+	if(!m) 
+		return;
+	char * filename = fl_file_chooser("Choose Filename For Map", "Map files (*.map)", "", 1);	
+	if(filename != NULL) {
+		if(map_save(m, filename)) {			
+			map_file = filename;
+		} else {
+			fl_alert("Unable to save map to %s", filename);
+		}
+	}
 }
 
 void changeDirectory(const char *dir) {
+	// FIXME: Do we change directories with a map being edited?
 	if(dir) {
 		char buffer[128];
 		snprintf(buffer, sizeof buffer, "Editor - %s", dir);

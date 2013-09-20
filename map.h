@@ -29,6 +29,8 @@ void map_render(struct map *m, struct bitmap *bmp, int layer, int scroll_x, int 
 
 void map_free(struct map *m);
 
+int map_save(struct map *m, const char *filename);
+
 #if defined(__cplusplus) || defined(c_plusplus)
 } /* extern "C" */
 #endif

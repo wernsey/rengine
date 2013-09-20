@@ -269,6 +269,7 @@ int ts_read_all(const char *text) {
 		th = json_get_number(e, "th");
 		border = json_get_number(e, "border");
 		nmeta = json_get_number(e, "nmeta");
+		(void)nmeta;
 				
 		y = ts_add(name, tw, th, border);
 		if(y < 0) {
@@ -280,6 +281,7 @@ int ts_read_all(const char *text) {
 		t->meta = NULL;
 		
 		aa = json_get_array(e, "meta");
+		assert(json_array_len(aa) == nmeta);
 		if(aa) {
 			t->nmeta = json_array_len(aa);
 			t->meta = malloc(t->nmeta * sizeof *t->meta);

@@ -5,6 +5,9 @@
 #include "tileset.h"
 #include "bmp.h"
 #include "map.h"
+#include "json.h"
+
+#define MAP_FILE_VERSION 1.0
 
 struct map *map_create(int nr, int nc, int tw, int th, int nl) {
 	int i;
@@ -110,3 +113,47 @@ void map_free(struct map *m) {
 	free(m->layers);
 	free(m);
 }
+
+int map_save(struct map *m, const char *filename) {
+	int i, j;
+	char buffer[128];
+	
+	FILE *f = fopen(filename, "w");
+	fprintf(f, "{\n");
+	fprintf(f, "\"type\" : \"2D_MAP\",\n");
+	fprintf(f, "\"version\" : %.2f,\n", MAP_FILE_VERSION);
+	
+	fprintf(f, "\"rows\" : %d,\n\"columns\" : %d,\n", m->nr, m->nc);
+	fprintf(f, "\"tile_width\" : %d,\n\"tile_height\" : %d,\n", m->tw, m->th);
+	
+	fprintf(f, "\"num_layers\" : %d,\n", m->nl);
+	fprintf(f, "\"layers\" : [\n");
+	for(i = 0; i < m->nl; i++) {
+		fprintf(f, "  [\n");
+		for(j = 0; j < m->nr * m->nc; j++) {
+			struct map_tile *t = &m->layers[i].tiles[j];
+			/* FIXME: I should rethink the way the class and id is handled.
+			 * The specific problem is that each tile can only have one class and id,
+			 * regardless of the number of layers.
+			 * I think they should be stored more like the meta data in the tilesets.
+			 * If I do this before I implement loading of the maps it may save me some trouble later.
+			 */
+			fprintf(f, "    {\"si\":%d, \"ti\":%d, \"flags\":%d", t->si, t->ti, t->flags);
+			if(t->clas)
+				fprintf(f, ", \"class\":\"%s\"", json_escape(t->clas, buffer, sizeof buffer));
+			if(t->id)
+				fprintf(f, ", \"id\":\"%s\"", json_escape(t->id, buffer, sizeof buffer));			
+			fprintf(f, "}%c\n", (j < m->nr * m->nc - 1) ? ',' : ' ');
+		}
+		fprintf(f, "  ]%c\n", (i < m->nl - 1) ? ',' : ' ');
+	}
+	fprintf(f, "],\n");
+	
+	fprintf(f, "\"tilesets\" : ");
+	ts_write_all(f);
+	
+	fprintf(f, "}\n");
+	fclose(f);
+	return 1;
+}
+
