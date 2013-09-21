@@ -211,9 +211,15 @@ static struct json *json_parse_value(struct lexer *lx) {
 		v->type = j_null;
 		v->value = NULL;
 		v->next = NULL;
-		if(lx_sym(lx) == LX_NUMBER) {
+		if(lx_sym(lx) == LX_NUMBER || lx_sym(lx) == '-') {
 			v->type = j_number;
-			v->value = strdup(lx_text(lx));
+			if(lx_sym(lx) == '-') {
+				lx_getsym(lx);
+				char *val = malloc(strlen(lx_text(lx)) + 2);
+				sprintf(val, "-%s", lx_text(lx));
+				v->value = val;
+			} else
+				v->value = strdup(lx_text(lx));
 		} else if(lx_sym(lx) == LX_STRING) {
 			v->type = j_string;
 			v->value = strdup(lx_text(lx));
