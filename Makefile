@@ -41,8 +41,12 @@ debug:
 profile:
 	make "BUILD=profile"
 
-game: $(OBJECTS) bin
-	$(CC) -o bin/$@ $(OBJECTS) $(LFLAGS) 
+.PHONY : game
+
+game: bin/game
+
+bin/game: $(OBJECTS) bin
+	$(CC) -o $@ $(OBJECTS) $(LFLAGS) 
 	
 bin:
 	mkdir $@
@@ -89,8 +93,12 @@ LPPFLAGS = `$(fltk-config) --ldflags`
 # libstdc++-6.dll around.
 LPPFLAGS += -static-libstdc++
 
-editor: editor.o BMCanvas.o LevelCanvas.o TileCanvas.o bmp.o tileset.o map.o lexer.o json.o hash.o utils.o
-	g++ -o bin/$@  $^ $(LPPFLAGS)
+.PHONY : editor
+
+editor: bin/editor
+
+bin/editor: editor.o BMCanvas.o LevelCanvas.o TileCanvas.o bmp.o tileset.o map.o lexer.o json.o hash.o utils.o
+	g++ -o $@  $^ $(LPPFLAGS)
 	
 editor.o: editor/editor.cpp
 	g++ -c $(CPPFLAGS) $< -o $@

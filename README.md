@@ -7,6 +7,8 @@ Rengine is a engine for Retro-style games. It uses OpenGL to render a texture in
 resolution and contains lots of code for manipulating said texture. It uses SDL for cross-
 platform operation.
 
+The home of Rengine is at https://github.com/wernsey/rengine
+
 License
 -------
 
