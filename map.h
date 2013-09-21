@@ -3,14 +3,15 @@ extern "C" {
 #endif
 
 struct map_tile {
-	char si;   /* Index of the tile set */
-	short ti; /* Tile index within the set */	
-	char flags;
-	char *clas, *id;
+	short si; /* Index of the tile set */
+	short ti; /* Tile index within the set */
 };
 
-struct map_layer {
+struct map_cell {
 	struct map_tile *tiles;
+	char *id;
+	char *clas;
+	int flags; 
 };
 
 struct map {
@@ -18,7 +19,7 @@ struct map {
 	int tw, th;
 	char dirty;
 	int nl;
-	struct map_layer *layers;
+	struct map_cell *cells;
 };
 
 struct map *map_create(int nr, int nc, int tw, int th, int nl);

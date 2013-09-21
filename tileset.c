@@ -10,7 +10,7 @@
 #include "json.h"
 #include "utils.h"
 
-#define TILE_FILE_VERSION	1.0f
+#define TILE_FILE_VERSION 1.0f
 
 static struct tileset **tilesets = NULL;
 static int ntilesets = 0;
@@ -202,11 +202,11 @@ int ts_write_all(FILE *f) {
 		fprintf(f, "  \"meta\" : [\n");
 		for(j = 0; j < t->nmeta; j++) {
 			struct tile_meta *m = &t->meta[j];
-			fprintf(f, "    {\n");
-			fprintf(f, "    \"num\" : %d,\n", m->num);
-			fprintf(f, "    \"class\" : \"%s\",\n", json_escape(m->clas, buffer, sizeof buffer));
-			fprintf(f, "    \"flags\" : %d\n", m->flags);
-			fprintf(f, "    }%c\n", (j < t->nmeta - 1) ? ',' : ' ');
+			fprintf(f, "    {");
+			fprintf(f, "\"num\":%d, ", m->num);
+			fprintf(f, "\"class\":\"%s\", ", json_escape(m->clas, buffer, sizeof buffer));
+			fprintf(f, "\"flags\":%d", m->flags);
+			fprintf(f, "}%c\n", (j < t->nmeta - 1) ? ',' : ' ');
 		}
 		fprintf(f, "  ]\n");
 		fprintf(f, "  }%c\n", (i < ntilesets - 1) ? ',' : ' ');		
