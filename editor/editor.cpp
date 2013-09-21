@@ -96,6 +96,22 @@ void new_cb(Fl_Widget* w, void*) {
 }
 
 void open_cb(Fl_Widget* w, void*) {
+	char * filename = fl_file_chooser("Choose Map", "Map files (*.map)", "", 1);
+	if(!filename)
+		return;
+	
+	struct map * m = map_load(filename);
+	if(!m)
+		fl_alert("Unable to open map %s", filename);
+	
+	map_file = filename;
+	canvas->setMap(m);
+	
+	tileSetSelect->clear();
+	for(int i = 0; i < ts_get_num(); i++) {
+		tileset *ts = ts_get(i);
+		tileSetSelect->add(ts->name);
+	}
 }
 
 void save_cb(Fl_Widget* w, void*p) {

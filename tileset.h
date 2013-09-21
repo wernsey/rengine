@@ -46,7 +46,8 @@ int ts_write_all(FILE *file);
 
 int ts_load_all(const char *filename);
 
-int ts_read_all(const char *text);
+struct json; /* see json.h */
+int ts_read_all(struct json *j);
 
 int ts_valid_class(const char *clas);
  

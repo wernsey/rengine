@@ -85,3 +85,10 @@ void LevelCanvas::newMap(int nr, int nc, int tw, int th, int nl) {
 	int h = th * nr;
 	resize(x(), y(), w, h);
 }
+
+void LevelCanvas::setMap(map *m) {
+	if(_map)
+		map_free(_map);
+	_map = m; 
+	redraw();
+}

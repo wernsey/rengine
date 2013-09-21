@@ -32,6 +32,8 @@ void map_free(struct map *m);
 
 int map_save(struct map *m, const char *filename);
 
+struct map *map_load(const char *filename);
+
 #if defined(__cplusplus) || defined(c_plusplus)
 } /* extern "C" */
 #endif

@@ -78,7 +78,7 @@ lexer.o : lexer.h
 
 tileset.o : tileset.h bmp.h lexer.h json.h utils.h
 
-map.o : map.h tileset.h bmp.h json.h
+map.o : map.h tileset.h bmp.h json.h utils.h
 
 json.o : json.h lexer.h hash.h utils.h
 
@@ -99,7 +99,7 @@ editor: bin/editor
 
 bin/editor: editor.o BMCanvas.o LevelCanvas.o TileCanvas.o bmp.o tileset.o map.o lexer.o json.o hash.o utils.o
 	g++ -o $@  $^ $(LPPFLAGS)
-	
+
 editor.o: editor/editor.cpp
 	g++ -c $(CPPFLAGS) $< -o $@
 
@@ -111,7 +111,6 @@ LevelCanvas.o: editor/LevelCanvas.cpp
 
 TileCanvas.o: editor/TileCanvas.cpp 
 	g++ -c $(CPPFLAGS) $< -o $@
-
 
 ###############################################
 

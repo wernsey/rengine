@@ -12,7 +12,10 @@ struct json {
 	enum json_type type;
 	void *value;
 	
-	/* For now, I store arrays in a linked list. Fix later */
+	/* For now, I store arrays in a linked list. Fix later.
+	In fairness, my stuff just iterates through the array,
+	so the linked list provides some convenience.
+	*/
 	struct json *next; 
 };
 

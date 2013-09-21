@@ -24,6 +24,7 @@ public:
 	int getLayer() { return layer; }
 
 	map *getMap() { return _map; }
+	void setMap(map *);
 	
 private:
 	map *_map;

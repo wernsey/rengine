@@ -217,38 +217,40 @@ int ts_write_all(FILE *f) {
 	return 1;
 }
 
+/* Depending on what you want to do, you may
+ *	want to call ts_free_all() first.
+ */
 int ts_load_all(const char *filename) {
 	int r;
-	char *text = my_readfile (filename);
+	struct json *j;
+	char *text = my_readfile (filename);	
 	if(!text)
 		return 0;
-	r = ts_read_all(text);
-	free(text);
-	return r;
-}
-
-int ts_read_all(const char *text) {
-	double version;
 	
-	struct json *j, *a, *e;
-	
-	/* Depending on what you want to do, you may
-	 *	want to call ts_free_all() first.
-	 */
-
 	j = json_parse(text);
 	if(!j) {
 		/* TODO: Error handling can be better. */
 		return 0;
 	}
 	
-	json_dump(j);
+	r = ts_read_all(j);
+	free(text);
+	json_free(j);
 	
-	version = json_get_number(j, "version");
-	if(version < 1.0) 
-		return 0;
+	return r;
+}
+
+int ts_read_all(struct json *j) {
+	double version;
+	
+	struct json *a, *e;
 	
 	if(!json_get_string(j, "type") || strcmp(json_get_string(j, "type"), "TILESET")) {
+		return 0;
+	}
+	
+	version = json_get_number(j, "version");
+	if(version < 1.0) {
 		return 0;
 	}
 	
