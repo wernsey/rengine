@@ -5,11 +5,11 @@ code_name {.cxx}
 Function {make_window()} {open
 } {
   Fl_Window main_window {
-    label {Rengine Editor} open
-    xywh {191 119 905 664} type Double visible
+    label {Rengine Editor} open selected
+    xywh {476 173 905 590} type Double resizable visible
   } {
     Fl_Menu_Bar {} {
-      xywh {0 0 905 20}
+      xywh {0 0 905 25}
     } {
       Submenu {} {
         label {&File} open
@@ -68,20 +68,20 @@ Function {make_window()} {open
         }
       }
     }
-    Fl_Scroll mapScroll {
-      xywh {5 25 570 360} box DOWN_BOX color 8
+    Fl_Scroll {} {
+      xywh {5 30 570 360} box DOWN_BOX color 8 resizable
     } {
       Fl_Box canvas {
-        xywh {5 25 570 360}
+        xywh {5 30 570 360}
         code0 {\#include "LevelCanvas.h"}
         class LevelCanvas
       }
     }
-    Fl_Scroll tilesetScroll {
-      xywh {580 25 320 360} box DOWN_BOX color 8
+    Fl_Scroll {} {
+      xywh {580 30 320 360} box DOWN_BOX color 8
     } {
       Fl_Box tiles {
-        xywh {580 25 320 360}
+        xywh {580 30 320 360}
         code0 {\#include "TileCanvas.h"}
         class TileCanvas
       }
@@ -90,17 +90,17 @@ Function {make_window()} {open
       label {@line}
       user_data canvas
       callback zoomOutCb
-      tooltip {Zoom Out} xywh {5 390 25 25}
+      tooltip {Zoom Out} xywh {5 395 25 25}
     }
     Fl_Button {} {
       label {@+}
       user_data canvas
       callback zoomInCb
-      tooltip {Zoom In} xywh {35 390 25 25}
+      tooltip {Zoom In} xywh {35 395 25 25}
     }
     Fl_Check_Button {} {
       label {Show Barriers}
-      xywh {65 390 110 25} down_box DOWN_BOX
+      xywh {65 395 110 25} down_box DOWN_BOX
     }
     Fl_Input {} {
       label Class
@@ -116,8 +116,8 @@ Function {make_window()} {open
       xywh {330 425 135 25} down_box DOWN_BOX
     }
     Fl_Group {} {
-      label Layer open
-      xywh {5 470 570 85} box DOWN_FRAME
+      label Layer
+      xywh {5 470 570 85} box THIN_DOWN_FRAME
     } {
       Fl_Round_Button {} {
         label Background
@@ -131,40 +131,61 @@ Function {make_window()} {open
       }
       Fl_Round_Button {} {
         label Foreground
-        callback {canvas->setLayer(2);} selected
+        callback {canvas->setLayer(2);}
         xywh {10 525 185 25} type Radio down_box ROUND_DOWN_BOX
       }
+      Fl_Check_Button {} {
+        label Visible
+        callback {canvas->setVisible(0, o->value() == 1);}
+        xywh {130 475 65 25} down_box DOWN_BOX value 1
+      }
+      Fl_Check_Button {} {
+        label Visible
+        callback {canvas->setVisible(1, o->value() == 1);}
+        xywh {130 500 65 25} down_box DOWN_BOX value 1
+      }
+      Fl_Check_Button {} {
+        label Visible
+        callback {canvas->setVisible(2, o->value() == 1);}
+        xywh {130 525 65 25} down_box DOWN_BOX value 1
+      }
+    }
+    Fl_Output mapStatus {
+      xywh {5 560 570 25}
     }
     Fl_Button {} {
       label {@line}
       user_data tiles
       callback zoomOutCb
-      tooltip {Zoom Out} xywh {580 390 25 25}
+      tooltip {Zoom Out} xywh {580 395 25 25}
     }
     Fl_Button {} {
       label {@+}
       user_data tiles
       callback zoomInCb
-      tooltip {Zoom In} xywh {610 390 25 25}
+      tooltip {Zoom In} xywh {610 395 25 25}
     }
     Fl_Check_Button {} {
       label {Show Barriers}
       callback tileDrawBarrier_cb
-      xywh {640 390 110 25} down_box DOWN_BOX
+      xywh {640 395 110 25} down_box DOWN_BOX
     }
     Fl_Input tilesClass {
       label Class
       callback tileClass_cb
-      xywh {620 420 140 25}
+      xywh {620 425 140 25}
     }
     Fl_Check_Button tileIsBarrier {
       label Barrier
       callback tileBarrier_cb
-      xywh {765 420 135 25} down_box DOWN_BOX
+      xywh {765 425 135 25} down_box DOWN_BOX
     }
     Fl_Browser tileSetSelect {
       label Tileset
-      xywh {580 470 315 155} type Select align 1
+      xywh {580 470 320 85} type Select align 1
+    }
+    Fl_Output tilesStatus {
+      xywh {580 560 320 25}
     }
   }
   Fl_Window new_map_dlg {

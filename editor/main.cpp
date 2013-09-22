@@ -29,7 +29,6 @@ void tile_select_cb(TileCanvas *canvas);
 /*****************************************************************************************
  * FILE MENU CALLBACKS ******************************************************************/
 
-
 void new_btn_ok_cb(Fl_Button* w, void*) {
 	g_mapwidth = MAX((new_map_width->value()), 1);
 	g_mapheight = MAX((new_map_height->value()), 1);
@@ -67,14 +66,10 @@ void new_cb(Fl_Menu_* w, void*) {
 	new_map_dlg->show();
 }
 
-
 void quit_cb(Fl_Menu_* w, void*) {
 	// FIXME: Changed? Save before exit (yes/no)	
 	exit(0);
 }
-
-
-
 
 /*****************************************************************************************
  * TILE SET MENU ************************************************************************/
@@ -203,9 +198,7 @@ void tileBarrier_cb(Fl_Check_Button*w, void*p) {
 }
 
 void tileDrawBarrier_cb(Fl_Check_Button*w, void*p) {
-	Fl_Check_Button *b = static_cast<Fl_Check_Button *>(w);
-	tiles->drawBarriers(b->value() == 1);	
-	
+	tiles->drawBarriers(w->value() == 1);		
 	tiles->redraw();
 }
 
