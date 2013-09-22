@@ -5,8 +5,8 @@
 
 #include "LevelCanvas.h"
 
-LevelCanvas::LevelCanvas(int x, int y, int w, int h) 
-: BMCanvas(x, y, w, h, "Level View"), _map(0), tc(0), layer(0) {
+LevelCanvas::LevelCanvas(int x, int y, int w, int h, const char *l) 
+: BMCanvas(x, y, w, h, l), _map(0), tc(0), layer(0) {
 }
 
 LevelCanvas::~LevelCanvas() {

@@ -1,0 +1,142 @@
+# data file for the Fltk User Interface Designer (fluid)
+version 1.0302 
+header_name {.h} 
+code_name {.cxx}
+Function {make_window()} {open
+} {
+  Fl_Window {} {
+    label {Rengine Editor} open
+    xywh {526 132 905 664} type Double visible
+  } {
+    Fl_Menu_Bar {} {open
+      xywh {0 0 905 20}
+    } {
+      Submenu {} {
+        label {&File} open
+        xywh {0 0 100 20}
+      } {
+        MenuItem {} {
+          label {&New}
+          xywh {0 0 100 20}
+        }
+        MenuItem {} {
+          label {&Open}
+          xywh {0 0 100 20}
+        }
+        MenuItem {} {
+          label {&Save}
+          xywh {0 0 100 20}
+        }
+        MenuItem {} {
+          label {Save &As}
+          xywh {0 0 100 20} divider
+        }
+        MenuItem {} {
+          label {Set &Working Directory}
+          xywh {0 0 100 20} divider
+        }
+        MenuItem {} {
+          label {E&xit}
+          callback quit_cb
+          xywh {0 0 100 20}
+        }
+      }
+      Submenu {} {
+        label {&Tileset} open
+        xywh {0 0 100 20}
+      } {
+        MenuItem {} {
+          label {&Add}
+          callback tilesetadd_cb
+          xywh {0 0 100 20}
+        }
+        MenuItem {} {
+          label {&Export}
+          xywh {0 0 100 20}
+        }
+        MenuItem {} {
+          label {&Import}
+          xywh {0 0 100 20}
+        }
+      }
+    }
+    Fl_Scroll mapScroll {open
+      xywh {5 25 570 360} box DOWN_BOX color 8
+    } {
+      Fl_Box canvas {
+        xywh {5 25 570 360}
+        code0 {\#include "LevelCanvas.h"}
+        class LevelCanvas
+      }
+    }
+    Fl_Scroll tilesetScroll {open
+      xywh {580 25 320 360} box DOWN_BOX color 8
+    } {
+      Fl_Box tiles {
+        xywh {580 25 320 360}
+        code0 {\#include "TileCanvas.h"}
+        class TileCanvas
+      }
+    }
+    Fl_Group {} {
+      xywh {5 475 570 85} box DOWN_FRAME
+    } {
+      Fl_Round_Button {} {
+        label Background
+        xywh {10 480 185 25} type Radio down_box ROUND_DOWN_BOX
+      }
+      Fl_Round_Button {} {
+        label Center
+        xywh {10 505 185 25} type Radio down_box ROUND_DOWN_BOX
+      }
+      Fl_Round_Button {} {
+        label Foreground
+        xywh {10 530 185 25} type Radio down_box ROUND_DOWN_BOX
+      }
+    }
+    Fl_Button {} {
+      label {@line}
+      user_data canvas
+      callback zoomOutCb
+      xywh {5 390 25 25}
+    }
+    Fl_Button {} {
+      label {@+}
+      user_data canvas
+      callback zoomInCb
+      xywh {35 390 25 25}
+    }
+    Fl_Check_Button {} {
+      label {Show Barriers}
+      xywh {65 390 110 25} down_box DOWN_BOX
+    }
+    Fl_Button {} {
+      label {@line}
+      user_data tiles
+      callback zoomOutCb
+      xywh {580 390 25 25}
+    }
+    Fl_Button {} {
+      label {@+}
+      user_data tiles
+      callback zoomInCb
+      xywh {610 390 25 25}
+    }
+    Fl_Check_Button {} {
+      label {Show Barriers}
+      xywh {640 390 110 25} down_box DOWN_BOX
+    }
+    Fl_Browser tileSetSelect {
+      label Tileset
+      xywh {580 470 315 155} type Select align 1
+    }
+    Fl_Input tilesClass {
+      label Class
+      xywh {620 420 140 25}
+    }
+    Fl_Check_Button tileIsBarrier {
+      label Barrier selected
+      xywh {765 420 135 25} down_box DOWN_BOX
+    }
+  }
+} 

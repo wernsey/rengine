@@ -86,7 +86,7 @@ json.o : json.h lexer.h hash.h utils.h
 
 fltk-config = fltk-config
 
-CPPFLAGS = `$(fltk-config) --cxxflags` -c -I .
+CPPFLAGS = `$(fltk-config) --cxxflags` -c -I . -I./editor
 LPPFLAGS = `$(fltk-config) --ldflags` 
 
 # Link with static libstdc++, otherwise you need to have
@@ -97,11 +97,17 @@ LPPFLAGS += -static-libstdc++
 
 editor: bin/editor
 
-bin/editor: editor.o BMCanvas.o LevelCanvas.o TileCanvas.o bmp.o tileset.o map.o lexer.o json.o hash.o utils.o
+bin/editor: main.o editor.o BMCanvas.o LevelCanvas.o TileCanvas.o bmp.o tileset.o map.o lexer.o json.o hash.o utils.o
 	g++ -o $@  $^ $(LPPFLAGS)
 
-editor.o: editor/editor.cpp
+main.o: editor/main.cpp editor.h
 	g++ -c $(CPPFLAGS) $< -o $@
+	
+editor.o : editor.cxx editor.h 
+	g++ -c $(CPPFLAGS) $< -o $@
+
+editor.cxx editor.h : editor/editor.fl
+	fluid -c $^
 
 BMCanvas.o: editor/BMCanvas.cpp 
 	g++ -c $(CPPFLAGS) $< -o $@

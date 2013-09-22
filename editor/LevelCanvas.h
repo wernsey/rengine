@@ -7,7 +7,7 @@
 
 class LevelCanvas : public BMCanvas {
 public:
-	LevelCanvas(int x, int y, int w, int h);
+	LevelCanvas(int x, int y, int w, int h, const char *l = "Level");
 
 	virtual ~LevelCanvas();
 
