@@ -124,5 +124,5 @@ TileCanvas.o: editor/TileCanvas.cpp
 
 clean:
 	-rm -rf bin/game bin/game.exe bin/editor bin/editor.exe
-	-rm -rf *.o 
+	-rm -rf *.o editor.cxx editor.h
 	-rm -rf *~ gmon.out
