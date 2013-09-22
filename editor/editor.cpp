@@ -6,6 +6,7 @@
 #include <FL/Fl_Select_Browser.H>
 #include <FL/Fl_Menu_Bar.H>
 #include <FL/Fl_Check_Button.H>
+#include <FL/Fl_Round_Button.H>
 #include <FL/Fl_Input.H>
 #include <FL/Fl_Box.H>
 #include <FL/Fl_File_Chooser.H>
@@ -37,6 +38,9 @@ Fl_Input *new_map_width, *new_map_height, *new_tile_width, *new_tile_height;
 Fl_Button *new_btn_ok, *new_btn_cancel;
 
 Fl_Select_Browser *tileSetSelect;
+
+Fl_Round_Button *layerButton[3];
+Fl_Check_Button *layerVisiButton[3];
 
 char *map_file = NULL;
 
@@ -215,9 +219,25 @@ void tilesetload_cb(Fl_Widget* w, void*) {
 }
 
 void layerSelect_cb(Fl_Widget*w, void*p) {
-	Fl_Select_Browser *s = static_cast<Fl_Select_Browser *>(w);
-	int i = s->value() - 1;
-	canvas->setLayer(i);
+	// Couldn't get the FL radio buttons to work in the group.
+	// b->setonly() didn't work as expected either.
+	// I think it triggered some events.
+	for(int i = 0; i < 3; i++) {
+		Fl_Round_Button *b = layerButton[i];
+		if(b == w) {
+			b->set();
+			canvas->setLayer(i);
+		} else 
+			b->clear();
+	}
+}
+
+void layerVisi_cb(Fl_Widget*w, void*p) {
+	for(int i = 0; i < 3; i++) {
+		Fl_Check_Button *b = layerVisiButton[i];
+		canvas->setVisible(i, b->value() == 1);
+	}
+	canvas->redraw();
 }
 	
 void zoomOutCb(Fl_Widget*w, void*p) {
@@ -333,8 +353,10 @@ int main(int argc, char *argv[]) {
 				{ 0 },
 			*/
 
+			/*
 			{ "&Map", 0, 0, 0, FL_SUBMENU },
 				{ 0 },
+			*/
 
 			{ "&Tileset", 0, 0, 0, FL_SUBMENU },
 				{ "&Add",     0, (Fl_Callback *)tilesetadd_cb, 0, FL_MENU_DIVIDER },
@@ -375,14 +397,25 @@ int main(int argc, char *argv[]) {
 	Fl_Check_Button isBarrier(levelScroll.x() + 2*levelScroll.w()/3 + 5, levelZoomIn.y() + levelZoomIn.h() + 20, levelScroll.w()/3, 20, "Barrier");
 		
 	int h = isBarrier.y() + isBarrier.h() + 20;
-	Fl_Select_Browser layerSelect(levelScroll.x(), h, levelClass.w() + levelId.w() + 5, window->h() - h - 5, "Layer");
-	layerSelect.align(FL_ALIGN_TOP);
 	
-	layerSelect.add("back");
-	layerSelect.add("centre");
-	layerSelect.add("fore");
-
-	layerSelect.callback(layerSelect_cb);
+	Fl_Group group(levelScroll.x(), h, levelClass.w() + levelId.w() + 5, 60);
+	int w = (levelClass.w() + levelId.w() + 5)/2;
+	group.box(FL_DOWN_BOX);
+	layerButton[0] = new Fl_Round_Button(levelScroll.x(), h, w, 20, "Background");	
+	layerButton[0]->callback(layerSelect_cb);
+	layerButton[1] = new Fl_Round_Button(levelScroll.x(), h + 20, w, 20, "Center");
+	layerButton[1]->callback(layerSelect_cb);
+	layerButton[2] = new Fl_Round_Button(levelScroll.x(), h + 40, w, 20, "Foreground");
+	layerButton[2]->callback(layerSelect_cb);
+	group.end();
+	layerButton[0]->setonly();
+	canvas->setLayer(0);
+	
+	for(int i = 0; i < 3; i++) {
+		layerVisiButton[i] = new Fl_Check_Button(levelScroll.x() + w, h + i*20, w, 20, "Visible");
+		layerVisiButton[i]->value(1);
+		layerVisiButton[i]->callback(layerVisi_cb);
+	}
 	
 	Fl_Scroll tileScroll(410,30,640 - 410 - 5,260);
 	tiles = new TileCanvas(300,30,300,300);
@@ -412,7 +445,8 @@ int main(int argc, char *argv[]) {
 	tileIsBarrier = new Fl_Check_Button(tilesClass->x() + tilesClass->w() + 5, tilesClass->y(), tileScroll.w()/2, 20, "Barrier");
 	tileIsBarrier->callback(tileBarrier_cb);
 	
-	tileSetSelect = new Fl_Select_Browser(tileScroll.x(), layerSelect.y(), tileScroll.w(), layerSelect.h(), "Tile Set");
+	h = isBarrier.y() + isBarrier.h() + 20;
+	tileSetSelect = new Fl_Select_Browser(tileScroll.x(), h, tileScroll.w(), window->h() - h - 5, "Tile Set");
 	tileSetSelect->align(FL_ALIGN_TOP);
 	
 	tileSetSelect->callback(tileset_cb);
@@ -422,7 +456,7 @@ int main(int argc, char *argv[]) {
 	window->end();
 	window->show(argc, argv);	
 	
-	/******* New Level Dialog ********/
+	/******* New Map Dialog ********/
 	new_map_dlg = new Fl_Window(300, 160, "New Map");
 	new_map_dlg->set_modal();
 

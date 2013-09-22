@@ -21,25 +21,26 @@ int LevelCanvas::handle(int event) {
 				take_focus();
 				
 				if(!_map) return 1;
-			
-				tileset *ts = tc->getTileset();
-				if(!ts) 
-					return 1;
-				int tsi = ts_index_of( ts->name );
-				if(tsi < 0) 
-					return 1;
 				
 				int mx = (Fl::event_x() - x())/zoom();
 				int my = (Fl::event_y() - y())/zoom();
 				
 				int col = mx/_map->tw;
-				int row = my/_map->th;					
-				
+				int row = my/_map->th;	
+							
 				if(Fl::event_button() == FL_LEFT_MOUSE) {
+					
+					tileset *ts = tc->getTileset();
+					if(!ts) 
+						return 1;
+					int tsi = ts_index_of( ts->name );
+					if(tsi < 0) 
+						return 1;
+					
 					int ti = tc->selectedIndex();
 					map_set(_map, layer, col, row, tsi, ti);
 				} else if(Fl::event_button() == FL_RIGHT_MOUSE) {
-					map_set(_map, layer, col, row, tsi, -1);
+					map_set(_map, layer, col, row, 0, -1);
 				}				
 				
 				redraw();
@@ -70,8 +71,10 @@ void LevelCanvas::paint() {
 		line(j * _map->tw, 0, j * _map->tw, h);
 	}
 	
-	for(int i = 0; i < _map->nl; i++)
-		map_render(_map, bmp, i, 0, 0);
+	for(int i = 0; i < _map->nl; i++) {
+		if(visible[i])
+			map_render(_map, bmp, i, 0, 0);
+	}
 }
 
 void LevelCanvas::newMap(int nr, int nc, int tw, int th, int nl) {
@@ -90,5 +93,13 @@ void LevelCanvas::setMap(map *m) {
 	if(_map)
 		map_free(_map);
 	_map = m; 
+	int w = m->tw * m->nc;
+	int h = m->th * m->nr;
+	resize(x(), y(), w, h);
+	
 	redraw();
+}
+
+void LevelCanvas::setVisible(int layer, bool v) {
+	visible[layer] = v;
 }

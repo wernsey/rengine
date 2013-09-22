@@ -26,9 +26,13 @@ public:
 	map *getMap() { return _map; }
 	void setMap(map *);
 	
+	void setVisible(int layer, bool v);
+	
 private:
 	map *_map;
 	TileCanvas *tc;
+
+	bool visible[3];
 
 	int layer;
 };
