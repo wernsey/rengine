@@ -21,8 +21,10 @@ CFLAGS += `sdl-config --cflags`
 # -lopengl32 is required for Windows
 ifeq ($(OS),Windows_NT)
 LFLAGS += `sdl-config --libs` -lopengl32
+RES = rengine.res
 else
 LFLAGS += `sdl-config --libs` -lGL
+RES = 
 endif
 
 SOURCES= bmp.c game.c ini.c utils.c pak.c particles.c \
@@ -45,8 +47,8 @@ profile:
 
 game: bin/game
 
-bin/game: $(OBJECTS) bin
-	$(CC) -o $@ $(OBJECTS) $(LFLAGS) 
+bin/game: $(OBJECTS) $(RES) bin
+	$(CC) -o $@ $(OBJECTS) $(RES) $(LFLAGS) 
 	
 bin:
 	mkdir $@
@@ -81,6 +83,11 @@ tileset.o : tileset.h bmp.h lexer.h json.h utils.h
 map.o : map.h tileset.h bmp.h json.h utils.h
 
 json.o : json.h lexer.h hash.h utils.h
+
+rengine.res : rengine.rc
+	windres $^ -O coff -o $@
+
+rengine.rc : rengine.ico
 
 ###############################################
 
@@ -124,5 +131,5 @@ TileCanvas.o: editor/TileCanvas.cpp
 
 clean:
 	-rm -rf bin/game bin/game.exe bin/editor bin/editor.exe
-	-rm -rf *.o editor.cxx editor.h
+	-rm -rf *.o editor.cxx editor.h rengine.res
 	-rm -rf *~ gmon.out

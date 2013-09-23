@@ -31,7 +31,7 @@
 
 #define DEFAULT_FPS 33
 
-#define DEFAULT_APP_TITLE "Rengine '80"
+#define DEFAULT_APP_TITLE "Rengine"
 
 #define PARAM(x) (#x)
 
