@@ -135,7 +135,8 @@ void tileset_cb(Fl_Browser*w, void*p) {
 	int i = w->value();
 	struct tileset *ts = ts_find(w->text(i));
 	
-	if(!ts) return;
+	if(!ts) 
+		return;
 	
 	tiles->setTileset(ts);
 	

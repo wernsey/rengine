@@ -40,6 +40,7 @@ struct map *map_create(int nr, int nc, int tw, int th, int nl) {
 void map_set(struct map *m, int layer, int x, int y, int tsi, int ti) {
 	struct map_cell *c;
 	struct map_tile *tile;
+	
 	if(layer >= m->nl || x < 0 || x >= m->nc || y < 0 || y >= m->nr) 
 		return;
 	

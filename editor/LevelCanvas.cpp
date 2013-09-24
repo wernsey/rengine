@@ -7,6 +7,8 @@
 
 LevelCanvas::LevelCanvas(int x, int y, int w, int h, const char *l) 
 : BMCanvas(x, y, w, h, l), _map(0), tc(0), layer(0) {
+	for(int i = 0; i < 3; i++)
+		visible[i] = true;
 }
 
 LevelCanvas::~LevelCanvas() {
@@ -18,9 +20,11 @@ LevelCanvas::~LevelCanvas() {
 int LevelCanvas::handle(int event) {
 	switch(event) {
 		case FL_RELEASE: {
+			
 				take_focus();
 				
-				if(!_map) return 1;
+				if(!_map) 
+					return 1;
 				
 				int mx = (Fl::event_x() - x())/zoom();
 				int my = (Fl::event_y() - y())/zoom();
@@ -53,9 +57,10 @@ int LevelCanvas::handle(int event) {
 }
 
 void LevelCanvas::paint() {
+	
 	if(!_map) {
 		return;
-	}
+	}	
 	
 	pen("black");
 	clear();
@@ -102,4 +107,5 @@ void LevelCanvas::setMap(map *m) {
 
 void LevelCanvas::setVisible(int layer, bool v) {
 	visible[layer] = v;
+	redraw();
 }
