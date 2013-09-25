@@ -123,7 +123,7 @@ struct tile_meta *ts_has_meta(struct tileset *t, int row, int col) {
 		
 		for(i = 0; i < t->nmeta; i++) {
 			struct tile_meta *m = &t->meta[i];
-			if(m->num == n) {
+			if(m->ti == n) {
 				return m;
 			}
 		}	
@@ -149,7 +149,7 @@ struct tile_meta *ts_get_meta(struct tileset *t, int row, int col) {
 			
 			m = &t->meta[t->nmeta - 1];
 			
-			m->num = n;
+			m->ti = n;
 			
 			m->clas = strdup("");
 			if(!m->clas) {
@@ -203,7 +203,7 @@ int ts_write_all(FILE *f) {
 		for(j = 0; j < t->nmeta; j++) {
 			struct tile_meta *m = &t->meta[j];
 			fprintf(f, "    {");
-			fprintf(f, "\"num\":%d, ", m->num);
+			fprintf(f, "\"ti\":%d, ", m->ti);
 			fprintf(f, "\"class\":\"%s\", ", json_escape(m->clas, buffer, sizeof buffer));
 			fprintf(f, "\"flags\":%d", m->flags);
 			fprintf(f, "}%c\n", (j < t->nmeta - 1) ? ',' : ' ');
@@ -296,7 +296,7 @@ int ts_read_all(struct json *j) {
 				struct tile_meta *m = &t->meta[y++];
 				const char *clas = json_get_string(ee, "class");
 				
-				m->num = json_get_number(ee, "num");
+				m->ti = json_get_number(ee, "ti");
 				m->flags = json_get_number(ee, "flags");
 				m->clas = strdup(clas?clas:"");
 				

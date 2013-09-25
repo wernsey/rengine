@@ -7,7 +7,7 @@ extern "C" {
 #define TS_CLASS_MAXLEN	20
 
 struct tile_meta {
-	int num;
+	int ti;
 	char *clas;
 	int flags;
 };

@@ -128,7 +128,9 @@ int map_save(struct map *m, const char *filename) {
 			fprintf(f, "{\"si\":%d, \"ti\":%d}", t->si, t->ti);
 			if(j < m->nl - 1) fputc(',', f);
 		}
-		fprintf(f, "], \"flags\": %d", c->flags);
+		fprintf(f, "]");
+		if(c->flags)
+			fprintf(f, ", \"flags\": %d", c->flags);
 		if(c->clas)
 				fprintf(f, ", \"class\":\"%s\"", json_escape(c->clas, buffer, sizeof buffer));
 		if(c->id)
@@ -198,7 +200,12 @@ struct map *map_load(const char *filename) {
 		assert(p < nr * nc);
 		c = &m->cells[p++];	
 		
-		c->flags = json_get_number(e, "flags");
+		ee = json_get_member(e, "flags");
+		if(ee)
+			c->flags = json_as_number(ee);
+		else
+			c->flags = 0;
+		
 		s = json_get_string(e, "id");
 		if(s)
 			c->id = strdup(s);

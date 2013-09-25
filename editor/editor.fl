@@ -1,12 +1,12 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0300 
+version 1.0302 
 header_name {.h} 
 code_name {.cxx}
 Function {make_window()} {open
 } {
   Fl_Window main_window {
     label {Rengine Editor} open
-    xywh {433 153 905 590} type Double resizable visible
+    xywh {480 168 905 590} type Double resizable visible
   } {
     Fl_Menu_Bar {} {
       xywh {0 0 905 25}
@@ -22,14 +22,17 @@ Function {make_window()} {open
         }
         MenuItem {} {
           label {&Open}
+          callback open_cb
           xywh {0 0 100 20}
         }
         MenuItem {} {
           label {&Save}
+          callback save_cb
           xywh {0 0 100 20}
         }
         MenuItem {} {
           label {Save &As}
+          callback saveas_cb selected
           xywh {0 0 100 20} divider
         }
         MenuItem {} {
@@ -182,7 +185,7 @@ Function {make_window()} {open
     }
     Fl_Browser tileSetSelect {
       label Tileset
-      callback tileset_cb selected
+      callback tileset_cb
       xywh {580 470 320 85} type Select align 1
     }
     Fl_Output tilesStatus {

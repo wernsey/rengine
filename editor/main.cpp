@@ -66,6 +66,49 @@ void new_cb(Fl_Menu_* w, void*) {
 	new_map_dlg->show();
 }
 
+void open_cb(Fl_Menu_* w, void*) {
+	char * filename = fl_file_chooser("Choose Map", "Map files (*.map)", "", 1);
+	if(!filename)
+		return;
+	
+	struct map * m = map_load(filename);
+	if(!m)
+		fl_alert("Unable to open map %s", filename);
+	
+	map_file = filename;
+	canvas->setMap(m);
+	
+	tileSetSelect->clear();
+	for(int i = 0; i < ts_get_num(); i++) {
+		tileset *ts = ts_get(i);
+		tileSetSelect->add(ts->name);
+	}
+}
+
+void save_cb(Fl_Menu_* w, void*p) {
+	map *m = canvas->getMap();
+	if(!m) 
+		return;
+	if(map_file)
+		map_save(m, map_file);
+	else
+		saveas_cb(w, p);
+}
+
+void saveas_cb(Fl_Menu_* w, void*) {
+	map *m = canvas->getMap();
+	if(!m) 
+		return;
+	char * filename = fl_file_chooser("Choose Filename For Map", "Map files (*.map)", "", 1);	
+	if(filename != NULL) {
+		if(map_save(m, filename)) {			
+			map_file = filename;
+		} else {
+			fl_alert("Unable to save map to %s", filename);
+		}
+	}
+}
+
 void quit_cb(Fl_Menu_* w, void*) {
 	// FIXME: Changed? Save before exit (yes/no)	
 	exit(0);
@@ -156,6 +199,9 @@ void tile_select_cb(TileCanvas *canvas) {
 		tilesClass->value("");
 		tileIsBarrier->value(0);
 	}
+	char buffer[128];
+	snprintf(buffer, sizeof buffer, "si: %d ti:%d", ts_index_of( ts->name ), tiles->selectedIndex());
+	tilesStatus->value(buffer);
 }
 
 void tileClass_cb(Fl_Input*w, void*p) {
