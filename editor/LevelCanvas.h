@@ -5,6 +5,10 @@
 #include "TileCanvas.h"
 #include "map.h"
 
+class LevelCanvas;
+
+typedef void (*level_select_callback)(LevelCanvas *canvas);
+
 class LevelCanvas : public BMCanvas {
 public:
 	LevelCanvas(int x, int y, int w, int h, const char *l = "Level");
@@ -28,13 +32,22 @@ public:
 	
 	void setVisible(int layer, bool v);
 	
+	void setSelectCallback(level_select_callback select_callback) {this->select_callback = select_callback;}
+	
+	int row() { return selRow; }
+	int col() { return selCol; }
+	
 private:
 	map *_map;
 	TileCanvas *tc;
 
+	int selRow, selCol;
+
 	bool visible[3];
 
 	int layer;
+
+	level_select_callback select_callback;
 };
 
 #endif

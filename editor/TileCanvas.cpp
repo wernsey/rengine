@@ -26,12 +26,15 @@ int TileCanvas::handle(int event) {
 					selCol = mx/tiles->tw;
 					selRow = my/tiles->th;
 					
-					redraw();
 					
 					if(select_callback)
 						select_callback(this);
 					
+					redraw();
+					
 					return 1;
+				} else if(Fl::event_button() == FL_RIGHT_MOUSE) {
+					
 				}
 			}break;
 		case FL_FOCUS : return 1;
@@ -51,8 +54,8 @@ void TileCanvas::paint() {
 				struct tile_meta *m = &tiles->meta[n];
 				if(m->flags & TS_FLAG_BARRIER) {				
 					int tr = tiles->bm->w / tiles->tw;
-					int row = m->num / tr;
-					int col = m->num % tr;
+					int row = m->ti / tr;
+					int col = m->ti % tr;
 					
 					for(int y = row * tiles->th; y < (row + 1) * tiles->th; y++)
 						for(int x = col * tiles->tw; x < (col + 1) * tiles->tw; x++) {

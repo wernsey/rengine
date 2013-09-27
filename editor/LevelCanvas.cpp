@@ -42,9 +42,25 @@ int LevelCanvas::handle(int event) {
 						return 1;
 					
 					int ti = tc->selectedIndex();
-					map_set(_map, layer, col, row, tsi, ti);
-				} else if(Fl::event_button() == FL_RIGHT_MOUSE) {
-					map_set(_map, layer, col, row, 0, -1);
+					
+					int ptsi, pti;
+					map_get(_map, layer, col, row, &ptsi, &pti);
+					
+					if(ptsi == tsi && pti == ti) {
+						/* You delete a tile by placing it again 
+						(therefore, deleting a tile can also be done through a double click) */
+						map_set(_map, layer, col, row, 0, -1);
+					} else {
+						map_set(_map, layer, col, row, tsi, ti);
+					}
+					
+				} else if(Fl::event_button() == FL_RIGHT_MOUSE) {	
+					
+					selCol = mx/_map->tw;
+					selRow = my/_map->th;
+					
+					if(select_callback)
+						select_callback(this);
 				}				
 				
 				redraw();
@@ -79,6 +95,13 @@ void LevelCanvas::paint() {
 	for(int i = 0; i < _map->nl; i++) {
 		if(visible[i])
 			map_render(_map, bmp, i, 0, 0);
+	}
+	
+	if(selRow >= 0 && selCol >= 0) {
+		int x = selCol * _map->tw;
+		int y = selRow * _map->th;
+		pen("white");
+		rect(x, y, x + _map->tw - 1, y +  _map->th - 1);
 	}
 }
 

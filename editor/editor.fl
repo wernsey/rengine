@@ -6,7 +6,7 @@ Function {make_window()} {open
 } {
   Fl_Window main_window {
     label {Rengine Editor} open
-    xywh {480 168 905 590} type Double resizable visible
+    xywh {459 170 905 590} type Double resizable visible
   } {
     Fl_Menu_Bar {} {
       xywh {0 0 905 25}
@@ -32,11 +32,12 @@ Function {make_window()} {open
         }
         MenuItem {} {
           label {Save &As}
-          callback saveas_cb selected
+          callback saveas_cb
           xywh {0 0 100 20} divider
         }
         MenuItem {} {
           label {Set &Working Directory}
+          callback chdir_cb
           xywh {0 0 100 20} divider
         }
         MenuItem {} {
@@ -105,17 +106,19 @@ Function {make_window()} {open
       label {Show Barriers}
       xywh {65 395 110 25} down_box DOWN_BOX
     }
-    Fl_Input {} {
+    Fl_Input mapClass {
       label Class
+      callback mapClass_cb
       xywh {45 425 115 25}
     }
-    Fl_Input {} {
+    Fl_Input mapId {
       label ID
+      callback mapId_cb
       xywh {205 425 115 25}
     }
-    Fl_Check_Button {} {
+    Fl_Check_Button mapBarrier {
       label Barrier
-      callback tileBarrier_cb
+      callback mapBarrier_cb selected
       xywh {330 425 135 25} down_box DOWN_BOX
     }
     Fl_Group {} {

@@ -109,6 +109,19 @@ void saveas_cb(Fl_Menu_* w, void*) {
 	}
 }
 
+void chdir_cb(Fl_Menu_* w, void*) {	
+	// FIXME: Do we change directories with a map being edited?
+	char cwd[128];	
+	getcwd(cwd, sizeof cwd);	
+	const char *dir = fl_dir_chooser("Choose Working Directory", cwd, 0);
+	if(dir) {
+		char buffer[128];
+		snprintf(buffer, sizeof buffer, "Editor - %s", dir);
+		main_window->label(buffer);
+		chdir(dir);
+	}
+}
+
 void quit_cb(Fl_Menu_* w, void*) {
 	// FIXME: Changed? Save before exit (yes/no)	
 	exit(0);
@@ -169,6 +182,41 @@ void tilesetload_cb(Fl_Menu_* w, void*) {
 		tileset *ts = ts_get(i);
 		tileSetSelect->add(ts->name);
 	}
+}
+
+/*****************************************************************************************
+ * MAP WIDGETS **************************************************************************/
+
+void mapClass_cb(Fl_Input*, void*) {
+	int x = canvas->col(), y = canvas->row(), l = canvas->getLayer();
+	// FIXME
+	
+}
+
+void mapId_cb(Fl_Input*, void*) {
+	int x = canvas->col(), y = canvas->row(), l = canvas->getLayer();
+	// FIXME	
+}
+
+void mapBarrier_cb(Fl_Check_Button*, void*) {
+	int x = canvas->col(), y = canvas->row(), l = canvas->getLayer();
+	// FIXME
+}
+
+void map_select_cb(LevelCanvas *canvas) {	
+	char buffer[128];
+	
+	map *m = canvas->getMap();
+	
+	// FIXME: Populate mapClass, mapId and mapBarrier
+	
+	int si, ti;
+	
+	// FIXME: We should actually print all the layers.
+	map_get(m, canvas->getLayer(), canvas->col(), canvas->row(), &si, &ti);	
+	snprintf(buffer, sizeof buffer, "x:%d y:%d [l:%d si:%d ti:%d] [FIXME] [FIXME]", canvas->col(), canvas->row(), canvas->getLayer(), si, ti);
+	
+	mapStatus->value(buffer);
 }
 
 /*****************************************************************************************
@@ -272,9 +320,9 @@ int main(int argc, char *argv[]) {
 	make_window();
 	
 	tiles->setSelectCallback(tile_select_cb);
-	
-	canvas->setTileCanvas(tiles);
-	
+		
+	canvas->setSelectCallback(map_select_cb);
+	canvas->setTileCanvas(tiles);	
 	canvas->setLayer(0);
 	
 	main_window->show(argc, argv);

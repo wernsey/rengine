@@ -55,6 +55,25 @@ void map_set(struct map *m, int layer, int x, int y, int tsi, int ti) {
 	m->dirty = 1;
 }
 
+void map_get(struct map *m, int layer, int x, int y, int *tsi, int *ti) {
+	struct map_cell *c;
+	struct map_tile *tile;
+	
+	assert(tsi);
+	assert(ti);
+	
+	if(layer >= m->nl || x < 0 || x >= m->nc || y < 0 || y >= m->nr) 
+		return;
+	
+	assert(y * m->nc + x < m->nr * m->nc);
+	
+	c = &m->cells[y * m->nc + x];
+	tile = &c->tiles[layer];
+	
+	*tsi = tile->si;
+	*ti = tile->ti;
+}
+
 void map_render(struct map *m, struct bitmap *bmp, int layer, int scroll_x, int scroll_y) {
 	
 	struct tileset *ts = NULL;

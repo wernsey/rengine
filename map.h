@@ -26,6 +26,8 @@ struct map *map_create(int nr, int nc, int tw, int th, int nl);
 
 void map_set(struct map *m, int layer, int x, int y, int tsi, int ti);
 
+void map_get(struct map *m, int layer, int x, int y, int *tsi, int *ti);
+
 void map_render(struct map *m, struct bitmap *bmp, int layer, int scroll_x, int scroll_y);
 
 void map_free(struct map *m);
