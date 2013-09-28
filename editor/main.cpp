@@ -52,9 +52,7 @@ void new_btn_cancel_cb(Fl_Button* w, void*) {
 	new_map_dlg->hide();
 }
 
-void new_cb(Fl_Menu_* w, void*) {
-	char buffer[30];
-	
+void new_cb(Fl_Menu_* w, void*) {	
 	new_map_width->value(g_mapwidth);
 	
 	new_map_height->value(g_mapheight);
@@ -189,13 +187,22 @@ void tilesetload_cb(Fl_Menu_* w, void*) {
 
 void mapClass_cb(Fl_Input *in, void*) {
 	int x = canvas->col(), y = canvas->row();
-	// FIXME
-	
+	map *m = canvas->getMap();
+	if(!m) return;
+	struct map_cell * c = map_get_cell(m, x, y);
+	if(c->clas)
+		free(c->clas);
+	c->clas = strdup(mapClass->value());
 }
 
 void mapId_cb(Fl_Input *in, void*) {
 	int x = canvas->col(), y = canvas->row();
-	// FIXME	
+	map *m = canvas->getMap();
+	if(!m) return;
+	struct map_cell * c = map_get_cell(m, x, y);
+	if(c->id)
+		free(c->id);
+	c->id = strdup(mapId->value());
 }
 
 void mapBarrier_cb(Fl_Check_Button*, void*) {
@@ -219,14 +226,17 @@ void map_select_cb(LevelCanvas *canvas) {
 	map *m = canvas->getMap();
 	struct map_cell * c = map_get_cell(m, x, y);
 	
-	// FIXME: Populate mapClass and mapId
+	mapId->value(c->id?c->id:"");
+	mapClass->value(c->clas?c->clas:"");
 	mapBarrier->value(c->flags & TS_FLAG_BARRIER);
 	
-	int si, ti;
-	
-	// FIXME: We should actually print all the layers.
-	map_get(m, canvas->getLayer(), x, y, &si, &ti);	
-	snprintf(buffer, sizeof buffer, "x:%d y:%d [l:%d si:%d ti:%d] [FIXME] [FIXME]", canvas->col(), canvas->row(), canvas->getLayer(), si, ti);
+	char sub[3][20];
+	for(int i = 0; i < 3; i++) {
+		int si, ti;		
+		map_get(m, i, x, y, &si, &ti);		
+		snprintf(sub[i], sizeof sub[i], "l:%d si:%d ti:%d", i, si, ti);
+	}	
+	snprintf(buffer, sizeof buffer, "x:%d y:%d [%s] [%s] [%s]", canvas->col(), canvas->row(), sub[0], sub[1], sub[2]);
 	
 	mapStatus->value(buffer);
 }

@@ -36,6 +36,8 @@ struct tileset *ts_find(const char *name);
 
 int ts_index_of(const char *name);
 
+struct tile_meta *ts_has_meta_ti(struct tileset *t, int ti);
+
 struct tile_meta *ts_has_meta(struct tileset *t, int row, int col);
 
 struct tile_meta *ts_get_meta(struct tileset *t, int row, int col);

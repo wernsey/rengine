@@ -79,6 +79,8 @@ int LevelCanvas::handle(int event) {
 					
 					int ti = tc->selectedIndex();
 					
+					struct tile_meta *meta = ts_has_meta_ti(ts, ti);
+					
 					int x1 = MY_MIN(dragStartX, col), y1 = MY_MIN(dragStartY, row), 
 						x2 = MY_MAX(dragStartX, col), y2 = MY_MAX(dragStartY, row);
 					
@@ -86,13 +88,24 @@ int LevelCanvas::handle(int event) {
 						for(int x = x1; x <= x2; x++) {						
 							int ptsi, pti;
 							map_get(_map, layer, x, y, &ptsi, &pti);
-							
+														
 							if(ptsi == tsi && pti == ti) {
 								/* You delete a tile by placing it again 
-								(therefore, deleting a tile can also be done through a double click) */
+								(therefore, deleting a tile can also be done through a double click) */							
 								map_set(_map, layer, x, y, 0, -1);
 							} else {
 								map_set(_map, layer, x, y, tsi, ti);
+								struct map_cell * c = map_get_cell(_map, x, y);
+								if(meta) {
+									if(meta->flags) {
+										c->flags = meta->flags;
+									}
+									if(meta->clas) {
+										if(c->clas)
+											free(c->clas);
+										c->clas = strdup(meta->clas);
+									}
+								}
 							}
 						}
 					}
@@ -155,7 +168,6 @@ void LevelCanvas::paint() {
 			}
 	}
 	
-	
 	if(selRow >= 0 && selCol >= 0) {
 		int x = selCol * _map->tw;
 		int y = selRow * _map->th;
@@ -163,14 +175,13 @@ void LevelCanvas::paint() {
 		rect(x, y, x + _map->tw - 1, y +  _map->th - 1);
 	}
 	
-	
-	if(dragStartX >= 0 && dragStartY >= 0) {
-		int x1 = dragStartX * _map->tw;
-		int y1 = dragStartY * _map->th;
-		int x2 = (dragX + 1) * _map->tw;
-		int y2 = (dragY + 1) * _map->th;
+	if(dragStartX >= 0 && dragStartY >= 0) {		
+		int x1 = MY_MIN(dragStartX, dragX), 
+			y1 = MY_MIN(dragStartY, dragY), 
+			x2 = MY_MAX(dragStartX, dragX) + 1, 
+			y2 = MY_MAX(dragStartY, dragY) + 1;
 		pen("red");
-		rect(x1, y1, x2, y2);
+		rect(x1 * _map->tw, y1 * _map->th, x2 * _map->tw, y2 * _map->th);
 		
 	}
 }

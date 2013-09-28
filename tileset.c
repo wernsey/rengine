@@ -113,22 +113,31 @@ static void ts_free(struct tileset *t) {
 	free(t);
 }
 
-struct tile_meta *ts_has_meta(struct tileset *t, int row, int col) {
+
+struct tile_meta *ts_has_meta_ti(struct tileset *t, int ti) {
 	int i;
 	if(!t) {
 		return NULL;
 	} else {
-		int tr = t->bm->w / t->tw;
-		int n = row * tr + col;
-		
 		for(i = 0; i < t->nmeta; i++) {
 			struct tile_meta *m = &t->meta[i];
-			if(m->ti == n) {
+			if(m->ti == ti) {
 				return m;
 			}
 		}	
 	}
 	return NULL;
+}
+
+struct tile_meta *ts_has_meta(struct tileset *t, int row, int col) {
+	int tr, n;
+	if(!t)
+		return NULL;
+		
+	tr = t->bm->w / t->tw;
+	n = row * tr + col;
+	
+	return ts_has_meta_ti(t, n);
 }
 
 struct tile_meta *ts_get_meta(struct tileset *t, int row, int col) {
