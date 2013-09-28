@@ -36,6 +36,8 @@ int map_save(struct map *m, const char *filename);
 
 struct map *map_load(const char *filename);
 
+struct map_cell *map_get_cell(struct map *m, int x, int y);
+
 #if defined(__cplusplus) || defined(c_plusplus)
 } /* extern "C" */
 #endif

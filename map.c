@@ -114,6 +114,10 @@ void map_render(struct map *m, struct bitmap *bmp, int layer, int scroll_x, int 
 	}
 }
 
+struct map_cell *map_get_cell(struct map *m, int x, int y) {
+	return &m->cells[y * m->nc + x];
+}
+
 void map_free(struct map *m) {
 	int i;
 	for(i = 0; i < m->nr * m->nc; i++) {

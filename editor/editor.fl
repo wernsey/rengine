@@ -104,6 +104,7 @@ Function {make_window()} {open
     }
     Fl_Check_Button {} {
       label {Show Barriers}
+      callback mapDrawBarrier_cb selected
       xywh {65 395 110 25} down_box DOWN_BOX
     }
     Fl_Input mapClass {
@@ -118,7 +119,7 @@ Function {make_window()} {open
     }
     Fl_Check_Button mapBarrier {
       label Barrier
-      callback mapBarrier_cb selected
+      callback mapBarrier_cb
       xywh {330 425 135 25} down_box DOWN_BOX
     }
     Fl_Group {} {

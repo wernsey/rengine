@@ -187,36 +187,53 @@ void tilesetload_cb(Fl_Menu_* w, void*) {
 /*****************************************************************************************
  * MAP WIDGETS **************************************************************************/
 
-void mapClass_cb(Fl_Input*, void*) {
-	int x = canvas->col(), y = canvas->row(), l = canvas->getLayer();
+void mapClass_cb(Fl_Input *in, void*) {
+	int x = canvas->col(), y = canvas->row();
 	// FIXME
 	
 }
 
-void mapId_cb(Fl_Input*, void*) {
-	int x = canvas->col(), y = canvas->row(), l = canvas->getLayer();
+void mapId_cb(Fl_Input *in, void*) {
+	int x = canvas->col(), y = canvas->row();
 	// FIXME	
 }
 
 void mapBarrier_cb(Fl_Check_Button*, void*) {
-	int x = canvas->col(), y = canvas->row(), l = canvas->getLayer();
-	// FIXME
+	int x = canvas->col(), y = canvas->row();
+	map *m = canvas->getMap();
+	struct map_cell * c = map_get_cell(m, x, y);
+	
+	if(mapBarrier->value())
+		c->flags |= TS_FLAG_BARRIER;
+	else
+		c->flags &= ~TS_FLAG_BARRIER;
+	
+	if(canvas->drawBarriers())
+		canvas->redraw();
 }
 
 void map_select_cb(LevelCanvas *canvas) {	
+	int x = canvas->col(), y = canvas->row();
 	char buffer[128];
 	
 	map *m = canvas->getMap();
+	struct map_cell * c = map_get_cell(m, x, y);
 	
-	// FIXME: Populate mapClass, mapId and mapBarrier
+	// FIXME: Populate mapClass and mapId
+	mapBarrier->value(c->flags & TS_FLAG_BARRIER);
 	
 	int si, ti;
 	
 	// FIXME: We should actually print all the layers.
-	map_get(m, canvas->getLayer(), canvas->col(), canvas->row(), &si, &ti);	
+	map_get(m, canvas->getLayer(), x, y, &si, &ti);	
 	snprintf(buffer, sizeof buffer, "x:%d y:%d [l:%d si:%d ti:%d] [FIXME] [FIXME]", canvas->col(), canvas->row(), canvas->getLayer(), si, ti);
 	
 	mapStatus->value(buffer);
+}
+
+void mapDrawBarrier_cb(Fl_Check_Button *b, void*) {
+	canvas->drawBarriers(b->value() == 1);		
+	canvas->redraw();
 }
 
 /*****************************************************************************************
@@ -252,8 +269,7 @@ void tile_select_cb(TileCanvas *canvas) {
 	tilesStatus->value(buffer);
 }
 
-void tileClass_cb(Fl_Input*w, void*p) {
-	Fl_Input *in = static_cast<Fl_Input *>(w);
+void tileClass_cb(Fl_Input*in, void*p) {
 		
 	if(!ts_valid_class(in->value())) {
 		fl_alert("Class must be alphanumeric and less than %d characters", TS_CLASS_MAXLEN);

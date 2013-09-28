@@ -6,7 +6,7 @@
 #include "LevelCanvas.h"
 
 LevelCanvas::LevelCanvas(int x, int y, int w, int h, const char *l) 
-: BMCanvas(x, y, w, h, l), _map(0), tc(0), layer(0) {
+: BMCanvas(x, y, w, h, l), _map(0), tc(0), layer(0), _drawBarriers(false) {
 	for(int i = 0; i < 3; i++)
 		visible[i] = true;
 }
@@ -95,6 +95,21 @@ void LevelCanvas::paint() {
 	for(int i = 0; i < _map->nl; i++) {
 		if(visible[i])
 			map_render(_map, bmp, i, 0, 0);
+	}
+	
+	if(_drawBarriers) {
+		pen("green");
+		for(int j = 0; j < _map->nr; j++)
+			for(int i = 0; i < _map->nc; i++) {
+				map_cell *c = map_get_cell(_map, i, j);
+				if(c->flags & TS_FLAG_BARRIER) {
+					for(int y = j * _map->th; y < (j + 1) * _map->th; y++)
+						for(int x = i * _map->tw; x < (i + 1) * _map->tw; x++) {
+							if((x + y) % 2) 
+								putpixel(x, y);
+						}
+				}
+			}
 	}
 	
 	if(selRow >= 0 && selCol >= 0) {

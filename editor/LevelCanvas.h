@@ -37,6 +37,9 @@ public:
 	int row() { return selRow; }
 	int col() { return selCol; }
 	
+	bool drawBarriers() { return _drawBarriers;}
+	void drawBarriers(bool d) { _drawBarriers = d;}
+	
 private:
 	map *_map;
 	TileCanvas *tc;
@@ -46,6 +49,8 @@ private:
 	bool visible[3];
 
 	int layer;
+
+	bool _drawBarriers;
 
 	level_select_callback select_callback;
 };
