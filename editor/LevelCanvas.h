@@ -44,6 +44,9 @@ private:
 	map *_map;
 	TileCanvas *tc;
 
+	int dragStartX, dragStartY;
+	int dragX, dragY;
+
 	int selRow, selCol;
 
 	bool visible[3];

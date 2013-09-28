@@ -6,7 +6,7 @@
 
 TileCanvas::TileCanvas(int x, int y, int w, int h) 
 : BMCanvas(x, y, w, h, "Tile View"), selRow(0), selCol(0), 
-	select_callback(NULL), _drawBarriers(false) {
+	_drawBarriers(false), select_callback(NULL) {
 	tiles = NULL;
 	zoom(1.0);
 }

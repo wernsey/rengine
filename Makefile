@@ -92,6 +92,22 @@ fltk-config = fltk-config
 CPPFLAGS = `$(fltk-config) --cxxflags` -c -I . -I./editor
 LPPFLAGS = `$(fltk-config) --ldflags` 
 
+ifeq ($(BUILD),debug)
+# Debug mode: Unoptimized and with debugging symbols
+CPPFLAGS += -Wall -O0 -g
+LPPFLAGS += 
+else
+	ifeq ($(BUILD),profile)
+	# Profile mode: Debugging symbols and profiling information.
+	CPPFLAGS += -Wall -O0 -pg
+	LPPFLAGS += -pg
+	else
+	# Release mode: Optimized and stripped of debugging info
+	CPPFLAGS += -Wall -Os -DNDEBUG
+	LPPFLAGS += -s 
+	endif
+endif
+
 # Link with static libstdc++, otherwise you need to have
 # libstdc++-6.dll around.
 LPPFLAGS += -static-libstdc++
@@ -114,7 +130,7 @@ BMCanvas.o: editor/BMCanvas.cpp editor/BMCanvas.h bmp.h
 	g++ -c $(CPPFLAGS) $< -o $@
 
 LevelCanvas.o: editor/LevelCanvas.cpp editor/LevelCanvas.h editor/TileCanvas.h \
-				bmp.h tileset.h map.h
+				bmp.h tileset.h map.h utils.h
 	g++ -c $(CPPFLAGS) $< -o $@
 	
 TileCanvas.o: editor/TileCanvas.cpp editor/TileCanvas.h bmp.h tileset.h

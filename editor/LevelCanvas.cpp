@@ -5,6 +5,8 @@
 
 #include "LevelCanvas.h"
 
+#include "utils.h"
+
 LevelCanvas::LevelCanvas(int x, int y, int w, int h, const char *l) 
 : BMCanvas(x, y, w, h, l), _map(0), tc(0), layer(0), _drawBarriers(false) {
 	for(int i = 0; i < 3; i++)
@@ -19,6 +21,37 @@ LevelCanvas::~LevelCanvas() {
 
 int LevelCanvas::handle(int event) {
 	switch(event) {
+		case FL_PUSH: {
+			take_focus();
+			
+			if(Fl::event_button() == FL_LEFT_MOUSE) {
+				if(!_map) 
+					return 1;
+					
+				int mx = (Fl::event_x() - x())/zoom();
+				int my = (Fl::event_y() - y())/zoom();
+				
+				dragStartX = mx/_map->tw;
+				dragStartY = my/_map->th;
+			}
+			return 1;
+		}
+		case FL_LEAVE: 
+		{
+			dragStartX = -1;
+			dragStartY = -1;
+			return 1;
+		}
+		case FL_DRAG: 
+		{
+			int mx = (Fl::event_x() - x())/zoom();
+			int my = (Fl::event_y() - y())/zoom();
+			
+			dragX = mx/_map->tw;
+			dragY = my/_map->th;
+			redraw();
+			return 1;
+		}
 		case FL_RELEASE: {
 			
 				take_focus();
@@ -34,6 +67,9 @@ int LevelCanvas::handle(int event) {
 							
 				if(Fl::event_button() == FL_LEFT_MOUSE) {
 					
+					if(dragStartX < 0 || dragStartY < 0)
+						return 1;
+					
 					tileset *ts = tc->getTileset();
 					if(!ts) 
 						return 1;
@@ -43,15 +79,22 @@ int LevelCanvas::handle(int event) {
 					
 					int ti = tc->selectedIndex();
 					
-					int ptsi, pti;
-					map_get(_map, layer, col, row, &ptsi, &pti);
+					int x1 = MY_MIN(dragStartX, col), y1 = MY_MIN(dragStartY, row), 
+						x2 = MY_MAX(dragStartX, col), y2 = MY_MAX(dragStartY, row);
 					
-					if(ptsi == tsi && pti == ti) {
-						/* You delete a tile by placing it again 
-						(therefore, deleting a tile can also be done through a double click) */
-						map_set(_map, layer, col, row, 0, -1);
-					} else {
-						map_set(_map, layer, col, row, tsi, ti);
+					for(int y = y1; y <= y2; y++) {
+						for(int x = x1; x <= x2; x++) {						
+							int ptsi, pti;
+							map_get(_map, layer, x, y, &ptsi, &pti);
+							
+							if(ptsi == tsi && pti == ti) {
+								/* You delete a tile by placing it again 
+								(therefore, deleting a tile can also be done through a double click) */
+								map_set(_map, layer, x, y, 0, -1);
+							} else {
+								map_set(_map, layer, x, y, tsi, ti);
+							}
+						}
 					}
 					
 				} else if(Fl::event_button() == FL_RIGHT_MOUSE) {	
@@ -112,11 +155,23 @@ void LevelCanvas::paint() {
 			}
 	}
 	
+	
 	if(selRow >= 0 && selCol >= 0) {
 		int x = selCol * _map->tw;
 		int y = selRow * _map->th;
 		pen("white");
 		rect(x, y, x + _map->tw - 1, y +  _map->th - 1);
+	}
+	
+	
+	if(dragStartX >= 0 && dragStartY >= 0) {
+		int x1 = dragStartX * _map->tw;
+		int y1 = dragStartY * _map->th;
+		int x2 = (dragX + 1) * _map->tw;
+		int y2 = (dragY + 1) * _map->th;
+		pen("red");
+		rect(x1, y1, x2, y2);
+		
 	}
 }
 
