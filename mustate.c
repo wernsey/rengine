@@ -32,12 +32,17 @@ static struct mu_par mus_gotoxy(struct musl *m, int argc, struct mu_par argv[]) 
 	return rv;
 }
 
-/*@ CLS() 
+/*@ CLS([color]) 
  *# 
  */
 static struct mu_par mus_cls(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
 	struct bitmap *bmp = mu_get_data(mu);
+
+	if(argc > 0) {
+		const char *text = mu_par_str(m, 0);
+		bm_set_color_s(bmp, text);
+	}
 	
 	bm_clear(bmp);
 
@@ -87,18 +92,24 @@ static struct mu_par mus_font(struct musl *m, int argc, struct mu_par argv[]) {
 	return rv;
 }
 
-/*@ PRINT(str) 
- *# Prints a string
+/*@ PRINT(str...) 
+ *# Prints a strings
  */
 static struct mu_par mus_print(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
 	struct bitmap *bmp = mu_get_data(mu);
+	int x = mu_x, i, h = 8;
 	
-	const char *text = mu_par_str(m, 0);
+	for(i = 0; i < argc; i++) {
+		const char *text = mu_par_str(m, i);
+		int hh = bm_text_height(bmp, text);
+		bm_puts(bmp, x, mu_y, text);
+		x += bm_text_width(bmp, text);
+		if(hh > h)
+			h = hh;
+	}
 	
-	bm_puts(bmp, mu_x, mu_y, text);
-	
-	mu_y += bm_text_height(bmp, text) + 1;
+	mu_y += h + 1;
 	
 	return rv;
 }
@@ -127,6 +138,11 @@ static struct mu_par mus_kbclear(struct musl *m, int argc, struct mu_par argv[])
 static struct mu_par mus_show(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
 	advanceFrame();
+	if(quit) mu_halt(m);
+	
+	mu_set_num(mu, "mouse_x", mouse_x);
+	mu_set_num(mu, "mouse_y", mouse_y);
+	
 	return rv;
 }
 
@@ -165,6 +181,9 @@ static int mus_init(struct game_state *s) {
 	mu_add_func(mu, "kbhit", mus_kbhit);
 	mu_add_func(mu, "kbclear", mus_kbclear);
 	mu_add_func(mu, "show", mus_show);
+	
+	mu_set_num(mu, "mouse_x", mouse_x);
+	mu_set_num(mu, "mouse_y", mouse_y);
 	
 	return 1;
 }
