@@ -93,7 +93,8 @@ static struct mu_par mus_font(struct musl *m, int argc, struct mu_par argv[]) {
 }
 
 /*@ PRINT(str...) 
- *# Prints a strings
+ *# Prints strings at the position specified through GOTOXY(),
+ *# then moves the cursor to the next line.
  */
 static struct mu_par mus_print(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
@@ -146,6 +147,23 @@ static struct mu_par mus_show(struct musl *m, int argc, struct mu_par argv[]) {
 	return rv;
 }
 
+/*@ LOG(str...) 
+ *# Prints strings to the logfile.
+ */
+static struct mu_par mus_log(struct musl *m, int argc, struct mu_par argv[]) {
+	struct mu_par rv = {mu_int, {0}};
+	int i;
+	fputs("Musl: ", log_file);	
+	for(i = 0; i < argc; i++) {
+		const char *text = mu_par_str(m, i);
+		fputs(text, log_file);
+	}	
+	fputs("\n", log_file);
+	fflush(log_file);
+	
+	return rv;
+}
+
 /* State Functions ***************************************************************************/
 
 static int mus_init(struct game_state *s) {
@@ -157,11 +175,13 @@ static int mus_init(struct game_state *s) {
 	mu_script_file = ini_get(game_ini, s->data, "script", NULL);	
 	if(!mu_script_file) {
 		fprintf(log_file, "error: No script specified in Musl state '%s'\n", s->data);
+		fflush(log_file);
 		return 0;
 	}
 	
 	if(!(mu = mu_create())) {
 		fprintf(log_file, "error: Couldn't create Musl interpreter\n");
+		fflush(log_file);
 		return 0;
 	}
 	
@@ -170,6 +190,7 @@ static int mus_init(struct game_state *s) {
 	mu_script = re_get_script(mu_script_file);
 	if(!mu_script) {
 		fprintf(log_file, "error: Couldn't load Musl script '%s'\n", mu_script_file);
+		fflush(log_file);
 		return 0;
 	}
 	
@@ -181,6 +202,7 @@ static int mus_init(struct game_state *s) {
 	mu_add_func(mu, "kbhit", mus_kbhit);
 	mu_add_func(mu, "kbclear", mus_kbclear);
 	mu_add_func(mu, "show", mus_show);
+	mu_add_func(mu, "log", mus_log);
 	
 	mu_set_num(mu, "mouse_x", mouse_x);
 	mu_set_num(mu, "mouse_y", mouse_y);
@@ -193,6 +215,7 @@ static int mus_update(struct game_state *s, struct bitmap *bmp) {
 	
 	if(!mu || !mu_script) {
 		fprintf(log_file, "error: Unable to run Musl script because of earlier problems\n");
+		fflush(log_file);
 		change_state(NULL);
 		return 0;
 	}
@@ -205,6 +228,7 @@ static int mus_update(struct game_state *s, struct bitmap *bmp) {
 	if(!mu_run(mu, mu_script)) {
 		fprintf(log_file, "error: %s:Line %d: %s:\n>> %s\n", mu_script_file, mu_cur_line(mu), mu_error_msg(mu),
 				mu_error_text(mu));
+		fflush(log_file);
 		change_state(NULL);
 		return 1;
 	}
@@ -212,6 +236,7 @@ static int mus_update(struct game_state *s, struct bitmap *bmp) {
 	next_state = mu_get_str(mu, "nextstate");
 	if(!next_state) {
 		fprintf(log_file, "error: Musl script didn't specify a nextstate\n");
+		fflush(log_file);
 		change_state(NULL);
 	} else {	
 		set_state(next_state);

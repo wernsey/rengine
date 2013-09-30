@@ -86,6 +86,7 @@ int textureFromBmp(struct bitmap *b) {
 	GLenum error = glGetError();
 	if(error != GL_NO_ERROR) {
 		fprintf(log_file, "error: unable to create texture from struct bitmap\n");
+		fflush(log_file);
 		return 0;
 	}
 	
@@ -109,6 +110,7 @@ int initGL() {
 	error = glGetError();
 	if(error != GL_NO_ERROR) { 
 		fprintf(log_file, "error: OpenGL - \n"); /* FIXME: Better error handling? */
+		fflush(log_file);
 		return 0;
 	}
 	
@@ -145,6 +147,7 @@ void handleKeys(SDLKey key) {
 			/* TODO: What resolution fullscreen? These hardcoded values are for my laptop specifically */			
 			if(SDL_SetVideoMode(1600, 900, screenBpp, SDL_OPENGL | SDL_FULLSCREEN) == NULL) {
 				fprintf(log_file, "error: unable to switch to fullscreen mode");
+				fflush(log_file);
 				return;
 			}
 			glViewport(0, 0, 1600, 900);
@@ -153,6 +156,7 @@ void handleKeys(SDLKey key) {
 			int flags = resizable?SDL_OPENGL | SDL_RESIZABLE:SDL_OPENGL;
 			if(SDL_SetVideoMode(screenWidth, screenHeight, screenBpp, flags) == NULL) {
 				fprintf(log_file, "error: unable to switch to windowed mode");
+				fflush(log_file);
 				return;
 			}
 			glViewport(0, 0, screenWidth, screenHeight);
@@ -162,6 +166,7 @@ void handleKeys(SDLKey key) {
 		const char *filename = "save.bmp";
 		bm_save(bmp, filename);
 		fprintf(log_file, "Screenshot saved as %s\n", filename);
+		fflush(log_file);
 	}
 }
 
@@ -259,7 +264,7 @@ void advanceFrame() {
 			assert(event.key.keysym.sym < SDLK_LAST);			
 			keys[event.key.keysym.sym] = 0;
 						
-		} /* else if(event.type == SDL_MOUSEBUTTONDOWN) {
+		}  else if(event.type == SDL_MOUSEBUTTONDOWN) {
 			// REMOVE ME: Dummy code to draw random stuff on the screen /
 			if(event.button.button == SDL_BUTTON_LEFT) {
 				int i;
@@ -268,13 +273,14 @@ void advanceFrame() {
 				}
 			} else if(event.button.button == SDL_BUTTON_RIGHT) {
 			}			
-		}  */
+		}  
 		else if(event.type == SDL_VIDEORESIZE) {
 			int flags = resizable?SDL_OPENGL | SDL_RESIZABLE:SDL_OPENGL;
 			screenWidth = event.resize.w;
 			screenHeight = event.resize.h;
 			if(SDL_SetVideoMode(screenWidth, screenHeight, screenBpp, flags) == NULL) {
 				fprintf(log_file, "error: unable to handle video resize event");
+				fflush(log_file);
 				quit = 1;
 			}
 			glViewport(0, 0, screenWidth, screenHeight);
@@ -365,6 +371,7 @@ int main(int argc, char *argv[]) {
 		} else {
 			fprintf(log_file, "info: Not using a pak file. Using %s instead.\n", game_filename);
 		}		
+		fflush(log_file);
 	}
 	
 	if(!demo) {
@@ -407,6 +414,7 @@ int main(int argc, char *argv[]) {
 	}
 	
 	fprintf(log_file, "info: Initialising...\n");
+	fflush(log_file);
 		
 	if(!init(appTitle)) {
 		return 1;
@@ -425,6 +433,7 @@ int main(int argc, char *argv[]) {
 	frameStart = SDL_GetTicks();	
 	
 	fprintf(log_file, "info: Event loop starting...\n");
+	fflush(log_file);
 	
 	while(!quit) {
 		if(current_state->update) 
@@ -438,6 +447,7 @@ int main(int argc, char *argv[]) {
 	}
 	
 	fprintf(log_file, "info: Event loop stopped.\n");
+	fflush(log_file);
 	
 	if(current_state && current_state->deinit)
 		current_state->deinit(current_state);	
@@ -455,6 +465,7 @@ int main(int argc, char *argv[]) {
 	re_clean_up();
 	
 	fprintf(log_file, "info: Engine shut down.\n");
+	fflush(log_file);
 	
 	if(log_file != stdout)
 		fclose(log_file);

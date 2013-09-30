@@ -16,7 +16,8 @@ else
 	endif
 endif
 
-CFLAGS += `sdl-config --cflags`
+CFLAGS += `sdl-config --cflags` -I /usr/local/include
+LFLAGS += -llua
 
 # Different executables, and -lopengl32 is required for Windows
 ifeq ($(OS),Windows_NT)
@@ -35,7 +36,7 @@ EXECUTABLES = $(GAME_BIN) $(EDIT_BIN)
 
 SOURCES= bmp.c game.c ini.c utils.c pak.c particles.c \
 	states.c demo.c resources.c musl.c mustate.c hash.c \
-	lexer.c tileset.c map.c json.c
+	lexer.c tileset.c map.c json.c luastate.c
 
 FONTS = fonts/bold.xbm fonts/circuit.xbm fonts/hand.xbm fonts/normal.xbm \
 		fonts/small.xbm fonts/smallinv.xbm fonts/thick.xbm
@@ -79,6 +80,7 @@ resources.o: resources.c pak.h bmp.h ini.h game.h utils.h hash.h
 states.o: states.c ini.h bmp.h states.h utils.h game.h particles.h resources.h
 tileset.o: tileset.c bmp.h tileset.h lexer.h json.h utils.h
 utils.o: utils.c 
+luastate.o : luastate.c bmp.h states.h
 
 rengine.res : rengine.rc
 	windres $^ -O coff -o $@
