@@ -80,7 +80,7 @@ resources.o: resources.c pak.h bmp.h ini.h game.h utils.h hash.h
 states.o: states.c ini.h bmp.h states.h utils.h game.h particles.h resources.h
 tileset.o: tileset.c bmp.h tileset.h lexer.h json.h utils.h
 utils.o: utils.c 
-mapstate.o : mapstate.c bmp.h states.h
+mapstate.o : mapstate.c bmp.h states.h map.h game.h ini.h resources.h tileset.h
 
 rengine.res : rengine.rc
 	windres $^ -O coff -o $@

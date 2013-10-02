@@ -21,6 +21,7 @@
 
 struct game_state *current_state;
 
+extern struct game_state map_state; /* maptate.c */
 extern struct game_state mus_state; /* mustate.c */
 
 static struct {
@@ -451,6 +452,7 @@ int change_state(struct game_state *next) {
 			return 0;
 		}
 	}
+	fflush(log_file);
 	return 1;
 }
 
@@ -477,6 +479,9 @@ static struct game_state *get_state(const char *name) {
 	if(!my_stricmp(type, "static")) {
 		static_state.data = (void*)name;
 		return &static_state;
+	} else if(!my_stricmp(type, "map")) {
+		map_state.data = (void*)name;
+		return &map_state;
 	} else if(!my_stricmp(type, "leftright")) {
 		leftright_state.data = (void*)name;
 		return &leftright_state;

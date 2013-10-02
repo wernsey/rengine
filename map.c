@@ -120,6 +120,7 @@ struct map_cell *map_get_cell(struct map *m, int x, int y) {
 
 void map_free(struct map *m) {
 	int i;
+	
 	for(i = 0; i < m->nr * m->nc; i++) {
 		free(m->cells[i].tiles);
 		free(m->cells[i].id);
@@ -170,7 +171,17 @@ int map_save(struct map *m, const char *filename) {
 	return 1;
 }
 	
-struct map *map_load(const char *filename) {
+struct map *map_load(const char *filename) {	
+	struct map *m;
+	char *text = my_readfile (filename);	
+	if(!text)
+		return NULL;
+	m = map_parse(text);	
+	free(text);
+	return m;
+}
+
+struct map *map_parse(const char *text) {
 	double version;
 	struct map *m = NULL;
 	int nr, nc, tw, th, nl;
@@ -178,12 +189,7 @@ struct map *map_load(const char *filename) {
 	int p,q;
 	const char *s;
 	
-	char *text = my_readfile (filename);	
-	if(!text)
-		return 0;
-	
 	j = json_parse(text);
-	free(text);
 	if(!j) {
 		return 0;
 	}
