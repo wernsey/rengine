@@ -26,8 +26,8 @@ static int mu_x = 0, mu_y = 0;
 static struct mu_par mus_gotoxy(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
 	
-	mu_x = mu_par_num(m, 0);
-	mu_y = mu_par_num(m, 1);
+	mu_x = mu_par_num(m, 0, argc, argv);
+	mu_y = mu_par_num(m, 1, argc, argv);
 
 	return rv;
 }
@@ -40,7 +40,7 @@ static struct mu_par mus_cls(struct musl *m, int argc, struct mu_par argv[]) {
 	struct bitmap *bmp = mu_get_data(mu);
 
 	if(argc > 0) {
-		const char *text = mu_par_str(m, 0);
+		const char *text = mu_par_str(m, 0, argc, argv);
 		bm_set_color_s(bmp, text);
 	}
 	
@@ -55,7 +55,7 @@ static struct mu_par mus_cls(struct musl *m, int argc, struct mu_par argv[]) {
 static struct mu_par mus_color(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
 	struct bitmap *bmp = mu_get_data(mu);
-	const char *text = mu_par_str(m, 0);
+	const char *text = mu_par_str(m, 0, argc, argv);
 	
 	bm_set_color_s(bmp, text);
 
@@ -68,7 +68,7 @@ static struct mu_par mus_color(struct musl *m, int argc, struct mu_par argv[]) {
 static struct mu_par mus_font(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
 	struct bitmap *bmp = mu_get_data(mu);
-	const char *name = mu_par_str(m, 0);
+	const char *name = mu_par_str(m, 0, argc, argv);
 	
 	enum bm_fonts font;
 	
@@ -102,7 +102,7 @@ static struct mu_par mus_print(struct musl *m, int argc, struct mu_par argv[]) {
 	int x = mu_x, i, h = 8;
 	
 	for(i = 0; i < argc; i++) {
-		const char *text = mu_par_str(m, i);
+		const char *text = mu_par_str(m, i, argc, argv);
 		int hh = bm_text_height(bmp, text);
 		bm_puts(bmp, x, mu_y, text);
 		x += bm_text_width(bmp, text);
@@ -141,8 +141,8 @@ static struct mu_par mus_show(struct musl *m, int argc, struct mu_par argv[]) {
 	advanceFrame();
 	if(quit) mu_halt(m);
 	
-	mu_set_num(mu, "mouse_x", mouse_x);
-	mu_set_num(mu, "mouse_y", mouse_y);
+	mu_set_int(mu, "mouse_x", mouse_x);
+	mu_set_int(mu, "mouse_y", mouse_y);
 	
 	return rv;
 }
@@ -155,7 +155,7 @@ static struct mu_par mus_log(struct musl *m, int argc, struct mu_par argv[]) {
 	int i;
 	fputs("Musl: ", log_file);	
 	for(i = 0; i < argc; i++) {
-		const char *text = mu_par_str(m, i);
+		const char *text = mu_par_str(m, i, argc, argv);
 		fputs(text, log_file);
 	}	
 	fputs("\n", log_file);
@@ -204,8 +204,8 @@ static int mus_init(struct game_state *s) {
 	mu_add_func(mu, "show", mus_show);
 	mu_add_func(mu, "log", mus_log);
 	
-	mu_set_num(mu, "mouse_x", mouse_x);
-	mu_set_num(mu, "mouse_y", mouse_y);
+	mu_set_int(mu, "mouse_x", mouse_x);
+	mu_set_int(mu, "mouse_y", mouse_y);
 	
 	return 1;
 }
@@ -222,8 +222,8 @@ static int mus_update(struct game_state *s, struct bitmap *bmp) {
 	
 	mu_set_data(mu, bmp);
 	
-	mu_set_num(mu, "width", bm_width(bmp));
-	mu_set_num(mu, "height", bm_height(bmp));
+	mu_set_int(mu, "width", bm_width(bmp));
+	mu_set_int(mu, "height", bm_height(bmp));
 
 	if(!mu_run(mu, mu_script)) {
 		fprintf(log_file, "error: %s:Line %d: %s:\n>> %s\n", mu_script_file, mu_cur_line(mu), mu_error_msg(mu),

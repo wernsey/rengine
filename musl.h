@@ -169,25 +169,25 @@ int mu_cur_line(struct musl *m);
  *# Only call it from {{~~mu_func()}} external functions because 
  *# it uses {{~~mu_throw()}} on errors.
  */
-int mu_par_num(struct musl *m, int n);
+int mu_par_num(struct musl *m, int n, int argc, struct mu_par argv[]);
 
 /*@ const char *##mu_par_str(struct musl *m, int n)
  *# Gets the {{n}}'th parameter of a function as a string.\n
  *# Only call it from {{~~mu_func()}} external functions because 
  *# it uses {{~~mu_throw()}} on errors.
  */
-const char *mu_par_str(struct musl *m, int n);
+const char *mu_par_str(struct musl *m, int n, int argc, struct mu_par argv[]);
 
-/*@ int ##mu_set_num(struct musl *m, const char *name, int num)
+/*@ int ##mu_set_int(struct musl *m, const char *name, int num)
  *# Sets the value of a numeric variable.\n
  *# Returns 0 on failure.  
  */
-int mu_set_num(struct musl *m, const char *name, int num);
+int mu_set_int(struct musl *m, const char *name, int num);
 
-/*@ int ##mu_get_num(struct musl *m, const char *name)
+/*@ int ##mu_get_int(struct musl *m, const char *name)
  *# Gets the value of a numeric variable. 
  */
-int mu_get_num(struct musl *m, const char *name);
+int mu_get_int(struct musl *m, const char *name);
 
 /*@ int ##mu_set_str(struct musl *m, const char *name, const char *val)
  *# Sets the value of a variable to a string.\n
