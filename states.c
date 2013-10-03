@@ -52,13 +52,17 @@ static struct game_state *get_state(const char *name);
 static void apply_styles(const char *state) {	
 	const char *font, *image;
 	
+	/* This could use a lot less code. See mustate.c
+		On the otherhand, mustate.c does some unnecessary lookups,
+		so there's that.
+	*/
 	style.bg = ini_get(game_ini, state, "background", NULL);	
 	if(!style.bg)
 		style.bg = ini_get(game_ini, "styles", "background", "black");
 	
 	style.fg = ini_get(game_ini, state, "foreground", NULL);
 	if(!style.fg)
-		style.fg = ini_get(game_ini, "styles", "foreground", "black");
+		style.fg = ini_get(game_ini, "styles", "foreground", "white");
 	
 	style.margin = atoi(ini_get(game_ini, state, "margin", "-1"));
 	if(style.margin < 0)
@@ -86,7 +90,7 @@ static void apply_styles(const char *state) {
 	
 	style.border_color = ini_get(game_ini, state, "border-color", NULL);
 	if(!style.border_color) {
-		style.border_color = ini_get(game_ini, state, "foreground", style.fg);
+		style.border_color = ini_get(game_ini, "styles", "border-color", style.fg);
 	}
 		
 	style.btn_padding = atoi(ini_get(game_ini, state, "button-padding", "-1"));

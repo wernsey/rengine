@@ -40,8 +40,9 @@ static struct mu_par mus_cls(struct musl *m, int argc, struct mu_par argv[]) {
 	struct bitmap *bmp = mu_get_data(mu);
 
 	if(argc > 0) {
-		const char *text = mu_par_str(m, 0, argc, argv);
-		bm_set_color_s(bmp, text);
+		bm_set_color_s(bmp, mu_par_str(m, 0, argc, argv));
+	} else {
+		bm_set_color_s(bmp, mu_get_str(mu, "background"));
 	}
 	
 	bm_clear(bmp);
@@ -50,15 +51,19 @@ static struct mu_par mus_cls(struct musl *m, int argc, struct mu_par argv[]) {
 }
 
 /*@ COLOR("#rrggbb") 
- *# 
+ *# If no color is specified, the "foreground" parameter in the game config is used.
  */
 static struct mu_par mus_color(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
 	struct bitmap *bmp = mu_get_data(mu);
-	const char *text = mu_par_str(m, 0, argc, argv);
-	
-	bm_set_color_s(bmp, text);
 
+	if(argc > 0) {
+		const char *text = mu_par_str(m, 0, argc, argv);	
+		bm_set_color_s(bmp, text);
+	} else {
+		bm_set_color_s(bmp, mu_get_str(mu, "foreground"));
+	}
+	
 	return rv;
 }
 
@@ -68,7 +73,13 @@ static struct mu_par mus_color(struct musl *m, int argc, struct mu_par argv[]) {
 static struct mu_par mus_font(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
 	struct bitmap *bmp = mu_get_data(mu);
-	const char *name = mu_par_str(m, 0, argc, argv);
+	const char *name;
+
+	if(argc > 0) {
+		name = mu_par_str(m, 0, argc, argv);
+	} else {
+		name = mu_get_str(mu, "font");
+	}
 	
 	enum bm_fonts font;
 	
@@ -168,6 +179,8 @@ static struct mu_par mus_log(struct musl *m, int argc, struct mu_par argv[]) {
 
 static int mus_init(struct game_state *s) {
 	
+	int tmp;
+	
 	fprintf(log_file, "info: Initializing Musl state '%s'\n", s->data);
 
 	reset_keys();
@@ -206,6 +219,45 @@ static int mus_init(struct game_state *s) {
 	
 	mu_set_int(mu, "mouse_x", mouse_x);
 	mu_set_int(mu, "mouse_y", mouse_y);
+	
+	/* Some variables from the ini file */
+	
+	mu_set_str(mu, "background", ini_get(game_ini, s->data, "background", ini_get(game_ini, "styles", "background", "black")));
+	mu_set_str(mu, "foreground", ini_get(game_ini, s->data, "foreground", ini_get(game_ini, "styles", "foreground", "white")));
+	
+	tmp = atoi(ini_get(game_ini, s->data, "margin", ini_get(game_ini, "styles", "margin", "1")));	
+	if(tmp < 0) 
+		tmp = 0;
+	mu_set_int(mu, "margin", tmp);
+	
+	tmp = atoi(ini_get(game_ini, s->data, "padding", ini_get(game_ini, "styles", "padding", "1")));	
+	if(tmp < 0) 
+		tmp = 0;
+	mu_set_int(mu, "padding", tmp);
+	
+	tmp = atoi(ini_get(game_ini, s->data, "border", ini_get(game_ini, "styles", "border", "1")));	
+	if(tmp < 0) 
+		tmp = 0;
+	mu_set_int(mu, "border", tmp);
+	
+	tmp = atoi(ini_get(game_ini, s->data, "border-radius", ini_get(game_ini, "styles", "border-radius", "0")));	
+	if(tmp < 0) 
+		tmp = 0;
+	mu_set_int(mu, "border_radius", tmp);
+	
+	mu_set_str(mu, "border_color", ini_get(game_ini, s->data, "border-color", ini_get(game_ini, "styles", "border-color", "white")));
+	
+	tmp = atoi(ini_get(game_ini, s->data, "button-padding", ini_get(game_ini, "styles", "button-padding", "5")));	
+	if(tmp < 0) 
+		tmp = 0;
+	mu_set_int(mu, "button_padding", tmp);
+	
+	tmp = atoi(ini_get(game_ini, s->data, "button-border-radius", ini_get(game_ini, "styles", "button-border-radius", "1")));	
+	if(tmp < 0) 
+		tmp = 0;
+	mu_set_int(mu, "button_border_radius", tmp);
+	
+	mu_set_str(mu, "font", ini_get(game_ini, s->data, "font", ini_get(game_ini, "styles", "font", "normal")));
 	
 	return 1;
 }

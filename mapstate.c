@@ -19,6 +19,19 @@ static lua_State *L = NULL;
 
 static struct map *the_map;
 
+/* LUA FUNCTIONS *********************************************************************************/
+
+static int l_log(lua_State *L) {
+	const char * s = lua_tolstring(L, 1, NULL);
+	if(s) {
+		fprintf(log_file, "lua: %s\n", s);
+		fflush(log_file);
+	}
+	return 0;
+}
+
+/* STATE FUNCTIONS *******************************************************************************/
+
 static int map_init(struct game_state *s) {
 	
 	fprintf(log_file, "info: Initializing Map state '%s'\n", s->data);
@@ -39,26 +52,40 @@ static int map_init(struct game_state *s) {
 	}
 	
 	map_text = re_get_script(map_file);
-	script = re_get_script(script_file);
 	
 	the_map = map_parse(map_text);
 	if(!the_map) {
 		fprintf(log_file, "error: Unable to parse map %s (state %s).\n", map_file, s->data);
 		return 0;		
 	}
+	free(map_text);
 	
+	script = re_get_script(script_file);
+	if(!script) {
+		fprintf(log_file, "error: Script %s was not found (state %s).\n", script_file, s->data);
+		return 0;
+	}
 	L = luaL_newstate();
 	luaL_openlibs(L);
 	
-	/* TODO: Compile the Lua script. */
+	lua_pushcfunction(L, l_log);
+    lua_setglobal(L, "log");
 	
-	/* TODO: You actually need to execute the script here as well, 
-		so that callbacks in the script can be registered
-	*/
-	
-	free(map_text);
+	if(luaL_loadstring(L, script)) {		
+		fprintf(log_file, "error: Unable to load script %s (state %s).\n", script_file, s->data);
+		fprintf(log_file, "lua: %s\n", lua_tostring(L, -1));
+		free(script);
+				
+		return 0;
+	}
 	free(script);
 	
+	if(lua_pcall(L, 0, 0, 0)) {
+		fprintf(log_file, "error: Unable to execute script %s (state %s).\n", script_file, s->data);
+		fprintf(log_file, "lua: %s\n", lua_tostring(L, -1));
+		return 0;
+	}
+		
 	return 1;
 }
 
