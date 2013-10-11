@@ -8,6 +8,7 @@
 #include "ini.h"
 #include "resources.h"
 #include "utils.h"
+#include "mappings.h"
 
 /* Globals ***********************************************************************************/
 
@@ -20,20 +21,9 @@ static int mu_x = 0, mu_y = 0;
 
 /* Musl Functions ****************************************************************************/
 
-/*@ GOTOXY(x, y) 
- *# 
- */
-static struct mu_par mus_gotoxy(struct musl *m, int argc, struct mu_par argv[]) {
-	struct mu_par rv = {mu_int, {0}};
-	
-	mu_x = mu_par_num(m, 0, argc, argv);
-	mu_y = mu_par_num(m, 1, argc, argv);
-
-	return rv;
-}
-
 /*@ CLS([color]) 
- *# 
+ *# Clears the screen.
+ *# If the color
  */
 static struct mu_par mus_cls(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
@@ -50,7 +40,21 @@ static struct mu_par mus_cls(struct musl *m, int argc, struct mu_par argv[]) {
 	return rv;
 }
 
-/*@ COLOR("#rrggbb") 
+/*@ SHOW() 
+ *# Displays the current screen.
+ */
+static struct mu_par mus_show(struct musl *m, int argc, struct mu_par argv[]) {
+	struct mu_par rv = {mu_int, {0}};
+	advanceFrame();
+	if(quit) mu_halt(m);
+	
+	mu_set_int(mu, "mouse_x", mouse_x);
+	mu_set_int(mu, "mouse_y", mouse_y);
+	
+	return rv;
+}
+
+/*@ COLOR(["#rrggbb"]) 
  *# If no color is specified, the "foreground" parameter in the game config is used.
  */
 static struct mu_par mus_color(struct musl *m, int argc, struct mu_par argv[]) {
@@ -68,7 +72,7 @@ static struct mu_par mus_color(struct musl *m, int argc, struct mu_par argv[]) {
 }
 
 /*@ FONT("font") 
- *# 
+ *# Sets the font used for drawing.
  */
 static struct mu_par mus_font(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
@@ -81,24 +85,20 @@ static struct mu_par mus_font(struct musl *m, int argc, struct mu_par argv[]) {
 		name = mu_get_str(mu, "font");
 	}
 	
-	enum bm_fonts font;
+	enum bm_fonts font = font_index(name);
+
+	return rv;
+}
+
+/*@ GOTOXY(x, y) 
+ *# Moves the cursor used for {{PRINT()}} to position X,Y
+ *# on the screen.
+ */
+static struct mu_par mus_gotoxy(struct musl *m, int argc, struct mu_par argv[]) {
+	struct mu_par rv = {mu_int, {0}};
 	
-	if(!my_stricmp(name, "bold")) {
-		font = BM_FONT_BOLD;
-	} else if(!my_stricmp(name, "circuit")) {
-		font = BM_FONT_CIRCUIT;
-	} else if(!my_stricmp(name, "hand")) {
-		font = BM_FONT_HAND;
-	} else if(!my_stricmp(name, "small")) {
-		font = BM_FONT_SMALL;
-	} else if(!my_stricmp(name, "smallinv")) {
-		font = BM_FONT_SMALL_I;
-	} else if(!my_stricmp(name, "thick")) {
-		font = BM_FONT_THICK;
-	} else {
-		font = BM_FONT_NORMAL;
-	}	
-	bm_std_font(bmp, font);
+	mu_x = mu_par_num(m, 0, argc, argv);
+	mu_y = mu_par_num(m, 1, argc, argv);
 
 	return rv;
 }
@@ -126,35 +126,37 @@ static struct mu_par mus_print(struct musl *m, int argc, struct mu_par argv[]) {
 	return rv;
 }
 
-/*@ KBHIT() 
- *# 
+/*@ KBHIT([key]) 
+ *# Checks whether keys have been pressed.
+ *# If {{key}} is supplied, that specific key is checked,
+ *# otherwise all keys are checked.
+ *# It is advisable to call {{KBCLR()}} after a successful
+ *# {{KBHIT()}}, otherwise {{KBHIT()}} will keep on firing.
  */
 static struct mu_par mus_kbhit(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
-	rv.v.i = kb_hit();
+	if(argc > 0) {
+		const char *name = mu_par_str(m, 0, argc, argv);
+		rv.v.i = keys[key_index(name)];
+	} else {
+		rv.v.i = kb_hit();
+	}
 	return rv;
 }
 
-/*@ KBCLEAR() 
- *# 
+/*@ KBCLR([key]) 
+ *# Clears the keyboard.
+ *# If {{key}} is supplied that specific key is cleared,
+ *# otherwise all keys are cleared.
  */
-static struct mu_par mus_kbclear(struct musl *m, int argc, struct mu_par argv[]) {
+static struct mu_par mus_kbclr(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
-	reset_keys();
-	return rv;
-}
-
-/*@ SHOW() 
- *# 
- */
-static struct mu_par mus_show(struct musl *m, int argc, struct mu_par argv[]) {
-	struct mu_par rv = {mu_int, {0}};
-	advanceFrame();
-	if(quit) mu_halt(m);
-	
-	mu_set_int(mu, "mouse_x", mouse_x);
-	mu_set_int(mu, "mouse_y", mouse_y);
-	
+	if(argc > 0) {
+		const char *name = mu_par_str(m, 0, argc, argv);
+		keys[key_index(name)] = 0;
+	} else {
+		reset_keys();
+	}
 	return rv;
 }
 
@@ -213,7 +215,7 @@ static int mus_init(struct game_state *s) {
 	mu_add_func(mu, "font", mus_font);
 	mu_add_func(mu, "print", mus_print);
 	mu_add_func(mu, "kbhit", mus_kbhit);
-	mu_add_func(mu, "kbclear", mus_kbclear);
+	mu_add_func(mu, "kbclr", mus_kbclr);
 	mu_add_func(mu, "show", mus_show);
 	mu_add_func(mu, "log", mus_log);
 	
