@@ -269,7 +269,7 @@ void advanceFrame() {
 			if(event.button.button == SDL_BUTTON_LEFT) {
 				int i;
 				for(i = 0; i < 20; i++) {
-					add_particle(mouse_x, mouse_y, (float)(rand()%8 - 3)/2, (float)(rand()%8 - 3)/2, rand()%33 + 10, bm_gradient(0xFFFFFF, 0x00FF00, (double)rand()/RAND_MAX));					
+					add_particle(mouse_x, mouse_y, (float)(rand()%8 - 3)/2, (float)(rand()%8 - 3)/2, rand()%33 + 10, bm_lerp(0xFFFFFF, 0x00FF00, (double)rand()/RAND_MAX));					
 				}
 			} else if(event.button.button == SDL_BUTTON_RIGHT) {
 			}			

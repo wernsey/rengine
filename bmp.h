@@ -140,12 +140,12 @@ void bm_picker(struct bitmap *bm, int x, int y);
  */
 int bm_color_is(struct bitmap *bm, int x, int y, int r, int g, int b); 
 
-/*@ int bm_gradient(int color1, int color2, double t)
+/*@ int bm_lerp(int color1, int color2, double t)
  *# Computes the color that is a distance {{t}} along the line between 
  *# color1 and color2.\n
  *# If {{t}} is 0 it returns color1. If t is 1.0 it returns color2.
  */
-int bm_gradient(int color1, int color2, double t);
+int bm_lerp(int color1, int color2, double t);
 
 /*@ struct bitmap *bm_fromXbm(int w, int h, unsigned char *data)
  *# Creates a struct bitmap object from XBM data 

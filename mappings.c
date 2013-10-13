@@ -6,6 +6,7 @@
 
 #include "mappings.h"
 #include "utils.h"
+#include "bmp.h"
 
 static int find_mapping(string_int_mapping map[], const char *name, int notfound) {
 	int i = 0;

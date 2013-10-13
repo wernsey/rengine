@@ -14,6 +14,7 @@
 #include "ini.h"
 #include "resources.h"
 #include "tileset.h"
+#include "utils.h"
 
 static lua_State *L = NULL;
 
@@ -28,6 +29,136 @@ static int l_log(lua_State *L) {
 		fflush(log_file);
 	}
 	return 0;
+}
+
+/* The C(ell) object *****************************************************************************/
+
+typedef struct _cell_obj {
+	struct map_cell *cell;
+	struct _cell_obj *next;
+} cell_obj;
+
+static int class_selector(struct map_cell *c, const char *data) {
+	if(!c->clas) return 0;
+	return !my_stricmp(c->clas, data + 1);
+}
+
+static int id_selector(struct map_cell *c, const char *data) {
+	if(!c->id) return 0;
+	return !my_stricmp(c->id, data);
+}
+
+static int new_cell_obj(lua_State *L) {
+	const char *selector;
+	int i;
+	int (*sel_fun)(struct map_cell *c, const char *data);
+	
+	cell_obj **o = lua_newuserdata(L, sizeof *o);	
+	luaL_setmetatable(L, "CellObj");
+	
+	*o = NULL;	
+	selector = luaL_checkstring(L,1);
+	if(selector[0] == '.') {
+		sel_fun = class_selector;
+	} else {		
+		sel_fun = id_selector;
+	}
+	
+	/* Is there a non-O(n) way to find cells matching a selector? 
+	 * I ought to put the ids in a hashtable at least
+	 */
+	for(i = 0; i < the_map->nr * the_map->nc; i++) {
+		struct map_cell *c = &the_map->cells[i];
+		if(sel_fun(c, selector)) {
+			cell_obj *co = malloc(sizeof *co);
+			co->cell = c;
+			co->next = *o;				
+			*o = co;
+			if(sel_fun == id_selector)
+				break;
+		}
+	}
+	
+	return 1;
+}
+
+static int gc_cell_obj(lua_State *L) {
+	cell_obj **o = luaL_checkudata(L,1, "CellObj");
+	while(*o) {
+		cell_obj *t = *o;
+		*o = (*o)->next;		
+		free(t);
+	}
+	return 0;
+}
+
+static int cell_tostring(lua_State *L) {
+	
+	cell_obj **os = luaL_checkudata(L,1, "CellObj");
+	cell_obj *o = *os;
+	int count = 0;
+	while(o) {
+		count++;
+		o=o->next;
+	}
+	lua_pushfstring(L, "CellObj[%d]", count);
+	return 1;
+}
+
+static int cell_set(lua_State *L) {
+	
+	cell_obj **os = luaL_checkudata(L,1, "CellObj");
+	cell_obj *o;
+	int l = luaL_checkint(L,2);
+	int si = luaL_checkint(L,3);
+	int ti = luaL_checkint(L,4);
+	
+	if(l < 0 || l > 2) {
+		lua_pushfstring(L, "Invalid level passed to CellObj.set()");
+		lua_error(L);
+	}
+	if(si < 0 || si >= ts_get_num()) {
+		lua_pushfstring(L, "Invalid si passed to CellObj.set()");
+		lua_error(L);
+	}
+	/* FIXME: error checking on ti? */
+	
+	o = *os;
+	while(o) {
+		struct map_cell *c = o->cell;
+		/* TODO: Maybe you ought to store
+		this change in some sort of list
+		so that the savedgames can handle 
+		changes to the map like this. */
+		c->tiles[l].ti = ti;
+		c->tiles[l].si = si;
+		o = o->next;
+	}
+	
+	/* Push the CellObj back onto the stack so that other methods can be called on it */
+	lua_pushvalue(L, -4);
+	
+	return 1;
+}
+
+static void cell_obj_meta(lua_State *L) {
+	/* Create the metatable for MyObj */
+	luaL_newmetatable(L, "CellObj");
+	lua_pushvalue(L, -1);
+	lua_setfield(L, -2, "__index"); // CellObj.__index = CellObj
+	
+	/* FIXME: Add other methods. */
+	lua_pushcfunction(L, cell_set);
+	lua_setfield(L, -2, "set");
+	
+	lua_pushcfunction(L, cell_tostring);
+	lua_setfield(L, -2, "__tostring");	
+	lua_pushcfunction(L, gc_cell_obj);
+	lua_setfield(L, -2, "__gc");	
+	
+	/* The global method C() */
+	lua_pushcfunction(L, new_cell_obj);
+	lua_setglobal(L, "C");
 }
 
 /* STATE FUNCTIONS *******************************************************************************/
@@ -70,6 +201,8 @@ static int map_init(struct game_state *s) {
 	
 	lua_pushcfunction(L, l_log);
     lua_setglobal(L, "log");
+	
+	cell_obj_meta(L);
 	
 	if(luaL_loadstring(L, script)) {		
 		fprintf(log_file, "error: Unable to load script %s (state %s).\n", script_file, s->data);

@@ -590,7 +590,7 @@ int bm_color_is(struct bitmap *bm, int x, int y, int r, int g, int b) {
 	return BM_GETR(bm,x,y) == r && BM_GETG(bm,x,y) == g && BM_GETB(bm,x,y) == b;
 }
 
-int bm_gradient(int color1, int color2, double t) {
+int bm_lerp(int color1, int color2, double t) {
 	int r1, g1, b1;
 	int r2, g2, b2;
 	int r3, g3, b3;
