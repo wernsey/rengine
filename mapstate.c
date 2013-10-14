@@ -66,7 +66,7 @@ static int l_set_timeout(lua_State *L) {
 		to_top++;
 		
 	} else {
-		luaL_error(L, "setTimeout requires a function and a time as parameters");
+		luaL_error(L, "setTimeout() requires a function and a time as parameters");
 	}
 	
 	return 0;
@@ -77,10 +77,9 @@ static void process_timeouts(lua_State *L) {
 	while(i < to_top) {
 		Uint32 elapsed = SDL_GetTicks() - timeouts[i].start;
 		if(elapsed > timeouts[i].time) {
-			fprintf(log_file, "info: timeout %d fired\n", i);
 			lua_rawgeti(L, LUA_REGISTRYINDEX, timeouts[i].fun);
 			if(lua_pcall(L, 0, 0, 0)) {
-				fprintf(log_file, "error: Unable to execute setTimeout callback\n");
+				fprintf(log_file, "error: Unable to execute setTimeout() callback\n");
 				fprintf(log_file, "lua: %s\n", lua_tostring(L, -1));				
 			}
 			
@@ -266,6 +265,13 @@ static int map_init(struct game_state *s) {
 	
 	lua_pushcfunction(L, l_set_timeout);
     lua_setglobal(L, "setTimeout");
+	
+	lua_pushinteger(L, 0);
+    lua_setglobal(L, "BACKGROUND");
+	lua_pushinteger(L, 1);
+    lua_setglobal(L, "CENTER");
+	lua_pushinteger(L, 2);
+    lua_setglobal(L, "FOREGROUND");
 	
 	cell_obj_meta(L);
 	

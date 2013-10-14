@@ -73,7 +73,7 @@ json.o: json.c json.h lexer.h hash.h utils.h
 lexer.o: lexer.c lexer.h
 map.o: map.c tileset.h bmp.h map.h json.h utils.h
 musl.o: musl.c musl.h
-mustate.o: mustate.c musl.h bmp.h states.h game.h ini.h resources.h utils.h mappings.h
+mustate.o: mustate.c musl.h bmp.h states.h game.h ini.h resources.h utils.h mappings.h particles.h
 pak.o: pak.c pak.h
 particles.o: particles.c bmp.h
 resources.o: resources.c pak.h bmp.h ini.h game.h utils.h hash.h

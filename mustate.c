@@ -1,6 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef WIN32
+#include <SDL.h>
+#else
+#include <SDL/SDL.h>
+#endif
+
 #include "bmp.h"
 #include "states.h"
 #include "musl.h"
@@ -9,6 +15,7 @@
 #include "resources.h"
 #include "utils.h"
 #include "mappings.h"
+#include "particles.h"
 
 /* Globals ***********************************************************************************/
 
@@ -177,6 +184,56 @@ static struct mu_par mus_log(struct musl *m, int argc, struct mu_par argv[]) {
 	return rv;
 }
 
+
+/*@ CLEAR_PARTICLES() 
+ *# Removes al particles
+ */
+static struct mu_par mus_clr_par(struct musl *m, int argc, struct mu_par argv[]) {
+	struct mu_par rv = {mu_int, {0}};
+	clear_particles();
+	return rv;
+}
+
+
+/*@ DELAY([millis]) 
+ *# Waits for a couple of milliseconds
+ */
+static struct mu_par mus_delay(struct musl *m, int argc, struct mu_par argv[]) {
+	struct mu_par rv = {mu_int, {0}};
+	Uint32 start = SDL_GetTicks();
+	rv.v.i = mu_par_num(m, 0, argc, argv);
+	do {
+		advanceFrame();
+		if(quit) {
+			mu_halt(m);
+			break;
+		}
+		SDL_Delay(1000/fps);
+	} while(SDL_GetTicks() - start < rv.v.i);
+	return rv;
+}
+
+/*@ PIXEL(x,y) 
+ *# Draws a single pixel
+ */
+static struct mu_par mus_putpixel(struct musl *m, int argc, struct mu_par argv[]) {
+	struct mu_par rv = {mu_int, {0}};
+	struct bitmap *bmp = mu_get_data(mu);
+	bm_putpixel(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv));
+	return rv;
+}
+
+/*@ LINE(x1,y1,x2,y2) 
+ *# Draws a line from x1,y1 to x2,y2
+ */
+static struct mu_par mus_line(struct musl *m, int argc, struct mu_par argv[]) {
+	struct mu_par rv = {mu_int, {0}};
+	struct bitmap *bmp = mu_get_data(mu);
+	bm_line(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
+		mu_par_num(m, 2, argc, argv),mu_par_num(m, 3, argc, argv));
+	return rv;
+}
+
 /* State Functions ***************************************************************************/
 
 static int mus_init(struct game_state *s) {
@@ -218,6 +275,11 @@ static int mus_init(struct game_state *s) {
 	mu_add_func(mu, "kbclr", mus_kbclr);
 	mu_add_func(mu, "show", mus_show);
 	mu_add_func(mu, "log", mus_log);
+	mu_add_func(mu, "delay", mus_delay);
+	mu_add_func(mu, "clear_particles", mus_clr_par);
+	
+	mu_add_func(mu, "pixel", mus_putpixel);
+	mu_add_func(mu, "line", mus_line);	
 	
 	mu_set_int(mu, "mouse_x", mouse_x);
 	mu_set_int(mu, "mouse_y", mouse_y);

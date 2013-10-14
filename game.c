@@ -41,8 +41,8 @@ static GLuint texID;
 
 static int screenWidth = SCREEN_WIDTH, 
 	screenHeight = SCREEN_HEIGHT, 
-	screenBpp = SCREEN_BPP, 
-	fps = DEFAULT_FPS;
+	screenBpp = SCREEN_BPP;
+int fps = DEFAULT_FPS;
 
 int quit = 0;
 
