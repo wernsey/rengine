@@ -7,6 +7,12 @@
 #include <lauxlib.h>
 #include <lualib.h>
 
+#ifdef WIN32
+#include <SDL.h>
+#else
+#include <SDL/SDL.h>
+#endif
+
 #include "bmp.h"
 #include "states.h"
 #include "map.h"
@@ -29,6 +35,62 @@ static int l_log(lua_State *L) {
 		fflush(log_file);
 	}
 	return 0;
+}
+
+#define MAX_TIMEOUTS 20
+static struct _timeout {
+	int fun;
+	int time;
+	Uint32 start;
+} timeouts[MAX_TIMEOUTS];
+
+static int to_top = 0;
+
+static int l_set_timeout(lua_State *L) {
+
+	/* This link was useful: 
+	http://stackoverflow.com/questions/2688040/how-to-callback-a-lua-function-from-a-c-function 
+	*/
+	if(lua_gettop(L) == 2 && lua_isfunction(L, -2) && lua_isnumber(L, -1)) {
+		
+		if(to_top == MAX_TIMEOUTS) {
+			luaL_error(L, "Maximum number of timeouts [%d] reached", MAX_TIMEOUTS);
+		}
+		
+		lua_pushvalue(L, -2);
+		timeouts[to_top].fun = luaL_ref(L, LUA_REGISTRYINDEX);
+		timeouts[to_top].time = luaL_checkinteger(L, 2);
+		
+		timeouts[to_top].start = SDL_GetTicks();
+		
+		to_top++;
+		
+	} else {
+		luaL_error(L, "setTimeout requires a function and a time as parameters");
+	}
+	
+	return 0;
+}
+
+static void process_timeouts(lua_State *L) {
+	int i = 0;	
+	while(i < to_top) {
+		Uint32 elapsed = SDL_GetTicks() - timeouts[i].start;
+		if(elapsed > timeouts[i].time) {
+			fprintf(log_file, "info: timeout %d fired\n", i);
+			lua_rawgeti(L, LUA_REGISTRYINDEX, timeouts[i].fun);
+			if(lua_pcall(L, 0, 0, 0)) {
+				fprintf(log_file, "error: Unable to execute setTimeout callback\n");
+				fprintf(log_file, "lua: %s\n", lua_tostring(L, -1));				
+			}
+			
+			/* Now delete this timeout by replacing it with the last one */
+			timeouts[i] = timeouts[--to_top];
+		} else {
+			i++;
+		}
+	}
+	fflush(log_file);
 }
 
 /* The C(ell) object *****************************************************************************/
@@ -202,6 +264,9 @@ static int map_init(struct game_state *s) {
 	lua_pushcfunction(L, l_log);
     lua_setglobal(L, "log");
 	
+	lua_pushcfunction(L, l_set_timeout);
+    lua_setglobal(L, "setTimeout");
+	
 	cell_obj_meta(L);
 	
 	if(luaL_loadstring(L, script)) {		
@@ -231,6 +296,8 @@ static int map_update(struct game_state *s, struct bitmap *bmp) {
 	/* TODO: Maybe background colour metadata in the map file? */
 	bm_set_color_s(bmp, "black");
 	bm_clear(bmp);
+	
+	process_timeouts(L);
 	
 	for(i = 0; i < 3; i++)
 		map_render(the_map, bmp, i, 0, 0);
