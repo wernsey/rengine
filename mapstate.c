@@ -57,10 +57,13 @@ static int l_set_timeout(lua_State *L) {
 			luaL_error(L, "Maximum number of timeouts [%d] reached", MAX_TIMEOUTS);
 		}
 		
+		/* Push the callback function on to the top of the stack */
 		lua_pushvalue(L, -2);
-		timeouts[to_top].fun = luaL_ref(L, LUA_REGISTRYINDEX);
-		timeouts[to_top].time = luaL_checkinteger(L, 2);
 		
+		/* And create a reference to it in the special LUA_REGISTRYINDEX */
+		timeouts[to_top].fun = luaL_ref(L, LUA_REGISTRYINDEX);
+		
+		timeouts[to_top].time = luaL_checkinteger(L, 2);		
 		timeouts[to_top].start = SDL_GetTicks();
 		
 		to_top++;
@@ -76,12 +79,17 @@ static void process_timeouts(lua_State *L) {
 	int i = 0;	
 	while(i < to_top) {
 		Uint32 elapsed = SDL_GetTicks() - timeouts[i].start;
-		if(elapsed > timeouts[i].time) {
+		if(elapsed > timeouts[i].time) {			
+			/* Retrieve the callback */
 			lua_rawgeti(L, LUA_REGISTRYINDEX, timeouts[i].fun);
+			
+			/* Call it */
 			if(lua_pcall(L, 0, 0, 0)) {
 				fprintf(log_file, "error: Unable to execute setTimeout() callback\n");
 				fprintf(log_file, "lua: %s\n", lua_tostring(L, -1));				
 			}
+			/* Release the reference so that it can be collected */
+			luaL_unref(L, LUA_REGISTRYINDEX, timeouts[i].fun);
 			
 			/* Now delete this timeout by replacing it with the last one */
 			timeouts[i] = timeouts[--to_top];
