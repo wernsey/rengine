@@ -3,36 +3,45 @@ Rengine
 
 A Retro Game Engine.
 
-Rengine is a engine for Retro-style games. It uses OpenGL to render a texture in a lower
-resolution and contains lots of code for manipulating said texture. It uses SDL for cross-
-platform operation.
+Rengine is intended for _Retro-style_ games. The word _style_ is used
+because while games running under Rengine will look retro, they are by
+no means limited to the CPU and memory constraints of the computers of
+yore.
+
+Rengine also includes a 2D level editor for editing maps.
 
 The home of Rengine is at https://github.com/wernsey/rengine
+
+Technical
+---------
+
+At the lowest level, Rengine displays a single OpenGL quad on the screen.
+
+It uses the resolution of this texture to render low resolution (retro) 
+graphics onto a modern high resolution display. Rengine contains lots of 
+code for manipulating said texture. 
+
+It uses SDL for cross-platform operation.
+
+Dependencies
+------------
+
+Rengine is dependant upon these 3rd party libraries:
+* SDL - Cross-platform low level game library - http://www.libsdl.org
+* Lua - Scripting language - http://www.lua.org
+* FLTK - Cross-platform GUI toolkit, used for the map editor - http://www.fltk.org
+
+On Linux systems, these libraries can be found in your package manager.
+
+On Windows, Rengine is built with (MinGW)[http://mingw.org/]. See the
+webpages of the packages mentioned above for details on how to compile
+them under Windows.
 
 License
 -------
 
-Unless otherwise noted, the source code is distributed under the terms of the MIT License:
+Rengine is distributed under the terms of the MIT License. See the LICENSE 
+file for details.
 
-	Copyright (C) 2013 Werner Stoop
-
-	Permission is hereby granted, free of charge, to any person obtaining a copy
-	of this software and associated documentation files (the "Software"), to deal
-	in the Software without restriction, including without limitation the rights
-	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-	copies of the Software, and to permit persons to whom the Software is
-	furnished to do so, subject to the following conditions:
-
-	The above copyright notice and this permission notice shall be included in
-	all copies or substantial portions of the Software.
-
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-	THE SOFTWARE.
-	
-Some of the more generic utility source files are distributed under the terms of the unlicense. See
-the particular headers for details.
+Also refer to the (Wikipedia article)[http://en.wikipedia.org/wiki/MIT_License]
+for more information.
