@@ -1,4 +1,4 @@
-This file contains a variety of development notes.
+This file contains a variety of development notes. I'll keep my FIXMEs and TODOs in here.
 
 We should consider disabling some "unsafe" Lua built in functions such
 as dofile(), load() and loadfile(), etc.
@@ -11,14 +11,6 @@ http://stackoverflow.com/q/1224708/115589
 It seems that the accepted solution is to not call luaL_openlibs()
 and rather copying and modifying linit.c
 
-I really ought to be using SDL v2.0. It offers a variety of benefits
-(I'm particularly interested in the Android and to a lesser extent iOS
-portability), and the sooner I'm done with the conversion the better.
-
---I've been trying to compile v2.0, but it seems I need the DirectX SDK
-for MinGW-- Scratch that. I now have SDL v2.0.0 compiled, and it seems
-I'm gonna spend my weekend converting my SDL 1.2 code
-
 My Bitmap module should have a #pragma pack() at the
 structure declaration. The PAK file module should have
 it too. See the bottom of this section on the wikipedia:
@@ -27,3 +19,13 @@ http://en.wikipedia.org/wiki/Data_structure_alignment#Typical_alignment_of_C_str
 
 Speaking of the PAK file module, the ZIP file format turns out to be
 not that different, so I should look into it more closely.
+
+The contents of mappings.c can now be moved to bmp.c since the keyboard key-name mapping has been removed.
+
+Descision whether to stick with scancodes or switch keycodes?
+
+Implement fullscreen mode on F11 keypress.
+
+Allow window to be resized.
+
+Docs says SDL_UpdateTexture() be slow. Do something different.

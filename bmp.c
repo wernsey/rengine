@@ -900,69 +900,26 @@ void bm_fillroundrect(struct bitmap *b, int x0, int y0, int x1, int y1, int r) {
 	}
 }
 
-/* This is the bezier with 3 control points from
+/* 
+ * I tried the more optimized version at
  * http://members.chello.at/~easyfilter/bresenham.html
- * I've noticed that it doesn't work quite correctly 
- * if <x1,y1> falls outside the bounding box defined by
- * <x0,y0> - <x2,y2>, which is understandable considering
- * how it works in principle.
- * I need to doublecheck against the source, though.
+ * but that one had some caveats.
  */
 void bm_bezier3(struct bitmap *b, int x0, int y0, int x1, int y1, int x2, int y2) {
-	int sx = x2 - x1, sy = y2 - y1;
-	int xx = x0 - x1, yy = y0 - y1, xy;
-	double dx, dy, err, cur = xx * sy - yy * sx;
+	int lx = x0, ly = y0;
+	int steps = 12;
+	double inc = 1.0/steps;
+	double t = 0, dx, dy;
 	
-	/* This assertion also fails from time to time */
-	assert(xx * sx <= 0 && yy * sy <= 0);
-	
-	if(sx * sx + sy * sy > xx * xx + yy * yy) {
-		x2 = x0;
-		x0 = sx + x1;
-		y2 = y0;
-		y0 = sy + y1;
-		cur = -cur;
+	while(t < 1.0) {
+		t += inc;
+		dx = (1-t)*(1-t)*x0 + 2*(1-t)*t*x1 + t*t*x2;
+		dy = (1-t)*(1-t)*y0 + 2*(1-t)*t*y1 + t*t*y2;
+		bm_line(b, lx, ly, dx, dy);
+		lx = dx;
+		ly = dy;
 	}
-	
-	if(cur != 0) {
-		xx += sx; 
-		xx *= sx = x0 < x2 ? 1 : -1;
-		yy += sy;
-		yy *= sy = y0 < y2 ? 1 : -1;
-		xy = 2 * xx * yy;
-		xx *= xx;
-		yy *= yy;
-		if(cur * sx * sy < 0) {
-			xx = -xx;
-			yy = -yy;
-			xy = -xy;
-			cur = -cur;
-		}
-		
-		dx = 4.0 * sy * cur * (x1 - x0) + xx - xy;
-		dy = 4.0 * sx * cur * (y0 - y1) + yy - xy;
-		xx += xx;
-		yy += yy;
-		err = dx + dy + xy;
-		do {
-			if(x0 >= 0 && x0 < b->w && y0 >= 0 && y0 < b->h)
-				BM_SET(b, x0, y0, b->r, b->g, b->b);
-			if(x0 == x2 && y0 == y2)
-				return;
-			y1 = 2 * err < dx;
-			if(2 * err > dy) {
-				x0 += sx;
-				dx -= xy;
-				err += dy += yy;
-			}
-			if(y1) {
-				y0 += sy; 
-				dy -= xy;
-				err += dx += xx;
-			}
-		} while (dy < dx);
-	}
-	bm_line(b, x0, y0, x2, y2);
+	bm_line(b, dx, dy, x2, y2);
 }
 
 void bm_fill(struct bitmap *b, int x, int y) {

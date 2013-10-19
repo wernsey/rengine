@@ -37,8 +37,6 @@
 
 /* Globals *************************************************/
 
-//static GLuint texID;
-
 static int screenWidth = SCREEN_WIDTH, 
 	screenHeight = SCREEN_HEIGHT, 
 	screenBpp = SCREEN_BPP;
@@ -71,72 +69,7 @@ char keys[SDL_NUM_SCANCODES];
 
 /* Functions *************************************************/
 
-/*
-int textureFromBmp(struct bitmap *b) {
-		
-	glGenTextures(1, &texID);
-	glBindTexture(GL_TEXTURE_2D, texID);
-	
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, b->w, b->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, b->data);
-	
-	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter ); 
-	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter );
-		
-	glBindTexture(GL_TEXTURE_2D, 0);
-	GLenum error = glGetError();
-	if(error != GL_NO_ERROR) {
-		fprintf(log_file, "error: unable to create texture from struct bitmap\n");
-		fflush(log_file);
-		return 0;
-	}
-	
-	return 1;
-}
-*/
-
-/*
-int initGL() {
-	GLenum error;
-	
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glOrtho( 0.0, screenWidth, screenHeight, 0.0, 1.0, -1.0);
-	
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	
-	glClearColor(0.f, 0.f, 0.2f, 1.f);
-	
-	glEnable(GL_TEXTURE_2D);
-	
-	error = glGetError();
-	if(error != GL_NO_ERROR) { 
-		fprintf(log_file, "error: OpenGL - \n");
-		fflush(log_file);
-		return 0;
-	}
-	
-	return 1;
-}
-*/
-
 int init(const char *appTitle, int virt_width, int virt_height) {
-	/*
-	int flags = resizable?SDL_OPENGL | SDL_RESIZABLE:SDL_OPENGL;
-	if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0) {
-		return 0;
-	}
-	
-	if(SDL_SetVideoMode(screenWidth, screenHeight, screenBpp, flags) == NULL) {
-		return 0;
-	}
-	
-	if(!initGL()) {
-		return 0;
-	}
-	
-	SDL_WM_SetCaption(appTitle, NULL);
-	*/
 	fprintf(log_file, "info: Creating Window.\n");
 	
 	if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_VIDEO) < 0) {
@@ -199,33 +132,6 @@ int screen_to_virt_y(int in) {
 }
 
 void render() {
-	/*
-	glBindTexture(GL_TEXTURE_2D, texID);
-	glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0,  bmp->w, bmp->h, GL_RGBA, GL_UNSIGNED_BYTE, bmp->data );
-	glBindTexture(GL_TEXTURE_2D, 0);
-	
-	glClear(GL_COLOR_BUFFER_BIT);
-	
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();	
-	glOrtho( 0.0, screenWidth, screenHeight, 0.0, 1.0, -1.0);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	
-	glBindTexture(GL_TEXTURE_2D, texID);
-	glBegin(GL_QUADS);
-		glTexCoord2f(0,0); glVertex2f( 0, 0);	
-		glTexCoord2f(1,0); glVertex2f( screenWidth, 0);
-		glTexCoord2f(1,1); glVertex2f( screenWidth, screenHeight);
-		glTexCoord2f(0,1); glVertex2f( 0, screenHeight);
-	glEnd();
-	
-	SDL_GL_SwapBuffers();
-	
-	glBindTexture(GL_TEXTURE_2D, texID);
-	glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, bmp->data);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	*/
 	/* FIXME: Docs says SDL_UpdateTexture() be slow */
 	SDL_UpdateTexture(tex, NULL, bmp->data, bmp->w*4);
 	SDL_RenderClear(ren);
@@ -291,15 +197,7 @@ void advanceFrame() {
 			}			
 		} /* 
 		else if(event.type == SDL_VIDEORESIZE) {
-			int flags = resizable?SDL_OPENGL | SDL_RESIZABLE:SDL_OPENGL;
-			screenWidth = event.resize.w;
-			screenHeight = event.resize.h;
-			if(SDL_SetVideoMode(screenWidth, screenHeight, screenBpp, flags) == NULL) {
-				fprintf(log_file, "error: unable to handle video resize event");
-				fflush(log_file);
-				quit = 1;
-			}
-			glViewport(0, 0, screenWidth, screenHeight);
+			FIXME: Video resize.
 		} */
 	}
 }
@@ -389,18 +287,15 @@ int main(int argc, char *argv[]) {
 			fprintf(log_file, "info: Loading game PAK file: %s\n", pak_filename);	
 			if(!rs_read_pak(pak_filename)) {
 				fprintf(log_file, "error: Unable to open PAK file '%s'; Playing demo mode\n", pak_filename);
-				demo = 1;
+				goto start_demo;
 			}
 		} else {
 			fprintf(log_file, "info: Not using a pak file. Using %s instead.\n", game_filename);
 		}		
 		fflush(log_file);
-	}
-	
-	if(!demo) {
 		game_ini = re_get_ini(game_filename);
 		if(game_ini) {	
-			appTitle = ini_get(game_ini, "init", "appTitle", "Rengine '80");
+			appTitle = ini_get(game_ini, "init", "appTitle", "Rengine");
 			
 			screenWidth = atoi(ini_get(game_ini, "screen", "width", PARAM(SCREEN_WIDTH)));
 			screenHeight = atoi(ini_get(game_ini, "screen", "height", PARAM(SCREEN_HEIGHT)));	
@@ -426,10 +321,11 @@ int main(int argc, char *argv[]) {
 				quit = 1;
 			}
 		} else {
-			fprintf(log_file, "warn: No game INI. Using defaults; Playing demo mode\n");
+			fprintf(log_file, "error: No game INI\n");
 			quit = 1;
 		}
 	} else {
+start_demo:
 		fprintf(log_file, "info: Starting demo mode\n");
 		current_state = &demo_state;
 		if(!current_state->init(current_state))
@@ -442,13 +338,6 @@ int main(int argc, char *argv[]) {
 	if(!init(appTitle, virt_width, virt_height)) {
 		return 1;
 	}
-	
-	/* Lock the texture so that the first frame can be drawn on it */
-	/*
-	glBindTexture(GL_TEXTURE_2D, texID);
-	glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, bmp->data);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	*/
 	
 	frameStart = SDL_GetTicks();	
 	
@@ -471,10 +360,8 @@ int main(int argc, char *argv[]) {
 	
 	if(current_state && current_state->deinit)
 		current_state->deinit(current_state);	
-	
-	bm_free(bmp);	
-	
-	/* glDeleteTextures(1, &texID); */
+
+	bm_free(bmp);
 	
 	clear_particles();
 	
