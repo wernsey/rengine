@@ -22,6 +22,11 @@
 #include "tileset.h"
 #include "utils.h"
 
+/* FIXME: There shouldn't be globals in here 
+baecause I want a mapstates to be recursive; 
+eg, pushing a new map state when the player enters a cave
+and popping the old map when he exits the cave again. 
+(although this has some implications on the save game system) */
 static lua_State *L = NULL;
 
 static struct map *the_map;
@@ -234,20 +239,21 @@ static void cell_obj_meta(lua_State *L) {
 
 static int map_init(struct game_state *s) {
 	
-	fprintf(log_file, "info: Initializing Map state '%s'\n", s->data);
+	char *state = s->data;
+	fprintf(log_file, "info: Initializing Map state '%s'\n", state);
 	
 	const char *map_file, *script_file;
 	char *map_text, *script;
 	
 	map_file = ini_get(game_ini, s->data, "map", NULL);
 	if(!map_file) {
-		fprintf(log_file, "error: Map state '%s' doesn't specify a map file.\n", s->data);
+		fprintf(log_file, "error: Map state '%s' doesn't specify a map file.\n", state);
 		return 0;
 	}
 	
 	script_file = ini_get(game_ini, s->data, "script", NULL);	
 	if(!script_file) {
-		fprintf(log_file, "error: Map state '%s' doesn't specify a script file.\n", s->data);
+		fprintf(log_file, "error: Map state '%s' doesn't specify a script file.\n", state);
 		return 0;
 	}
 	
@@ -255,14 +261,14 @@ static int map_init(struct game_state *s) {
 	
 	the_map = map_parse(map_text);
 	if(!the_map) {
-		fprintf(log_file, "error: Unable to parse map %s (state %s).\n", map_file, s->data);
+		fprintf(log_file, "error: Unable to parse map %s (state %s).\n", map_file, state);
 		return 0;		
 	}
 	free(map_text);
 	
 	script = re_get_script(script_file);
 	if(!script) {
-		fprintf(log_file, "error: Script %s was not found (state %s).\n", script_file, s->data);
+		fprintf(log_file, "error: Script %s was not found (state %s).\n", script_file, state);
 		return 0;
 	}
 	L = luaL_newstate();
@@ -284,7 +290,7 @@ static int map_init(struct game_state *s) {
 	cell_obj_meta(L);
 	
 	if(luaL_loadstring(L, script)) {		
-		fprintf(log_file, "error: Unable to load script %s (state %s).\n", script_file, s->data);
+		fprintf(log_file, "error: Unable to load script %s (state %s).\n", script_file, state);
 		fprintf(log_file, "lua: %s\n", lua_tostring(L, -1));
 		free(script);
 				
@@ -293,7 +299,7 @@ static int map_init(struct game_state *s) {
 	free(script);
 	
 	if(lua_pcall(L, 0, 0, 0)) {
-		fprintf(log_file, "error: Unable to execute script %s (state %s).\n", script_file, s->data);
+		fprintf(log_file, "error: Unable to execute script %s (state %s).\n", script_file, state);
 		fprintf(log_file, "lua: %s\n", lua_tostring(L, -1));
 		return 0;
 	}

@@ -82,7 +82,7 @@ static struct mu_par mus_color(struct musl *m, int argc, struct mu_par argv[]) {
  *# Sets the font used for drawing.
  */
 static struct mu_par mus_font(struct musl *m, int argc, struct mu_par argv[]) {
-	struct mu_par rv = {mu_int, {0}};
+	struct mu_par rv;
 	struct bitmap *bmp = mu_get_data(mu);
 	const char *name;
 
@@ -93,6 +93,10 @@ static struct mu_par mus_font(struct musl *m, int argc, struct mu_par argv[]) {
 	}
 	
 	enum bm_fonts font = font_index(name);
+	bm_std_font(bmp, font);
+	
+	rv.type = mu_str;
+	rv.v.s = strdup(font_name(font));
 
 	return rv;
 }
@@ -139,12 +143,13 @@ static struct mu_par mus_print(struct musl *m, int argc, struct mu_par argv[]) {
  *# otherwise all keys are checked.
  *# It is advisable to call {{KBCLR()}} after a successful
  *# {{KBHIT()}}, otherwise {{KBHIT()}} will keep on firing.
+ *# A list of the keycodes are here: http://wiki.libsdl.org/SDL_Keycode
  */
 static struct mu_par mus_kbhit(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
 	if(argc > 0) {
 		const char *name = mu_par_str(m, 0, argc, argv);
-		rv.v.i = keys[key_index(name)];
+		rv.v.i = keys[SDL_GetScancodeFromName(name)];
 	} else {
 		rv.v.i = kb_hit();
 	}
@@ -160,7 +165,7 @@ static struct mu_par mus_kbclr(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
 	if(argc > 0) {
 		const char *name = mu_par_str(m, 0, argc, argv);
-		keys[key_index(name)] = 0;
+		keys[SDL_GetScancodeFromName(name)] = 0;
 	} else {
 		reset_keys();
 	}
@@ -240,13 +245,13 @@ static int mus_init(struct game_state *s) {
 	
 	int tmp;
 	
-	fprintf(log_file, "info: Initializing Musl state '%s'\n", s->data);
+	fprintf(log_file, "info: Initializing Musl state '%s'\n", (char*)s->data);
 
 	reset_keys();
 	
 	mu_script_file = ini_get(game_ini, s->data, "script", NULL);	
 	if(!mu_script_file) {
-		fprintf(log_file, "error: No script specified in Musl state '%s'\n", s->data);
+		fprintf(log_file, "error: No script specified in Musl state '%s'\n", (char*)s->data);
 		fflush(log_file);
 		return 0;
 	}

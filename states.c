@@ -271,10 +271,6 @@ static int basic_init(struct game_state *s) {
 }
 
 static int basic_deinit(struct game_state *s) {
-	/* Managed by the resources module now.
-	if(style.bmp) {
-		bm_free(style.bmp);
-	}*/
 	return 1;
 }
 
@@ -378,7 +374,7 @@ static int leftright_update(struct game_state *s, struct bitmap *bmp) {
 	} 
 	
 	if((k = kb_hit()) || clicked) {
-		if(k == SDLK_SPACE || k == SDLK_RETURN || clicked) {				
+		if(k == SDL_SCANCODE_SPACE || k == SDL_SCANCODE_RETURN || clicked) {				
 			if(!lr_direction) {
 				const char *nextstate = ini_get(game_ini, s->data, "left-state", NULL);
 				struct game_state *next;
@@ -409,9 +405,9 @@ static int leftright_update(struct game_state *s, struct bitmap *bmp) {
 			return 1;
 		}
 		
-		if(k == SDLK_LEFT || k == SDLK_UP) {
+		if(k == SDL_SCANCODE_LEFT || k == SDL_SCANCODE_UP) {
 			lr_direction = 0;
-		} else if(k == SDLK_RIGHT || k == SDLK_DOWN) {
+		} else if(k == SDL_SCANCODE_RIGHT || k == SDL_SCANCODE_DOWN) {
 			lr_direction = 1;
 		}
 	} 

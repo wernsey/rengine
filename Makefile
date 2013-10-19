@@ -16,19 +16,19 @@ else
 	endif
 endif
 
-CFLAGS += `sdl-config --cflags` -I /usr/local/include
+CFLAGS += `sdl2-config --cflags` -I /usr/local/include
 LFLAGS += -llua
 
 # Different executables, and -lopengl32 is required for Windows
 ifeq ($(OS),Windows_NT)
 GAME_BIN = bin/game.exe
 EDIT_BIN = bin/editor.exe
-LFLAGS += `sdl-config --libs` -lopengl32
+LFLAGS += `sdl2-config --libs` -lopengl32
 RES = rengine.res
 else
 GAME_BIN = bin/game
 EDIT_BIN = bin/editor
-LFLAGS += `sdl-config --libs` -lGL
+LFLAGS += `sdl2-config --libs` -lGL
 RES = 
 endif
 
