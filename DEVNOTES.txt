@@ -1,0 +1,29 @@
+This file contains a variety of development notes.
+
+We should consider disabling some "unsafe" Lua built in functions such
+as dofile(), load() and loadfile(), etc.
+
+It appears that "Sandbox" is the term you're looking for.
+See http://lua-users.org/wiki/SandBoxes. Also read the discussion
+of the topic at http://stackoverflow.com/q/966162/115589 and
+http://stackoverflow.com/q/1224708/115589
+
+It seems that the accepted solution is to not call luaL_openlibs()
+and rather copying and modifying linit.c
+
+I really ought to be using SDL v2.0. It offers a variety of benefits
+(I'm particularly interested in the Android and to a lesser extent iOS
+portability), and the sooner I'm done with the conversion the better.
+
+--I've been trying to compile v2.0, but it seems I need the DirectX SDK
+for MinGW-- Scratch that. I now have SDL v2.0.0 compiled, and it seems
+I'm gonna spend my weekend converting my SDL 1.2 code
+
+My Bitmap module should have a #pragma pack() at the
+structure declaration. The PAK file module should have
+it too. See the bottom of this section on the wikipedia:
+http://en.wikipedia.org/wiki/Data_structure_alignment#Typical_alignment_of_C_structs_on_x86
+(Seems it is not a big GCC issue, rather a MSVC thing)
+
+Speaking of the PAK file module, the ZIP file format turns out to be
+not that different, so I should look into it more closely.
