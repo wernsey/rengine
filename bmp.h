@@ -295,6 +295,18 @@ enum bm_fonts {
  */
 void bm_std_font(struct bitmap *b, enum bm_fonts font);
 
+/*@ int bm_font_index(const char *name)
+ *# Returns the index of on of the standard (built-in) fonts identified
+ *# by the {{name}}.
+ */
+int bm_font_index(const char *name);
+
+/*@ const char *bm_font_name(int index);
+ *# Returns the name of the standard (built-in) font identified
+ *# by {{index}}, which should fall in the range of the {{enum bm_fonts}}.
+ */
+const char *bm_font_name(int index);
+
 /*@ int bm_text_width(struct bitmap *b, const char *s)
  *# Returns the width in pixels of a string of text.
  */

@@ -14,7 +14,6 @@
 #include "ini.h"
 #include "resources.h"
 #include "utils.h"
-#include "mappings.h"
 #include "particles.h"
 
 /* Globals ***********************************************************************************/
@@ -92,11 +91,11 @@ static struct mu_par mus_font(struct musl *m, int argc, struct mu_par argv[]) {
 		name = mu_get_str(mu, "font");
 	}
 	
-	enum bm_fonts font = font_index(name);
+	enum bm_fonts font = bm_font_index(name);
 	bm_std_font(bmp, font);
 	
 	rv.type = mu_str;
-	rv.v.s = strdup(font_name(font));
+	rv.v.s = strdup(bm_font_name(font));
 
 	return rv;
 }

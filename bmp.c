@@ -900,7 +900,8 @@ void bm_fillroundrect(struct bitmap *b, int x0, int y0, int x1, int y1, int r) {
 	}
 }
 
-/* 
+/* Bexier curve with 3 control points.
+ * See http://devmag.org.za/2011/04/05/bzier-curves-a-tutorial/
  * I tried the more optimized version at
  * http://members.chello.at/~easyfilter/bresenham.html
  * but that one had some caveats.
@@ -909,16 +910,16 @@ void bm_bezier3(struct bitmap *b, int x0, int y0, int x1, int y1, int x2, int y2
 	int lx = x0, ly = y0;
 	int steps = 12;
 	double inc = 1.0/steps;
-	double t = 0, dx, dy;
+	double t = inc, dx, dy;
 	
-	while(t < 1.0) {
-		t += inc;
+	do {		
 		dx = (1-t)*(1-t)*x0 + 2*(1-t)*t*x1 + t*t*x2;
 		dy = (1-t)*(1-t)*y0 + 2*(1-t)*t*y1 + t*t*y2;
 		bm_line(b, lx, ly, dx, dy);
 		lx = dx;
 		ly = dy;
-	}
+		t += inc;
+	} while(t < 1.0);
 	bm_line(b, dx, dy, x2, y2);
 }
 
@@ -1020,6 +1021,48 @@ void bm_std_font(struct bitmap *b, enum bm_fonts font) {
 		case BM_FONT_SMALL_I : bm_set_font(b, smallinv_bits, 7); break;
 		case BM_FONT_THICK   : bm_set_font(b, thick_bits, 6); break;
 	}
+}
+
+static struct {
+	const char *s;
+	int i;
+} font_names[] = {
+	{"NORMAL", BM_FONT_NORMAL},
+	{"BOLD", BM_FONT_BOLD},
+	{"CIRCUIT", BM_FONT_CIRCUIT},
+	{"HAND", BM_FONT_HAND},
+	{"SMALL", BM_FONT_SMALL},
+	{"SMALL_I", BM_FONT_SMALL_I},
+	{"THICK", BM_FONT_THICK},
+	{NULL, 0}
+};
+
+int bm_font_index(const char *name) {
+	int i = 0;
+	char buffer[12], *c = buffer;
+	do {
+		*c++ = toupper(*name++);
+	} while(*name && c - buffer < sizeof buffer - 1);
+	*c = '\0';
+	
+	while(font_names[i].s) {
+		i++;
+		if(!strcmp(font_names[i].s, buffer)) {
+			return font_names[i].i;
+		}
+	}
+	return BM_FONT_NORMAL;
+}
+
+const char *bm_font_name(int index) {
+	int i = 0;
+	while(font_names[i].s) {
+		i++;
+		if(font_names[i].i == index) {
+			return font_names[i].s;
+		}
+	}
+	return font_names[0].s;
 }
 
 int bm_text_width(struct bitmap *b, const char *s) {
