@@ -27,13 +27,13 @@ Dependencies
 ------------
 
 Rengine is dependant upon these 3rd party libraries:
-* SDL - Cross-platform low level game library - http://www.libsdl.org
-* Lua - Scripting language - http://www.lua.org
-* FLTK - Cross-platform GUI toolkit, used for the map editor - http://www.fltk.org
+* SDL (2.0.0) - Cross-platform low level game library - http://www.libsdl.org
+* Lua (5.2.2) - Scripting language - http://www.lua.org
+* FLTK (1.3.2) - Cross-platform GUI toolkit, used for the map editor - http://www.fltk.org
 
 On Linux systems, these libraries can be found in your package manager.
 
-On Windows, Rengine is built with (MinGW)[http://mingw.org/]. See the
+On Windows, Rengine is built with [MinGW](http://mingw.org/). See the
 webpages of the packages mentioned above for details on how to compile
 them under Windows.
 
@@ -43,5 +43,5 @@ License
 Rengine is distributed under the terms of the MIT License. See the LICENSE 
 file for details.
 
-Also refer to the (Wikipedia article)[http://en.wikipedia.org/wiki/MIT_License]
+Also refer to the [Wikipedia article](http://en.wikipedia.org/wiki/MIT_License)
 for more information.
