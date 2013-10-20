@@ -42,6 +42,9 @@ LPPFLAGS += -static-libstdc++
 
 editor: $(EDIT_BIN)
 
+debug: 
+	make "BUILD=debug"
+
 $(EDIT_BIN): main.o editor.o BMCanvas.o LevelCanvas.o TileCanvas.o \
 				bmp.o tileset.o map.o lexer.o json.o hash.o utils.o
 	g++ -o $@  $^ $(LPPFLAGS)
