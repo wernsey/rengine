@@ -238,6 +238,95 @@ static struct mu_par mus_line(struct musl *m, int argc, struct mu_par argv[]) {
 	return rv;
 }
 
+/*@ RECT(x1,y1,x2,y2) 
+ *# Draws a rectangle from x1,y1 to x2,y2
+ */
+static struct mu_par mus_rect(struct musl *m, int argc, struct mu_par argv[]) {
+	struct mu_par rv = {mu_int, {0}};
+	struct bitmap *bmp = mu_get_data(mu);
+	bm_rect(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
+		mu_par_num(m, 2, argc, argv),mu_par_num(m, 3, argc, argv));
+	return rv;
+}
+
+/*@ FILLRECT(x1,y1,x2,y2) 
+ *# Draws a filled rectangle from x1,y1 to x2,y2
+ */
+static struct mu_par mus_fillrect(struct musl *m, int argc, struct mu_par argv[]) {
+	struct mu_par rv = {mu_int, {0}};
+	struct bitmap *bmp = mu_get_data(mu);
+	bm_fillrect(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
+		mu_par_num(m, 2, argc, argv),mu_par_num(m, 3, argc, argv));
+	return rv;
+}
+
+/*@ CIRCLE(x,y,r) 
+ *# Draws a circle centered at x,y of radius r
+ */
+static struct mu_par mus_circle(struct musl *m, int argc, struct mu_par argv[]) {
+	struct mu_par rv = {mu_int, {0}};
+	struct bitmap *bmp = mu_get_data(mu);
+	bm_circle(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
+		mu_par_num(m, 2, argc, argv));
+	return rv;
+}
+
+/*@ FILLCIRCLE(x,y,r) 
+ *# Draws a filled circle centered at x,y of radius r
+ */
+static struct mu_par mus_fillcircle(struct musl *m, int argc, struct mu_par argv[]) {
+	struct mu_par rv = {mu_int, {0}};
+	struct bitmap *bmp = mu_get_data(mu);
+	bm_fillcircle(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
+		mu_par_num(m, 2, argc, argv));
+	return rv;
+}
+
+/*@ ELLIPSE(x1,y1,x2,y2) 
+ *# Draws a ellipse from x1,y1 to x2,y2
+ */
+static struct mu_par mus_ellipse(struct musl *m, int argc, struct mu_par argv[]) {
+	struct mu_par rv = {mu_int, {0}};
+	struct bitmap *bmp = mu_get_data(mu);
+	bm_ellipse(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
+		mu_par_num(m, 2, argc, argv),mu_par_num(m, 3, argc, argv));
+	return rv;
+}
+
+/*@ ROUNDRECT(x1,y1,x2,y2,r) 
+ *# Draws a rectangle from x1,y1 to x2,y2 with rounded corners of radius r
+ */
+static struct mu_par mus_roundrect(struct musl *m, int argc, struct mu_par argv[]) {
+	struct mu_par rv = {mu_int, {0}};
+	struct bitmap *bmp = mu_get_data(mu);
+	bm_roundrect(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
+		mu_par_num(m, 2, argc, argv),mu_par_num(m, 3, argc, argv),mu_par_num(m, 4, argc, argv));
+	return rv;
+}
+
+/*@ FILLROUNDRECT(x1,y1,x2,y2,r) 
+ *# Draws a filled rectangle from x1,y1 to x2,y2 with rounded corners of radius r
+ */
+static struct mu_par mus_fillroundrect(struct musl *m, int argc, struct mu_par argv[]) {
+	struct mu_par rv = {mu_int, {0}};
+	struct bitmap *bmp = mu_get_data(mu);
+	bm_fillroundrect(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
+		mu_par_num(m, 2, argc, argv),mu_par_num(m, 3, argc, argv),mu_par_num(m, 4, argc, argv));
+	return rv;
+}
+
+/*@ CURVE(x0,y0,x1,y1,x2,y2) 
+ *# Draws a curve from x0,y0 to x2,y2 with x1,y1 as control point
+ */
+static struct mu_par mus_curve(struct musl *m, int argc, struct mu_par argv[]) {
+	struct mu_par rv = {mu_int, {0}};
+	struct bitmap *bmp = mu_get_data(mu);
+	bm_bezier3(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
+		mu_par_num(m, 2, argc, argv),mu_par_num(m, 3, argc, argv),
+		mu_par_num(m, 4, argc, argv),mu_par_num(m, 5, argc, argv));
+	return rv;
+}
+
 /* State Functions ***************************************************************************/
 
 static int mus_init(struct game_state *s) {
@@ -284,7 +373,15 @@ static int mus_init(struct game_state *s) {
 	
 	mu_add_func(mu, "pixel", mus_putpixel);
 	mu_add_func(mu, "line", mus_line);	
-	
+	mu_add_func(mu, "rect", mus_rect);	
+	mu_add_func(mu, "fillrect", mus_fillrect);	
+	mu_add_func(mu, "circle", mus_circle);	
+	mu_add_func(mu, "fillcircle", mus_fillcircle);
+	mu_add_func(mu, "ellipse", mus_ellipse);
+	mu_add_func(mu, "roundrect", mus_roundrect);
+	mu_add_func(mu, "fillroundrect", mus_fillroundrect);
+	mu_add_func(mu, "curve", mus_curve);		
+		
 	mu_set_int(mu, "mouse_x", mouse_x);
 	mu_set_int(mu, "mouse_y", mouse_y);
 	

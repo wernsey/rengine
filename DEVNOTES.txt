@@ -20,7 +20,9 @@ http://en.wikipedia.org/wiki/Data_structure_alignment#Typical_alignment_of_C_str
 Speaking of the PAK file module, the ZIP file format turns out to be
 not that different, so I should look into it more closely.
 
-The contents of mappings.c can now be moved to bmp.c since the keyboard key-name mapping has been removed.
+The bmp.c can do with an bm_arc(bmp, start_angle, end_angle, radius) function.
+
+bmp.c is also still missing a bm_fillellipse() function.
 
 Descision whether to stick with scancodes or switch keycodes?
 
