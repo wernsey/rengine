@@ -1,4 +1,5 @@
-This file contains a variety of development notes. I'll keep my FIXMEs and TODOs in here.
+This file contains a variety of development notes. I'll keep my FIXMEs
+and TODOs in here.
 
 We should consider disabling some "unsafe" Lua built in functions such
 as dofile(), load() and loadfile(), etc.
@@ -14,20 +15,33 @@ and rather copying and modifying linit.c
 My Bitmap module should have a #pragma pack() at the
 structure declaration. The PAK file module should have
 it too. See the bottom of this section on the wikipedia:
-http://en.wikipedia.org/wiki/Data_structure_alignment#Typical_alignment_of_C_structs_on_x86
-(Seems it is not a big GCC issue, rather a MSVC thing)
+http://en.wikipedia.org/wiki/Data_structure_alignment in the section
+"Typical alignment of C structs on x86" (Seems it is not a big GCC issue,
+rather a MSVC thing)
 
 Speaking of the PAK file module, the ZIP file format turns out to be
 not that different, so I should look into it more closely.
 
-The bmp.c can do with an bm_arc(bmp, start_angle, end_angle, radius) function.
+The bmp.c can do with an bm_arc(bmp, start_angle, end_angle, radius)
+function.
 
 bmp.c is also still missing a bm_fillellipse() function.
 
-Descision whether to stick with scancodes or switch keycodes?
+Descision whether to stick with scancodes or switch to keycodes?
 
-Implement fullscreen mode on F11 keypress.
-
-Allow window to be resized.
+Implement fullscreen mode on F11 keypress. Allow window to be
+resized. These two are related. The previous version of Rengine that
+used SDL 1.2 allowed you to do this.
 
 Docs says SDL_UpdateTexture() be slow. Do something different.
+
+# Editor:
+
+Changing the Working Directory affects the tilesets, so you should rather
+set the working directory when you start a new project.
+
+I should rethink the way the class and id is handled.  The specific
+problem is that each tile can only have one class and id, regardless of
+the number of layers.  I think they should be stored more like the meta
+data in the tilesets.  If I do this before I implement loading of the
+maps it may save me some trouble later.
