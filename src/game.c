@@ -48,8 +48,8 @@ SDL_Texture *tex = NULL;
 
 int quit = 0;
 
-static int fullscreen = 0, /* FIXME: Bring back fullscreen mode */
-	resizable = 0, 
+static int fullscreen = 0,
+	resizable = 0, borderless = 0,
 	filter = GL_NEAREST;
 
 static struct bitmap *bmp = NULL;
@@ -70,6 +70,8 @@ char keys[SDL_NUM_SCANCODES];
 /* Functions *************************************************/
 
 int init(const char *appTitle, int virt_width, int virt_height) {
+	int flags = SDL_WINDOW_SHOWN;
+	
 	fprintf(log_file, "info: Creating Window.\n");
 	
 	if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_VIDEO) < 0) {
@@ -77,8 +79,16 @@ int init(const char *appTitle, int virt_width, int virt_height) {
 		return 1;
 	}
 	atexit(SDL_Quit);
-		
-	win = SDL_CreateWindow(appTitle, 100, 100, screenWidth, screenHeight, SDL_WINDOW_SHOWN);	
+	
+	if(!fullscreen) {
+		if(resizable)
+			flags |= SDL_WINDOW_RESIZABLE;
+		else if(borderless)
+			flags |= SDL_WINDOW_BORDERLESS;
+	}
+	
+	
+	win = SDL_CreateWindow(appTitle, 100, 100, screenWidth, screenHeight, flags);	
 	if(!win) {
 		fprintf(log_file, "error: SDL_CreateWindow: %s\n", SDL_GetError());
 		return 0;
@@ -106,21 +116,35 @@ int init(const char *appTitle, int virt_width, int virt_height) {
 	return 1;
 }
 
-void handleKeys(SDL_Scancode key) {
+int handleSpecialKeys(SDL_Scancode key) {
 	if(key == SDL_SCANCODE_ESCAPE) {
 		quit = 1;
+		return 1;
 	} else if (key == SDL_SCANCODE_F11) {
 		if(!fullscreen) {		
-			fullscreen = !fullscreen;
-		} else {			
-			fullscreen = !fullscreen;
+			if(SDL_SetWindowFullscreen(win, SDL_WINDOW_FULLSCREEN) < 0) {
+				fprintf(log_file, "error: Unable to set window to fullscreen: %s\n", SDL_GetError());
+				fflush(log_file);
+			} else {
+				fullscreen = !fullscreen;
+			}
+		} else {	
+			if(SDL_SetWindowFullscreen(win, 0) < 0) {
+				fprintf(log_file, "error: Unable to set window to windowed: %s\n", SDL_GetError());
+				fflush(log_file);
+			} else {
+				fullscreen = !fullscreen;
+			}
 		}
+		return 1;
 	} else if(key == SDL_SCANCODE_F12) {
 		const char *filename = "save.bmp";
 		bm_save(bmp, filename);
 		fprintf(log_file, "Screenshot saved as %s\n", filename);
 		fflush(log_file);
+		return 1;
 	}
+	return 0;
 }
 
 int screen_to_virt_x(int in) {
@@ -174,12 +198,13 @@ void advanceFrame() {
 		} else if(event.type == SDL_KEYDOWN) {
 			/* FIXME: Descision whether to stick with scancodes or keycodes? */
 			int index = event.key.keysym.scancode;			
-			fflush(log_file);
 			
-			/* Handle special keys */			
-			handleKeys(event.key.keysym.scancode);
-			assert(index < SDL_NUM_SCANCODES);			
-			keys[index] = 1;
+			/* Special Keys: F11, F12 and Esc */
+			if(!handleSpecialKeys(event.key.keysym.scancode)) {
+				/* Not a special key: */
+				assert(index < SDL_NUM_SCANCODES);			
+				keys[index] = 1;
+			}
 			
 		} else if(event.type == SDL_KEYUP) {
 			int index = event.key.keysym.scancode;			
@@ -195,10 +220,17 @@ void advanceFrame() {
 				}
 			} else if(event.button.button == SDL_BUTTON_RIGHT) {
 			}			
-		} /* 
-		else if(event.type == SDL_VIDEORESIZE) {
-			FIXME: Video resize.
-		} */
+		} else if(event.type == SDL_WINDOWEVENT) {
+			switch(event.window.event) {
+			case SDL_WINDOWEVENT_RESIZED:
+				screenWidth = event.window.data1;
+				screenHeight = event.window.data2;
+				fprintf(log_file, "Window resized to %dx%d\n", screenWidth, screenHeight);
+				fflush(log_file);
+				break;
+			default: break;
+			}
+		}
 	}
 }
 
@@ -301,6 +333,8 @@ int main(int argc, char *argv[]) {
 			screenHeight = atoi(ini_get(game_ini, "screen", "height", PARAM(SCREEN_HEIGHT)));	
 			screenBpp = atoi(ini_get(game_ini, "screen", "bpp", PARAM(SCREEN_BPP)));	
 			resizable = atoi(ini_get(game_ini, "screen", "resizable", "0"));	
+			borderless = atoi(ini_get(game_ini, "screen", "borderless", "0"));	
+			fullscreen = atoi(ini_get(game_ini, "screen", "fullscreen", "0"));	
 			fps = atoi(ini_get(game_ini, "screen", "fps", PARAM(DEFAULT_FPS)));
 			if(fps <= 0)
 				fps = DEFAULT_FPS;
@@ -339,10 +373,20 @@ start_demo:
 		return 1;
 	}
 	
+	SDL_Log("Test log message");
+	
 	frameStart = SDL_GetTicks();	
 	
 	fprintf(log_file, "info: Event loop starting...\n");
 	fflush(log_file);
+	
+	/* If I used SDL_WINDOW_FULLSCREEN in SDL_CreateWindow() it 
+	had some strange problems when you shutdown the engine. */
+	if(fullscreen) {
+		if(SDL_SetWindowFullscreen(win, SDL_WINDOW_FULLSCREEN) < 0) {
+			fprintf(log_file, "error: Unable to set window to fullscreen: %s\n", SDL_GetError());
+		} 
+	}
 	
 	while(!quit) {
 		if(current_state->update) 

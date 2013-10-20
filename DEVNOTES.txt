@@ -27,11 +27,8 @@ function.
 
 bmp.c is also still missing a bm_fillellipse() function.
 
-Descision whether to stick with scancodes or switch to keycodes?
-
-Implement fullscreen mode on F11 keypress. Allow window to be
-resized. These two are related. The previous version of Rengine that
-used SDL 1.2 allowed you to do this.
+Descision whether to stick with scancodes or switch to keycodes? Or make
+it configurable?
 
 Docs says SDL_UpdateTexture() be slow. Do something different.
 
