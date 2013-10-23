@@ -3,10 +3,8 @@
 
 #ifdef WIN32
 #include <SDL.h>
-#include <SDL_opengl.h>
 #else
 #include <SDL/SDL.h>
-#include <SDL/SDL_opengl.h>
 #endif
 
 #include "ini.h"
@@ -21,8 +19,7 @@
 
 struct game_state *current_state;
 
-extern struct game_state map_state; /* maptate.c */
-extern struct game_state mus_state; /* mustate.c */
+static struct game_state *get_state(const char *name);
 
 static struct {
 	const char *fg;
@@ -46,8 +43,6 @@ static struct {
 	int image_margin;
 	
 } style;
-
-static struct game_state *get_state(const char *name);
 
 static void apply_styles(const char *state) {	
 	const char *font, *image;
@@ -179,9 +174,9 @@ static void basic_state(struct game_state *s, struct bitmap *bmp) {
 	int tx, ty;
 	int ix = 0, iy = 0;
 	
-	const char *text = ini_get(game_ini, s->data, "text", "?");
-	const char *halign = ini_get(game_ini, s->data, "halign", "center");
-	const char *valign = ini_get(game_ini, s->data, "valign", "center");
+	const char *text = ini_get(game_ini, s->name, "text", "?");
+	const char *halign = ini_get(game_ini, s->name, "halign", "center");
+	const char *valign = ini_get(game_ini, s->name, "valign", "center");
 	
 	bm_set_color_s(bmp, style.bg);
 	bm_clear(bmp);
@@ -264,7 +259,7 @@ static void basic_state(struct game_state *s, struct bitmap *bmp) {
 }
 
 static int basic_init(struct game_state *s) {	
-	apply_styles(s->data);
+	apply_styles(s->name);
 	reset_keys();
 	clear_particles();
 	return 1;
@@ -281,7 +276,7 @@ static int static_update(struct game_state *s, struct bitmap *bmp) {
 	basic_state(s, bmp);
 	
 	if(kb_hit() || mouse_clck & SDL_BUTTON(1)) {
-		const char *nextstate = ini_get(game_ini, s->data, "nextstate", NULL);
+		const char *nextstate = ini_get(game_ini, s->name, "nextstate", NULL);
 		struct game_state *next;
 		
 		if(!nextstate)
@@ -306,16 +301,24 @@ static int static_deinit(struct game_state *s) {
 	return basic_deinit(s);
 }
 
-static struct game_state static_state = {
-	NULL,
-	static_init,
-	static_update,
-	static_deinit
-};
+static struct game_state *get_static_state(const char *name) {
+	struct game_state *state = malloc(sizeof *state);
+	if(!state)
+		return NULL;
+	state->name = name;
+	
+	state->init = static_init;
+	state->update = static_update;
+	state->deinit = static_deinit;
+	
+	return state;
+}
 
 /* Left-Right State **********************************/
 
-static int lr_direction = 0; /* left=0; right=1 */
+struct left_right {
+	int dir; /* left=0; right=1 */
+};
 
 static void draw_button(struct bitmap *bmp, int x, int y, int w, int h, int pad_left, int pad_top, const char *label, int highlight) {
 	bm_set_color_s(bmp, style.fg);
@@ -341,8 +344,10 @@ static int leftright_update(struct game_state *s, struct bitmap *bmp) {
 
 	int clicked = 0;
 	
-	const char *left_label = ini_get(game_ini, s->data, "left-label", "Left");
-	const char *right_label = ini_get(game_ini, s->data, "right-label", "Right");
+	const char *left_label = ini_get(game_ini, s->name, "left-label", "Left");
+	const char *right_label = ini_get(game_ini, s->name, "right-label", "Right");
+	
+	struct left_right *lr = s->data;
 	
 	basic_state(s, bmp);
 	
@@ -367,16 +372,16 @@ static int leftright_update(struct game_state *s, struct bitmap *bmp) {
 	/* Cursor over  */
 	if(mouse_x >= bx1 && mouse_x <= bx1 + bw && mouse_y >= by1 && mouse_y <= by1 + bh) {
 		clicked = mouse_clck & SDL_BUTTON(1);
-		lr_direction = 0;		
+		lr->dir = 0;		
 	} else if(mouse_x >= bx2 && mouse_x <= bx2 + bw && mouse_y >= by2 && mouse_y <= by2 + bh) {
 		clicked = mouse_clck & SDL_BUTTON(1);
-		lr_direction = 1;
+		lr->dir = 1;
 	} 
 	
 	if((k = kb_hit()) || clicked) {
 		if(k == SDL_SCANCODE_SPACE || k == SDL_SCANCODE_RETURN || clicked) {				
-			if(!lr_direction) {
-				const char *nextstate = ini_get(game_ini, s->data, "left-state", NULL);
+			if(!lr->dir) {
+				const char *nextstate = ini_get(game_ini, s->name, "left-state", NULL);
 				struct game_state *next;
 				
 				if(!nextstate)
@@ -389,7 +394,7 @@ static int leftright_update(struct game_state *s, struct bitmap *bmp) {
 				
 				change_state(next);
 			} else {
-				const char *nextstate = ini_get(game_ini, s->data, "right-state", NULL);
+				const char *nextstate = ini_get(game_ini, s->name, "right-state", NULL);
 				struct game_state *next;
 				
 				if(!nextstate)
@@ -406,35 +411,46 @@ static int leftright_update(struct game_state *s, struct bitmap *bmp) {
 		}
 		
 		if(k == SDL_SCANCODE_LEFT || k == SDL_SCANCODE_UP) {
-			lr_direction = 0;
+			lr->dir = 0;
 		} else if(k == SDL_SCANCODE_RIGHT || k == SDL_SCANCODE_DOWN) {
-			lr_direction = 1;
+			lr->dir = 1;
 		}
 	} 
 		
 	/* Draw the buttons */	
-	draw_button(bmp, bx1, by1, bw, bh, ((bw-bw1)>>1), ((bh-bh1)>>1), left_label, !lr_direction);
+	draw_button(bmp, bx1, by1, bw, bh, ((bw-bw1)>>1), ((bh-bh1)>>1), left_label, !lr->dir);
 
-	draw_button(bmp, bx2, by2, bw, bh, ((bw-bw2)>>1), ((bh-bh2)>>1), right_label, lr_direction);
+	draw_button(bmp, bx2, by2, bw, bh, ((bw-bw2)>>1), ((bh-bh2)>>1), right_label, lr->dir);
 	
 	return 1;
 }
 
 static int leftright_init(struct game_state *s) {
-	lr_direction = 0;
+	struct left_right *lr = malloc(sizeof *lr);
+	if(!lr)
+		return 0;
+	lr->dir = 0;
+	s->data = lr;
 	return basic_init(s);
 }
 
 static int leftright_deinit(struct game_state *s) {
+	free(s->data);
 	return basic_deinit(s);
 }
 
-static struct game_state leftright_state = {
-	NULL,
-	leftright_init,
-	leftright_update,
-	leftright_deinit
-};
+static struct game_state *get_leftright_state(const char *name) {
+	struct game_state *state = malloc(sizeof *state);
+	if(!state)
+		return NULL;
+	state->name = name;
+	
+	state->init = leftright_init;
+	state->update = leftright_update;
+	state->deinit = leftright_deinit;
+	
+	return state;
+}
 
 /* Functions *****************************************/
 
@@ -444,6 +460,7 @@ int change_state(struct game_state *next) {
 			fprintf(log_file, "error: Deinitialising new state\n");
 			return 0;
 		}
+		free(current_state);
 	}	
 	current_state = next;	
 	if(current_state && current_state->init) {
@@ -477,23 +494,22 @@ static struct game_state *get_state(const char *name) {
 	}
 	
 	if(!my_stricmp(type, "static")) {
-		static_state.data = (void*)name;
-		return &static_state;
+		next = get_static_state(name);
 	} else if(!my_stricmp(type, "map")) {
-		map_state.data = (void*)name;
-		return &map_state;
+		next = get_map_state(name);
 	} else if(!my_stricmp(type, "leftright")) {
-		leftright_state.data = (void*)name;
-		return &leftright_state;
+		next = get_leftright_state(name);
 	} else if(!my_stricmp(type, "musl")) {
-		mus_state.data = (void*)name;
-		return &mus_state;
+		next = get_mus_state(name);
 	} else {
 		fprintf(log_file, "error: Invalid type '%s' for state '%s' in ini file\n", type, name);
 		quit = 1;
 		return NULL;
 	}
-	
+	if(!next) {
+		fprintf(log_file, "error: Memory allocation error obtaining state %s\n", name);
+		quit = 1;
+	}
 	return next;
 }
 

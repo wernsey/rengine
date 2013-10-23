@@ -16,15 +16,15 @@
 #include "utils.h"
 #include "particles.h"
 
-/* Globals ***********************************************************************************/
+/* Structures ********************************************************************************/
 
-static struct musl *mu = NULL;
-
-static const char *mu_script_file = "";
-static char *mu_script = NULL;
-
-static int mu_x = 0, mu_y = 0;
-
+struct mu_data {
+	struct musl *mu;
+	const char *file;
+	char *script;
+	struct bitmap *bmp;
+};
+	
 /* Musl Functions ****************************************************************************/
 
 /*@ CLS([color]) 
@@ -33,12 +33,12 @@ static int mu_x = 0, mu_y = 0;
  */
 static struct mu_par mus_cls(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
-	struct bitmap *bmp = mu_get_data(mu);
+	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
 
 	if(argc > 0) {
 		bm_set_color_s(bmp, mu_par_str(m, 0, argc, argv));
 	} else {
-		bm_set_color_s(bmp, mu_get_str(mu, "background"));
+		bm_set_color_s(bmp, mu_get_str(m, "background"));
 	}
 	
 	bm_clear(bmp);
@@ -54,8 +54,8 @@ static struct mu_par mus_show(struct musl *m, int argc, struct mu_par argv[]) {
 	advanceFrame();
 	if(quit) mu_halt(m);
 	
-	mu_set_int(mu, "mouse_x", mouse_x);
-	mu_set_int(mu, "mouse_y", mouse_y);
+	mu_set_int(m, "mouse_x", mouse_x);
+	mu_set_int(m, "mouse_y", mouse_y);
 	
 	return rv;
 }
@@ -65,13 +65,13 @@ static struct mu_par mus_show(struct musl *m, int argc, struct mu_par argv[]) {
  */
 static struct mu_par mus_color(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
-	struct bitmap *bmp = mu_get_data(mu);
+	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
 
 	if(argc > 0) {
 		const char *text = mu_par_str(m, 0, argc, argv);	
 		bm_set_color_s(bmp, text);
 	} else {
-		bm_set_color_s(bmp, mu_get_str(mu, "foreground"));
+		bm_set_color_s(bmp, mu_get_str(m, "foreground"));
 	}
 	
 	return rv;
@@ -82,13 +82,13 @@ static struct mu_par mus_color(struct musl *m, int argc, struct mu_par argv[]) {
  */
 static struct mu_par mus_font(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv;
-	struct bitmap *bmp = mu_get_data(mu);
+	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
 	const char *name;
 
 	if(argc > 0) {
 		name = mu_par_str(m, 0, argc, argv);
 	} else {
-		name = mu_get_str(mu, "font");
+		name = mu_get_str(m, "font");
 	}
 	
 	enum bm_fonts font = bm_font_index(name);
@@ -107,8 +107,8 @@ static struct mu_par mus_font(struct musl *m, int argc, struct mu_par argv[]) {
 static struct mu_par mus_gotoxy(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
 	
-	mu_x = mu_par_num(m, 0, argc, argv);
-	mu_y = mu_par_num(m, 1, argc, argv);
+	mu_set_int(m, "_px", mu_par_num(m, 0, argc, argv));
+	mu_set_int(m, "_py", mu_par_num(m, 1, argc, argv));
 
 	return rv;
 }
@@ -119,19 +119,21 @@ static struct mu_par mus_gotoxy(struct musl *m, int argc, struct mu_par argv[]) 
  */
 static struct mu_par mus_print(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
-	struct bitmap *bmp = mu_get_data(mu);
-	int x = mu_x, i, h = 8;
+	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
+	int x, y, i, h = 8;
+	
+	x = mu_get_int(m, "_px");
+	y = mu_get_int(m, "_py");
 	
 	for(i = 0; i < argc; i++) {
 		const char *text = mu_par_str(m, i, argc, argv);
 		int hh = bm_text_height(bmp, text);
-		bm_puts(bmp, x, mu_y, text);
+		bm_puts(bmp, x, y, text);
 		x += bm_text_width(bmp, text);
 		if(hh > h)
 			h = hh;
-	}
-	
-	mu_y += h + 1;
+	}	
+	mu_set_int(m, "_py", y + h + 1);
 	
 	return rv;
 }
@@ -222,7 +224,7 @@ static struct mu_par mus_delay(struct musl *m, int argc, struct mu_par argv[]) {
  */
 static struct mu_par mus_putpixel(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
-	struct bitmap *bmp = mu_get_data(mu);
+	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
 	bm_putpixel(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv));
 	return rv;
 }
@@ -232,7 +234,7 @@ static struct mu_par mus_putpixel(struct musl *m, int argc, struct mu_par argv[]
  */
 static struct mu_par mus_line(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
-	struct bitmap *bmp = mu_get_data(mu);
+	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
 	bm_line(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
 		mu_par_num(m, 2, argc, argv),mu_par_num(m, 3, argc, argv));
 	return rv;
@@ -243,7 +245,7 @@ static struct mu_par mus_line(struct musl *m, int argc, struct mu_par argv[]) {
  */
 static struct mu_par mus_rect(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
-	struct bitmap *bmp = mu_get_data(mu);
+	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
 	bm_rect(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
 		mu_par_num(m, 2, argc, argv),mu_par_num(m, 3, argc, argv));
 	return rv;
@@ -254,7 +256,7 @@ static struct mu_par mus_rect(struct musl *m, int argc, struct mu_par argv[]) {
  */
 static struct mu_par mus_fillrect(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
-	struct bitmap *bmp = mu_get_data(mu);
+	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
 	bm_fillrect(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
 		mu_par_num(m, 2, argc, argv),mu_par_num(m, 3, argc, argv));
 	return rv;
@@ -265,7 +267,7 @@ static struct mu_par mus_fillrect(struct musl *m, int argc, struct mu_par argv[]
  */
 static struct mu_par mus_circle(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
-	struct bitmap *bmp = mu_get_data(mu);
+	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
 	bm_circle(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
 		mu_par_num(m, 2, argc, argv));
 	return rv;
@@ -276,7 +278,7 @@ static struct mu_par mus_circle(struct musl *m, int argc, struct mu_par argv[]) 
  */
 static struct mu_par mus_fillcircle(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
-	struct bitmap *bmp = mu_get_data(mu);
+	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
 	bm_fillcircle(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
 		mu_par_num(m, 2, argc, argv));
 	return rv;
@@ -287,7 +289,7 @@ static struct mu_par mus_fillcircle(struct musl *m, int argc, struct mu_par argv
  */
 static struct mu_par mus_ellipse(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
-	struct bitmap *bmp = mu_get_data(mu);
+	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
 	bm_ellipse(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
 		mu_par_num(m, 2, argc, argv),mu_par_num(m, 3, argc, argv));
 	return rv;
@@ -298,7 +300,7 @@ static struct mu_par mus_ellipse(struct musl *m, int argc, struct mu_par argv[])
  */
 static struct mu_par mus_roundrect(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
-	struct bitmap *bmp = mu_get_data(mu);
+	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
 	bm_roundrect(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
 		mu_par_num(m, 2, argc, argv),mu_par_num(m, 3, argc, argv),mu_par_num(m, 4, argc, argv));
 	return rv;
@@ -309,7 +311,7 @@ static struct mu_par mus_roundrect(struct musl *m, int argc, struct mu_par argv[
  */
 static struct mu_par mus_fillroundrect(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
-	struct bitmap *bmp = mu_get_data(mu);
+	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
 	bm_fillroundrect(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
 		mu_par_num(m, 2, argc, argv),mu_par_num(m, 3, argc, argv),mu_par_num(m, 4, argc, argv));
 	return rv;
@@ -320,7 +322,7 @@ static struct mu_par mus_fillroundrect(struct musl *m, int argc, struct mu_par a
  */
 static struct mu_par mus_curve(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
-	struct bitmap *bmp = mu_get_data(mu);
+	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
 	bm_bezier3(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
 		mu_par_num(m, 2, argc, argv),mu_par_num(m, 3, argc, argv),
 		mu_par_num(m, 4, argc, argv),mu_par_num(m, 5, argc, argv));
@@ -333,124 +335,137 @@ static int mus_init(struct game_state *s) {
 	
 	int tmp;
 	
-	fprintf(log_file, "info: Initializing Musl state '%s'\n", (char*)s->data);
+	struct mu_data *md = malloc(sizeof *md);
+	if(!md) 
+		return 0;
+	md->mu = NULL;
+	md->script = NULL;
+	
+	fprintf(log_file, "info: Initializing Musl state '%s'\n", s->name);
 
 	reset_keys();
 	
-	mu_script_file = ini_get(game_ini, s->data, "script", NULL);	
-	if(!mu_script_file) {
-		fprintf(log_file, "error: No script specified in Musl state '%s'\n", (char*)s->data);
+	md->file = ini_get(game_ini, s->name, "script", NULL);	
+	if(!md->file) {
+		fprintf(log_file, "error: No script specified in Musl state '%s'\n", s->name);
 		fflush(log_file);
 		return 0;
 	}
 	
-	if(!(mu = mu_create())) {
+	if(!(md->mu = mu_create())) {
 		fprintf(log_file, "error: Couldn't create Musl interpreter\n");
 		fflush(log_file);
 		return 0;
 	}
 	
-	fprintf(log_file, "info: Loading Musl script '%s'\n", mu_script_file);
+	fprintf(log_file, "info: Loading Musl script '%s'\n", md->file);
 	
-	mu_script = re_get_script(mu_script_file);
-	if(!mu_script) {
-		fprintf(log_file, "error: Couldn't load Musl script '%s'\n", mu_script_file);
+	md->script = re_get_script(md->file);
+	if(!md->script) {
+		fprintf(log_file, "error: Couldn't load Musl script '%s'\n", md->file);
 		fflush(log_file);
 		return 0;
 	}
 	
-	mu_add_func(mu, "gotoxy", mus_gotoxy);
-	mu_add_func(mu, "cls", mus_cls);
-	mu_add_func(mu, "color", mus_color);
-	mu_add_func(mu, "font", mus_font);
-	mu_add_func(mu, "print", mus_print);
-	mu_add_func(mu, "kbhit", mus_kbhit);
-	mu_add_func(mu, "kbclr", mus_kbclr);
-	mu_add_func(mu, "show", mus_show);
-	mu_add_func(mu, "log", mus_log);
-	mu_add_func(mu, "delay", mus_delay);
-	mu_add_func(mu, "clear_particles", mus_clr_par);
+	mu_add_func(md->mu, "gotoxy", mus_gotoxy);
+	mu_add_func(md->mu, "cls", mus_cls);
+	mu_add_func(md->mu, "color", mus_color);
+	mu_add_func(md->mu, "font", mus_font);
+	mu_add_func(md->mu, "print", mus_print);
+	mu_add_func(md->mu, "kbhit", mus_kbhit);
+	mu_add_func(md->mu, "kbclr", mus_kbclr);
+	mu_add_func(md->mu, "show", mus_show);
+	mu_add_func(md->mu, "log", mus_log);
+	mu_add_func(md->mu, "delay", mus_delay);
+	mu_add_func(md->mu, "clear_particles", mus_clr_par);
 	
-	mu_add_func(mu, "pixel", mus_putpixel);
-	mu_add_func(mu, "line", mus_line);	
-	mu_add_func(mu, "rect", mus_rect);	
-	mu_add_func(mu, "fillrect", mus_fillrect);	
-	mu_add_func(mu, "circle", mus_circle);	
-	mu_add_func(mu, "fillcircle", mus_fillcircle);
-	mu_add_func(mu, "ellipse", mus_ellipse);
-	mu_add_func(mu, "roundrect", mus_roundrect);
-	mu_add_func(mu, "fillroundrect", mus_fillroundrect);
-	mu_add_func(mu, "curve", mus_curve);		
+	mu_add_func(md->mu, "pixel", mus_putpixel);
+	mu_add_func(md->mu, "line", mus_line);	
+	mu_add_func(md->mu, "rect", mus_rect);	
+	mu_add_func(md->mu, "fillrect", mus_fillrect);	
+	mu_add_func(md->mu, "circle", mus_circle);	
+	mu_add_func(md->mu, "fillcircle", mus_fillcircle);
+	mu_add_func(md->mu, "ellipse", mus_ellipse);
+	mu_add_func(md->mu, "roundrect", mus_roundrect);
+	mu_add_func(md->mu, "fillroundrect", mus_fillroundrect);
+	mu_add_func(md->mu, "curve", mus_curve);		
 		
-	mu_set_int(mu, "mouse_x", mouse_x);
-	mu_set_int(mu, "mouse_y", mouse_y);
+	mu_set_int(md->mu, "mouse_x", mouse_x);
+	mu_set_int(md->mu, "mouse_y", mouse_y);
+	
+	mu_set_int(md->mu, "_px", 0);
+	mu_set_int(md->mu, "_py", 0);
 	
 	/* Some variables from the ini file */
 	
-	mu_set_str(mu, "background", ini_get(game_ini, s->data, "background", ini_get(game_ini, "styles", "background", "black")));
-	mu_set_str(mu, "foreground", ini_get(game_ini, s->data, "foreground", ini_get(game_ini, "styles", "foreground", "white")));
+	mu_set_str(md->mu, "background", ini_get(game_ini, s->name, "background", ini_get(game_ini, "styles", "background", "black")));
+	mu_set_str(md->mu, "foreground", ini_get(game_ini, s->name, "foreground", ini_get(game_ini, "styles", "foreground", "white")));
 	
-	tmp = atoi(ini_get(game_ini, s->data, "margin", ini_get(game_ini, "styles", "margin", "1")));	
+	tmp = atoi(ini_get(game_ini, s->name, "margin", ini_get(game_ini, "styles", "margin", "1")));	
 	if(tmp < 0) 
 		tmp = 0;
-	mu_set_int(mu, "margin", tmp);
+	mu_set_int(md->mu, "margin", tmp);
 	
-	tmp = atoi(ini_get(game_ini, s->data, "padding", ini_get(game_ini, "styles", "padding", "1")));	
+	tmp = atoi(ini_get(game_ini, s->name, "padding", ini_get(game_ini, "styles", "padding", "1")));	
 	if(tmp < 0) 
 		tmp = 0;
-	mu_set_int(mu, "padding", tmp);
+	mu_set_int(md->mu, "padding", tmp);
 	
-	tmp = atoi(ini_get(game_ini, s->data, "border", ini_get(game_ini, "styles", "border", "1")));	
+	tmp = atoi(ini_get(game_ini, s->name, "border", ini_get(game_ini, "styles", "border", "1")));	
 	if(tmp < 0) 
 		tmp = 0;
-	mu_set_int(mu, "border", tmp);
+	mu_set_int(md->mu, "border", tmp);
 	
-	tmp = atoi(ini_get(game_ini, s->data, "border-radius", ini_get(game_ini, "styles", "border-radius", "0")));	
+	tmp = atoi(ini_get(game_ini, s->name, "border-radius", ini_get(game_ini, "styles", "border-radius", "0")));	
 	if(tmp < 0) 
 		tmp = 0;
-	mu_set_int(mu, "border_radius", tmp);
+	mu_set_int(md->mu, "border_radius", tmp);
 	
-	mu_set_str(mu, "border_color", ini_get(game_ini, s->data, "border-color", ini_get(game_ini, "styles", "border-color", "white")));
+	mu_set_str(md->mu, "border_color", ini_get(game_ini, s->name, "border-color", ini_get(game_ini, "styles", "border-color", "white")));
 	
-	tmp = atoi(ini_get(game_ini, s->data, "button-padding", ini_get(game_ini, "styles", "button-padding", "5")));	
+	tmp = atoi(ini_get(game_ini, s->name, "button-padding", ini_get(game_ini, "styles", "button-padding", "5")));	
 	if(tmp < 0) 
 		tmp = 0;
-	mu_set_int(mu, "button_padding", tmp);
+	mu_set_int(md->mu, "button_padding", tmp);
 	
-	tmp = atoi(ini_get(game_ini, s->data, "button-border-radius", ini_get(game_ini, "styles", "button-border-radius", "1")));	
+	tmp = atoi(ini_get(game_ini, s->name, "button-border-radius", ini_get(game_ini, "styles", "button-border-radius", "1")));	
 	if(tmp < 0) 
 		tmp = 0;
-	mu_set_int(mu, "button_border_radius", tmp);
+	mu_set_int(md->mu, "button_border_radius", tmp);
 	
-	mu_set_str(mu, "font", ini_get(game_ini, s->data, "font", ini_get(game_ini, "styles", "font", "normal")));
+	mu_set_str(md->mu, "font", ini_get(game_ini, s->name, "font", ini_get(game_ini, "styles", "font", "normal")));
+	
+	s->data = md;
 	
 	return 1;
 }
 
 static int mus_update(struct game_state *s, struct bitmap *bmp) {
 	const char *next_state;
+	struct mu_data *md = s->data;
 	
-	if(!mu || !mu_script) {
+	if(!md->mu || !md->script) {
 		fprintf(log_file, "error: Unable to run Musl script because of earlier problems\n");
 		fflush(log_file);
 		change_state(NULL);
 		return 0;
 	}
 	
-	mu_set_data(mu, bmp);
+	md->bmp = bmp;
+	mu_set_data(md->mu, md);
 	
-	mu_set_int(mu, "width", bm_width(bmp));
-	mu_set_int(mu, "height", bm_height(bmp));
+	mu_set_int(md->mu, "width", bm_width(bmp));
+	mu_set_int(md->mu, "height", bm_height(bmp));
 
-	if(!mu_run(mu, mu_script)) {
-		fprintf(log_file, "error: %s:Line %d: %s:\n>> %s\n", mu_script_file, mu_cur_line(mu), mu_error_msg(mu),
-				mu_error_text(mu));
+	if(!mu_run(md->mu, md->script)) {
+		fprintf(log_file, "error: %s:Line %d: %s:\n>> %s\n", md->file, mu_cur_line(md->mu), mu_error_msg(md->mu),
+				mu_error_text(md->mu));
 		fflush(log_file);
 		change_state(NULL);
 		return 1;
 	}
 	
-	next_state = mu_get_str(mu, "nextstate");
+	next_state = mu_get_str(md->mu, "nextstate");
 	if(!next_state) {
 		fprintf(log_file, "error: Musl script didn't specify a nextstate\n");
 		fflush(log_file);
@@ -463,17 +478,24 @@ static int mus_update(struct game_state *s, struct bitmap *bmp) {
 }
 
 static int mus_deinit(struct game_state *s) {
-	if(mu)
-		mu_cleanup(mu);
-	if(mu_script)
-		free(mu_script);
-	mu_script = NULL;
+	struct mu_data *md = s->data;
+	if(md->mu)
+		mu_cleanup(md->mu);
+	if(md->script)
+		free(md->script);
+	free(md);
 	return 1;
 }
 
-struct game_state mus_state = {
-	NULL,
-	mus_init,
-	mus_update,
-	mus_deinit
-};
+struct game_state *get_mus_state(const char *name) {
+	struct game_state *state = malloc(sizeof *state);
+	if(!state)
+		return NULL;
+	state->name = name;
+	
+	state->init = mus_init;
+	state->update = mus_update;
+	state->deinit = mus_deinit;
+	
+	return state;
+}

@@ -10,7 +10,26 @@ of the topic at http://stackoverflow.com/q/966162/115589 and
 http://stackoverflow.com/q/1224708/115589
 
 It seems that the accepted solution is to not call luaL_openlibs()
-and rather copying and modifying linit.c
+and rather copying and modifying linit.c according to your needs.
+
+The state files should not have any global variables. I need the states to
+be reentrant, so that you can push and pop states from a stack. This is
+useful in, say, an adventure game scenario where the town map is a state
+and the player enters a shop which is another state that gets pushed on
+the states stack. If the player then leaves the shop, the shop state is
+popped, so that the player is back in town where he left.
+
+This pushing and popping of states has some implications for the resource
+cache: The graphics used in the shop should be released if the player
+leaves, but not the town's graphics. This implies that either (a) the
+resource cache should also work on a stack that gets pushed and popped,
+or (b) the resource cache should be a part of `struct game_state`.
+
+I'm thinking that (b) might be the more elegant solution at the moment,
+but I should think on it a bit more.
+
+This scheme of pushing/popping states also has some implications on the
+save game system
 
 My Bitmap module should have a #pragma pack() at the
 structure declaration. The PAK file module should have

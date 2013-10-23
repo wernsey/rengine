@@ -6,10 +6,8 @@
 
 #ifdef WIN32
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_opengl.h>
 #else
 #include <SDL/SDL.h>
-#include <SDL/SDL_opengl.h>
 #endif
 
 #include "bmp.h"
@@ -49,8 +47,11 @@ SDL_Texture *tex = NULL;
 int quit = 0;
 
 static int fullscreen = 0,
-	resizable = 0, borderless = 0,
-	filter = GL_NEAREST;
+	resizable = 0, borderless = 0;
+	
+/* FIXME: Get the filter mode working again.
+filter = GL_NEAREST;
+*/
 
 static struct bitmap *bmp = NULL;
 
@@ -60,7 +61,7 @@ static Uint32 frameStart;
 
 FILE *log_file;
 
-extern struct game_state demo_state; /* demo.c */
+struct game_state *get_demo_state(const char *name); /* demo.c */
 
 int mouse_x = 0, mouse_y = 0;
 int mouse_btns = 0, mouse_clck = 0;
@@ -339,7 +340,7 @@ int main(int argc, char *argv[]) {
 			if(fps <= 0)
 				fps = DEFAULT_FPS;
 			
-			filter = !my_stricmp(ini_get(game_ini, "screen", "filter", "nearest"), "linear")? GL_LINEAR: GL_NEAREST;
+			/*filter = !my_stricmp(ini_get(game_ini, "screen", "filter", "nearest"), "linear")? GL_LINEAR: GL_NEAREST;*/
 				
 			virt_width = atoi(ini_get(game_ini, "virtual", "width", PARAM(VIRT_WIDTH)));
 			virt_height = atoi(ini_get(game_ini, "virtual", "height", PARAM(VIRT_HEIGHT)));
@@ -361,7 +362,7 @@ int main(int argc, char *argv[]) {
 	} else {
 start_demo:
 		fprintf(log_file, "info: Starting demo mode\n");
-		current_state = &demo_state;
+		current_state = get_demo_state("demo");
 		if(!current_state->init(current_state))
 			quit = 1;
 	}
@@ -405,6 +406,12 @@ start_demo:
 	if(current_state && current_state->deinit)
 		current_state->deinit(current_state);	
 
+	/*
+	if(fullscreen && SDL_SetWindowFullscreen(win, 0) < 0) {
+		fprintf(log_file, "error: Unable to reset window to windowed: %s\n", SDL_GetError());
+		fflush(log_file);
+	}*/
+	
 	bm_free(bmp);
 	
 	clear_particles();

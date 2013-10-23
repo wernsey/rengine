@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "bmp.h"
 #include "states.h"
@@ -53,9 +54,15 @@ static int dem_deinit(struct game_state *s) {
 	return 1;
 }
 
-struct game_state demo_state = {
-	NULL,
-	dem_init,
-	dem_update,
-	dem_deinit
-};
+struct game_state *get_demo_state(const char *name) {
+	struct game_state *state = malloc(sizeof *state);
+	if(!state)
+		return NULL;
+	state->name = name;
+	
+	state->init = dem_init;
+	state->update = dem_update;
+	state->deinit = dem_deinit;
+	
+	return state;
+}
