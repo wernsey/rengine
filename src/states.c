@@ -87,7 +87,7 @@ static void apply_styles(const char *state) {
 	if(!style.border_color) {
 		style.border_color = ini_get(game_ini, "styles", "border-color", style.fg);
 	}
-		
+	
 	style.btn_padding = atoi(ini_get(game_ini, state, "button-padding", "-1"));
 	if(style.btn_padding < 0)
 		style.btn_padding = atoi(ini_get(game_ini, "styles", "button-padding", "5"));
@@ -139,8 +139,8 @@ static void apply_styles(const char *state) {
 }
 
 static void draw_border(struct bitmap *bmp) {
-	bm_set_color_s(bmp, style.border_color);
 	if(style.border > 0) {
+		bm_set_color_s(bmp, style.border_color);
 		if(style.border > 1) {
 			if(style.border_radius > 0) {
 				bm_fillroundrect(bmp, style.margin, style.margin, bmp->w - 1 - style.margin, bmp->h - 1 - style.margin, style.border_radius);

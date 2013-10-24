@@ -120,7 +120,7 @@ struct map_cell *map_get_cell(struct map *m, int x, int y) {
 
 void map_free(struct map *m) {
 	int i;
-	
+	if(!m) return;
 	for(i = 0; i < m->nr * m->nc; i++) {
 		free(m->cells[i].tiles);
 		free(m->cells[i].id);

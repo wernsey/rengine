@@ -22,24 +22,19 @@
 #include "tileset.h"
 #include "utils.h"
 
-/* FIXME: There shouldn't be globals in here 
-baecause I want a mapstates to be recursive; 
-eg, pushing a new map state when the player enters a cave
-and popping the old map when he exits the cave again. */
-static lua_State *L = NULL;
-
-
-/* FIXME: These should all be userdata in the Lua state. */
-static struct map *the_map;
-
 #define MAX_TIMEOUTS 20
-static struct _timeout {
-	int fun;
-	int time;
-	Uint32 start;
-} timeouts[MAX_TIMEOUTS];
 
-static int to_top = 0;
+#define MAP_VARIABLE		"___the_map"
+#define TIMEOUT_VARIABLE	"___timeouts"
+
+struct timeout {
+	struct _timeout_element {
+		int fun;
+		int time;
+		Uint32 start;
+	} to[MAX_TIMEOUTS];
+	int top;
+};
 
 /* LUA FUNCTIONS *********************************************************************************/
 
@@ -53,13 +48,23 @@ static int l_log(lua_State *L) {
 }
 
 static int l_set_timeout(lua_State *L) {
+	struct timeout *timeouts;
+	
+	lua_getglobal(L, TIMEOUT_VARIABLE);
+	if(!lua_islightuserdata(L, -1)) {
+		luaL_error(L, "Variable %s got tampered with.", TIMEOUT_VARIABLE);
+		return 0; /* satisfy the compiler */
+	} else {
+		timeouts = lua_touserdata(L, -1);
+	}
+	lua_pop(L, 1);
 
 	/* This link was useful: 
 	http://stackoverflow.com/questions/2688040/how-to-callback-a-lua-function-from-a-c-function 
 	*/
 	if(lua_gettop(L) == 2 && lua_isfunction(L, -2) && lua_isnumber(L, -1)) {
 		
-		if(to_top == MAX_TIMEOUTS) {
+		if(timeouts->top == MAX_TIMEOUTS) {
 			luaL_error(L, "Maximum number of timeouts [%d] reached", MAX_TIMEOUTS);
 		}
 		
@@ -67,12 +72,12 @@ static int l_set_timeout(lua_State *L) {
 		lua_pushvalue(L, -2);
 		
 		/* And create a reference to it in the special LUA_REGISTRYINDEX */
-		timeouts[to_top].fun = luaL_ref(L, LUA_REGISTRYINDEX);
+		timeouts->to[timeouts->top].fun = luaL_ref(L, LUA_REGISTRYINDEX);
 		
-		timeouts[to_top].time = luaL_checkinteger(L, 2);		
-		timeouts[to_top].start = SDL_GetTicks();
+		timeouts->to[timeouts->top].time = luaL_checkinteger(L, 2);		
+		timeouts->to[timeouts->top].start = SDL_GetTicks();
 		
-		to_top++;
+		timeouts->top++;
 		
 	} else {
 		luaL_error(L, "setTimeout() requires a function and a time as parameters");
@@ -83,11 +88,22 @@ static int l_set_timeout(lua_State *L) {
 
 static void process_timeouts(lua_State *L) {
 	int i = 0;	
-	while(i < to_top) {
-		Uint32 elapsed = SDL_GetTicks() - timeouts[i].start;
-		if(elapsed > timeouts[i].time) {			
+	struct timeout *timeouts;
+	
+	lua_getglobal(L, TIMEOUT_VARIABLE);
+	if(!lua_islightuserdata(L, -1)) {
+		luaL_error(L, "Variable %s got tampered with.", TIMEOUT_VARIABLE);
+		return;
+	} else {
+		timeouts = lua_touserdata(L, -1);
+	}
+	lua_pop(L, 1);
+	
+	while(i < timeouts->top) {
+		Uint32 elapsed = SDL_GetTicks() - timeouts->to[i].start;
+		if(elapsed > timeouts->to[i].time) {			
 			/* Retrieve the callback */
-			lua_rawgeti(L, LUA_REGISTRYINDEX, timeouts[i].fun);
+			lua_rawgeti(L, LUA_REGISTRYINDEX, timeouts->to[i].fun);
 			
 			/* Call it */
 			if(lua_pcall(L, 0, 0, 0)) {
@@ -95,10 +111,10 @@ static void process_timeouts(lua_State *L) {
 				fprintf(log_file, "lua: %s\n", lua_tostring(L, -1));				
 			}
 			/* Release the reference so that it can be collected */
-			luaL_unref(L, LUA_REGISTRYINDEX, timeouts[i].fun);
+			luaL_unref(L, LUA_REGISTRYINDEX, timeouts->to[i].fun);
 			
 			/* Now delete this timeout by replacing it with the last one */
-			timeouts[i] = timeouts[--to_top];
+			timeouts->to[i] = timeouts->to[--timeouts->top];
 		} else {
 			i++;
 		}
@@ -127,9 +143,19 @@ static int new_cell_obj(lua_State *L) {
 	const char *selector;
 	int i;
 	int (*sel_fun)(struct map_cell *c, const char *data);
-	
-	cell_obj **o = lua_newuserdata(L, sizeof *o);	
+	struct map *map;
+	cell_obj **o;
+
+	o = lua_newuserdata(L, sizeof *o);	
 	luaL_setmetatable(L, "CellObj");
+	
+	lua_getglobal(L, MAP_VARIABLE);	
+	if(!lua_islightuserdata(L, -1)) {
+		/* Don't ever do anything to ___the_map in your Lua scripts */
+		luaL_error(L, "Variable %s got tampered with.", MAP_VARIABLE);
+	}
+	map = lua_touserdata(L, -1);
+	lua_pop(L, 1);
 	
 	*o = NULL;	
 	selector = luaL_checkstring(L,1);
@@ -142,8 +168,8 @@ static int new_cell_obj(lua_State *L) {
 	/* Is there a non-O(n) way to find cells matching a selector? 
 	 * I ought to put the ids in a hashtable at least
 	 */
-	for(i = 0; i < the_map->nr * the_map->nc; i++) {
-		struct map_cell *c = &the_map->cells[i];
+	for(i = 0; i < map->nr * map->nc; i++) {
+		struct map_cell *c = &map->cells[i];
 		if(sel_fun(c, selector)) {
 			cell_obj *co = malloc(sizeof *co);
 			co->cell = c;
@@ -223,7 +249,7 @@ static void cell_obj_meta(lua_State *L) {
 	/* Create the metatable for MyObj */
 	luaL_newmetatable(L, "CellObj");
 	lua_pushvalue(L, -1);
-	lua_setfield(L, -2, "__index"); // CellObj.__index = CellObj
+	lua_setfield(L, -2, "__index"); /* CellObj.__index = CellObj */
 	
 	/* FIXME: Add other methods. */
 	lua_pushcfunction(L, cell_set);
@@ -243,10 +269,13 @@ static void cell_obj_meta(lua_State *L) {
 
 static int map_init(struct game_state *s) {
 	
-	fprintf(log_file, "info: Initializing Map state '%s'\n", s->name);
-	
 	const char *map_file, *script_file;
 	char *map_text, *script;
+	struct map *map;
+	lua_State *L = NULL;
+	struct timeout *timeouts;
+	
+	fprintf(log_file, "info: Initializing Map state '%s'\n", s->name);
 	
 	map_file = ini_get(game_ini, s->name, "map", NULL);
 	if(!map_file) {
@@ -262,8 +291,8 @@ static int map_init(struct game_state *s) {
 	
 	map_text = re_get_script(map_file);
 	
-	the_map = map_parse(map_text);
-	if(!the_map) {
+	map = map_parse(map_text);
+	if(!map) {
 		fprintf(log_file, "error: Unable to parse map %s (state %s).\n", map_file, s->name);
 		return 0;		
 	}
@@ -276,6 +305,18 @@ static int map_init(struct game_state *s) {
 	}
 	L = luaL_newstate();
 	luaL_openlibs(L);
+	
+	lua_pushlightuserdata(L, map);
+	if(!L) 
+		return 0;
+	lua_setglobal(L, MAP_VARIABLE);
+	
+	timeouts = malloc(sizeof *timeouts);
+	if(!timeouts)
+		return 0;
+	lua_pushlightuserdata(L, timeouts);	
+	lua_setglobal(L, TIMEOUT_VARIABLE);
+	timeouts->top = 0;
 	
 	lua_pushcfunction(L, l_log);
     lua_setglobal(L, "log");
@@ -306,15 +347,27 @@ static int map_init(struct game_state *s) {
 		fprintf(log_file, "lua: %s\n", lua_tostring(L, -1));
 		return 0;
 	}
+	
+	s->data = L;
 		
 	return 1;
 }
 
 static int map_update(struct game_state *s, struct bitmap *bmp) {
 	int i;
+	struct map *map;
+	lua_State *L = s->data;
 	
 	assert(L);
-	assert(the_map);
+	
+	lua_getglobal(L, MAP_VARIABLE);
+	if(!lua_islightuserdata(L, -1)) {
+		/* Don't ever do anything to ___the_map in your Lua scripts */
+		fprintf(log_file, "error: Variable %s got tampered with (map_update)\n", MAP_VARIABLE);
+		return 0;
+	}
+	map = lua_touserdata(L, -1);
+	lua_pop(L, 1);
 	
 	/* TODO: Maybe background colour metadata in the map file? */
 	bm_set_color_s(bmp, "black");
@@ -323,9 +376,9 @@ static int map_update(struct game_state *s, struct bitmap *bmp) {
 	process_timeouts(L);
 	
 	for(i = 0; i < 3; i++)
-		map_render(the_map, bmp, i, 0, 0);
+		map_render(map, bmp, i, 0, 0);
 	
-	if(kb_hit()) {
+	if(kb_hit()) { /* FIXME */
 		change_state(NULL);
 		return 0;
 	}
@@ -334,12 +387,33 @@ static int map_update(struct game_state *s, struct bitmap *bmp) {
 }
 
 static int map_deinit(struct game_state *s) {
+	struct map *map = NULL;	
+	lua_State *L = s->data;
+	struct timeout *timeouts;
+	
+	lua_getglobal(L, MAP_VARIABLE);
+	if(!lua_islightuserdata(L, -1)) {
+		/* Don't ever do anything to ___the_map in your Lua scripts */
+		fprintf(log_file, "error: Variable %s got tampered with (map_deinit)\n", MAP_VARIABLE);
+	} else {
+		map = lua_touserdata(L, -1);
+	}
+	lua_pop(L, 1);
+	
+	lua_getglobal(L, TIMEOUT_VARIABLE);
+	if(!lua_islightuserdata(L, -1)) {
+		fprintf(log_file, "error: Variable %s got tampered with (map_deinit)\n", TIMEOUT_VARIABLE);
+	} else {
+		timeouts = lua_touserdata(L, -1);
+		free(timeouts);
+	}
+	lua_pop(L, 1);
+	
 	lua_close(L);
 	L = NULL;
 	
-	map_free(the_map);
+	map_free(map);
 	ts_free_all();
-	the_map = NULL;
 	
 	return 1;
 }
