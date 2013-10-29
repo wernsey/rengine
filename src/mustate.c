@@ -573,7 +573,7 @@ static int mus_update(struct game_state *s, struct bitmap *bmp) {
 	
 	next_state = mu_get_str(md->mu, "nextstate");
 	if(!next_state) {
-		fprintf(log_file, "error: Musl script didn't specify a nextstate\n");
+		fprintf(log_file, "warn: Musl script didn't specify a nextstate; terminating...\n");
 		fflush(log_file);
 		change_state(NULL);
 	} else {	
