@@ -87,7 +87,7 @@ struct bitmap *re_get_bmp(const char *filename) {
 			fprintf(log_file, "error: Unable to load bitmap '%s'\n", filename);
 		}
 	}
-	
+	fprintf(log_file, "info: Cached bitmap '%s'\n", filename);
 	ht_insert(bmp_cache, filename, bmp);
 	
 	return bmp;
