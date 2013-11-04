@@ -34,9 +34,9 @@ I'm thinking that (2) might be the more elegant solution at the moment,
 but I should think on it a bit more.
 
 This scheme of pushing/popping states also has some implications on the
-save game system.
+save game system. And on the sprite system I intend to add later.
 
-My Bitmap module should have a #pragma pack() at the
+My Bitmap module should have a `#pragma pack()` at the
 structure declaration. The PAK file module should have
 it too. See the bottom of this section on the wikipedia:
 http://en.wikipedia.org/wiki/Data_structure_alignment in the section
@@ -46,10 +46,16 @@ rather a MSVC thing)
 Speaking of the PAK file module, the ZIP file format turns out to be
 not that different, so I should look into it more closely.
 
+Also, the new SDL_RWops may save you a lot of time getting resources
+from PAK files later.
+
+The SDL_RWops API is here:
+http://wiki.libsdl.org/SDL_RWops?highlight=%28\bCategoryStruct\b%29|%28CategoryIO%29
+
 The bmp.c can do with an `bm_arc(bmp, start_angle, end_angle, radius)`
 function.
 
-bmp.c is also still missing a bm_fillellipse() function.
+bmp.c is also still missing a `bm_fillellipse()` function.
 
 ~~Descision whether to stick with scancodes or switch to keycodes? Or
 make it configurable?~~
@@ -61,15 +67,18 @@ to porting it to devices without keyboards and mouses.
 
 Docs says `SDL_UpdateTexture()` be slow. Do something different.
 
-I don't like the fact that you have to strdup() the string you return to
-Musl in the case of an external Musl function returning a string. The
-interpreter should be modified so that Musl does a `strdup()` after
-calling the external function in `fparams()` in musl.c (look for
+I don't like the fact that you have to `strdup()` the string you
+return to Musl in the case of an external Musl function returning a
+string. The interpreter should be modified so that Musl does a `strdup()`
+after calling the external function in `fparams()` in musl.c (look for
 `v->v.fun()`).
 
 The current way of doing it has its pros, so I should think about it
 first before committing to a course of action. The best place to think
 about it is where I actually use the API (which at the moment is Rengine)
+
+I still have to put audio into the engine. At the moment I have SDL_mixer 2.0.0 built,
+but without any support for additional file formats.
 
 # Editor:
 
@@ -81,6 +90,11 @@ disable the menu option after you've started editing the level. This
 implies that there should be a `SetDirty()` function that changes the
 titlebar, causes the user to be prompted for a save on exit, and disables
 the set working directory menu option.
+
+I should actually have the tilesets be part of the map structure. This
+will help with managing resources when I implement the push/pop of game
+states later. _Are the tileset bitmaps obtained through the resources
+module?_
 
 A menu option to reload the current tileset bitmap. The use case is that
 you may have the file open in a paint program while you're editing your

@@ -17,7 +17,7 @@ else
 endif
 
 CFLAGS += `sdl2-config --cflags` -I /usr/local/include -I ../include -I ..
-LFLAGS += -llua
+LFLAGS += -llua -lSDL2_mixer
 
 # Different executables, and -lopengl32 is required for Windows
 ifeq ($(OS),Windows_NT)

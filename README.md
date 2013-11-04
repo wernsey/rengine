@@ -27,7 +27,8 @@ Dependencies
 ------------
 
 Rengine is dependant upon these 3rd party libraries:
-* SDL (2.0.0) - Cross-platform low level game library - http://www.libsdl.org
+* SDL (2.0.1) - Cross-platform low level game library - http://www.libsdl.org
+* SDL_mixer (2.0.0) - Mixer library (audio) for SDL - http://www.libsdl.org/projects/SDL_mixer/
 * Lua (5.2.2) - Scripting language - http://www.lua.org
 * FLTK (1.3.2) - Cross-platform GUI toolkit, used for the map editor - http://www.fltk.org
 

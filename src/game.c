@@ -7,7 +7,7 @@
 #ifdef WIN32
 #include <SDL2/SDL.h>
 #else
-#include <SDL/SDL.h>
+#include <SDL2/SDL.h>
 #endif
 
 #include "bmp.h"
@@ -75,7 +75,7 @@ int init(const char *appTitle, int virt_width, int virt_height) {
 	
 	fprintf(log_file, "info: Creating Window.\n");
 	
-	if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_VIDEO) < 0) {
+	if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_AUDIO) < 0) {
 		fprintf(log_file, "error SDL_Init: %s\n", SDL_GetError());
 		return 1;
 	}
@@ -87,7 +87,6 @@ int init(const char *appTitle, int virt_width, int virt_height) {
 		else if(borderless)
 			flags |= SDL_WINDOW_BORDERLESS;
 	}
-	
 	
 	win = SDL_CreateWindow(appTitle, 100, 100, screenWidth, screenHeight, flags);	
 	if(!win) {
@@ -123,7 +122,7 @@ int handleSpecialKeys(SDL_Scancode key) {
 		return 1;
 	} else if (key == SDL_SCANCODE_F11) {
 		if(!fullscreen) {		
-			if(SDL_SetWindowFullscreen(win, SDL_WINDOW_FULLSCREEN) < 0) {
+			if(SDL_SetWindowFullscreen(win, SDL_WINDOW_FULLSCREEN_DESKTOP) < 0) {
 				fprintf(log_file, "error: Unable to set window to fullscreen: %s\n", SDL_GetError());
 				fflush(log_file);
 			} else {
@@ -384,7 +383,7 @@ start_demo:
 	/* If I used SDL_WINDOW_FULLSCREEN in SDL_CreateWindow() it 
 	had some strange problems when you shutdown the engine. */
 	if(fullscreen) {
-		if(SDL_SetWindowFullscreen(win, SDL_WINDOW_FULLSCREEN) < 0) {
+		if(SDL_SetWindowFullscreen(win, SDL_WINDOW_FULLSCREEN_DESKTOP) < 0) {
 			fprintf(log_file, "error: Unable to set window to fullscreen: %s\n", SDL_GetError());
 		} 
 	}
