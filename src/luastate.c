@@ -277,7 +277,7 @@ static int lus_init(struct game_state *s) {
 	struct map *map = NULL;
 	lua_State *L = NULL;
 	struct timeout *timeouts;
-	
+		
 	fprintf(log_file, "info: Initializing Map state '%s'\n", s->name);
 	
 	script_file = ini_get(game_ini, s->name, "script", NULL);	
@@ -285,6 +285,19 @@ static int lus_init(struct game_state *s) {
 		fprintf(log_file, "error: Map state '%s' doesn't specify a script file.\n", s->name);
 		return 0;
 	}
+	
+	script = re_get_script(script_file);
+	if(!script) {
+		fprintf(log_file, "error: Script %s was not found (state %s).\n", script_file, s->name);
+		return 0;
+	}
+	L = luaL_newstate();
+	if(!L) { 
+		fprintf(log_file, "error: Couldn't create Lua state.\n");
+		return 0;
+	}
+	s->data = L;
+	luaL_openlibs(L);
 	
 	map_file = ini_get(game_ini, s->name, "map", NULL);
 	if(map_file) {
@@ -303,18 +316,6 @@ static int lus_init(struct game_state *s) {
 	} else {
 		fprintf(log_file, "info: Lua state %s does not specify a map file.\n", s->name);
 	}	
-	
-	script = re_get_script(script_file);
-	if(!script) {
-		fprintf(log_file, "error: Script %s was not found (state %s).\n", script_file, s->name);
-		return 0;
-	}
-	L = luaL_newstate();
-	if(!L) { 
-		fprintf(log_file, "error: Couldn't create Lua state.\n");
-		return 0;
-	}
-	luaL_openlibs(L);
 	
 	if(map)
 		lua_pushlightuserdata(L, map);
@@ -357,8 +358,6 @@ static int lus_init(struct game_state *s) {
 		fprintf(log_file, "lua: %s\n", lua_tostring(L, -1));
 		return 0;
 	}
-	
-	s->data = L;
 		
 	return 1;
 }
@@ -405,6 +404,9 @@ static int lus_deinit(struct game_state *s) {
 	lua_State *L = s->data;
 	struct timeout *timeouts;
 	
+	if(!L)
+		return 0;
+	
 	lua_getglobal(L, MAP_VARIABLE);
 	if(!lua_isnil(L, -1)) {
 		if(!lua_islightuserdata(L, -1)) {
@@ -418,11 +420,13 @@ static int lus_deinit(struct game_state *s) {
 	lua_pop(L, 1);
 	
 	lua_getglobal(L, TIMEOUT_VARIABLE);
-	if(!lua_islightuserdata(L, -1)) {
-		fprintf(log_file, "error: Variable %s got tampered with (map_deinit)\n", TIMEOUT_VARIABLE);
-	} else {
-		timeouts = lua_touserdata(L, -1);
-		free(timeouts);
+	if(!lua_isnil(L,-1)) {
+		if(!lua_islightuserdata(L, -1)) {
+			fprintf(log_file, "error: Variable %s got tampered with (map_deinit)\n", TIMEOUT_VARIABLE);
+		} else {
+			timeouts = lua_touserdata(L, -1);
+			free(timeouts);
+		}
 	}
 	lua_pop(L, 1);
 	
@@ -439,6 +443,7 @@ struct game_state *get_lua_state(const char *name) {
 	if(!state)
 		return NULL;
 	state->name = name;
+	state->data = NULL;
 	
 	state->init = lus_init;
 	state->update = lus_update;
