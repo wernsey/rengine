@@ -418,7 +418,7 @@ static int map_deinit(struct game_state *s) {
 	return 1;
 }
 
-struct game_state *get_map_state(const char *name) {
+struct game_state *get_lua_state(const char *name) {
 	struct game_state *state = malloc(sizeof *state);
 	if(!state)
 		return NULL;

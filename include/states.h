@@ -17,5 +17,5 @@ int change_state(struct game_state *next);
 
 int set_state(const char *name);
 
-struct game_state *get_map_state(const char *name); /* mapstate.c */
+struct game_state *get_lua_state(const char *name); /* luastate.c */
 struct game_state *get_mus_state(const char *name); /* mustate.c */

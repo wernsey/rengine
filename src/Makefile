@@ -34,7 +34,7 @@ EXECUTABLES = $(GAME_BIN)
 
 SOURCES= bmp.c game.c ini.c utils.c pak.c particles.c \
 	states.c demo.c resources.c musl.c mustate.c hash.c \
-	lexer.c tileset.c map.c json.c mapstate.c 
+	lexer.c tileset.c map.c json.c luastate.c 
 
 FONTS = fonts/bold.xbm fonts/circuit.xbm fonts/hand.xbm fonts/normal.xbm \
 		fonts/small.xbm fonts/smallinv.xbm fonts/thick.xbm
@@ -79,7 +79,7 @@ lexer.o: lexer.c ../include/lexer.h
 luop.o: luop.c 
 map.o: map.c ../include/tileset.h \
  ../include/bmp.h ../include/map.h ../include/json.h ../include/utils.h
-mapstate.o: mapstate.c ../include/bmp.h \
+luastate.o: luastate.c ../include/bmp.h \
  ../include/states.h ../include/map.h ../include/game.h ../include/ini.h \
  ../include/resources.h ../include/tileset.h ../include/utils.h
 musl.o: musl.c ../include/musl.h

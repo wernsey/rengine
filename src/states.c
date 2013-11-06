@@ -495,8 +495,8 @@ static struct game_state *get_state(const char *name) {
 	
 	if(!my_stricmp(type, "static")) {
 		next = get_static_state(name);
-	} else if(!my_stricmp(type, "map")) {
-		next = get_map_state(name);
+	} else if(!my_stricmp(type, "lua")) {
+		next = get_lua_state(name);
 	} else if(!my_stricmp(type, "leftright")) {
 		next = get_leftright_state(name);
 	} else if(!my_stricmp(type, "musl")) {
