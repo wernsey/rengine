@@ -148,16 +148,19 @@ static int new_cell_obj(lua_State *L) {
 
 	o = lua_newuserdata(L, sizeof *o);	
 	luaL_setmetatable(L, "CellObj");
+	*o = NULL;
 	
 	lua_getglobal(L, MAP_VARIABLE);	
-	if(!lua_islightuserdata(L, -1)) {
+	if(lua_isnil(L, -1)) {
+		/* This Lua state does not have a map, so return an empty list */
+		return 1;		
+	} else if(!lua_islightuserdata(L, -1)) {
 		/* Don't ever do anything to ___the_map in your Lua scripts */
 		luaL_error(L, "Variable %s got tampered with.", MAP_VARIABLE);
 	}
 	map = lua_touserdata(L, -1);
 	lua_pop(L, 1);
-	
-	*o = NULL;	
+		
 	selector = luaL_checkstring(L,1);
 	if(selector[0] == '.') {
 		sel_fun = class_selector;
@@ -267,21 +270,15 @@ static void cell_obj_meta(lua_State *L) {
 
 /* STATE FUNCTIONS *******************************************************************************/
 
-static int map_init(struct game_state *s) {
+static int lus_init(struct game_state *s) {
 	
 	const char *map_file, *script_file;
 	char *map_text, *script;
-	struct map *map;
+	struct map *map = NULL;
 	lua_State *L = NULL;
 	struct timeout *timeouts;
 	
 	fprintf(log_file, "info: Initializing Map state '%s'\n", s->name);
-	
-	map_file = ini_get(game_ini, s->name, "map", NULL);
-	if(!map_file) {
-		fprintf(log_file, "error: Map state '%s' doesn't specify a map file.\n", s->name);
-		return 0;
-	}
 	
 	script_file = ini_get(game_ini, s->name, "script", NULL);	
 	if(!script_file) {
@@ -289,14 +286,23 @@ static int map_init(struct game_state *s) {
 		return 0;
 	}
 	
-	map_text = re_get_script(map_file);
-	
-	map = map_parse(map_text);
-	if(!map) {
-		fprintf(log_file, "error: Unable to parse map %s (state %s).\n", map_file, s->name);
-		return 0;		
-	}
-	free(map_text);
+	map_file = ini_get(game_ini, s->name, "map", NULL);
+	if(map_file) {
+		map_text = re_get_script(map_file);
+		if(!map_text) {
+			fprintf(log_file, "error: Unable to retrieve map resource '%s' (state %s).\n", map_file, s->name);
+			return 0;		
+		}
+		
+		map = map_parse(map_text);
+		if(!map) {
+			fprintf(log_file, "error: Unable to parse map '%s' (state %s).\n", map_file, s->name);
+			return 0;		
+		}
+		free(map_text);
+	} else {
+		fprintf(log_file, "info: Lua state %s does not specify a map file.\n", s->name);
+	}	
 	
 	script = re_get_script(script_file);
 	if(!script) {
@@ -304,11 +310,16 @@ static int map_init(struct game_state *s) {
 		return 0;
 	}
 	L = luaL_newstate();
+	if(!L) { 
+		fprintf(log_file, "error: Couldn't create Lua state.\n");
+		return 0;
+	}
 	luaL_openlibs(L);
 	
-	lua_pushlightuserdata(L, map);
-	if(!L) 
-		return 0;
+	if(map)
+		lua_pushlightuserdata(L, map);
+	else
+		lua_pushnil(L);
 	lua_setglobal(L, MAP_VARIABLE);
 	
 	timeouts = malloc(sizeof *timeouts);
@@ -336,8 +347,7 @@ static int map_init(struct game_state *s) {
 	if(luaL_loadstring(L, script)) {		
 		fprintf(log_file, "error: Unable to load script %s (state %s).\n", script_file, s->name);
 		fprintf(log_file, "lua: %s\n", lua_tostring(L, -1));
-		free(script);
-				
+		free(script);				
 		return 0;
 	}
 	free(script);
@@ -353,20 +363,22 @@ static int map_init(struct game_state *s) {
 	return 1;
 }
 
-static int map_update(struct game_state *s, struct bitmap *bmp) {
+static int lus_update(struct game_state *s, struct bitmap *bmp) {
 	int i;
-	struct map *map;
+	struct map *map = NULL;
 	lua_State *L = s->data;
 	
 	assert(L);
 	
 	lua_getglobal(L, MAP_VARIABLE);
-	if(!lua_islightuserdata(L, -1)) {
-		/* Don't ever do anything to ___the_map in your Lua scripts */
-		fprintf(log_file, "error: Variable %s got tampered with (map_update)\n", MAP_VARIABLE);
-		return 0;
+	if(!lua_isnil(L, -1)) {
+		if(!lua_islightuserdata(L, -1)) {
+			/* Don't ever do anything to ___the_map in your Lua scripts */
+			fprintf(log_file, "error: Variable %s got tampered with (map_update)\n", MAP_VARIABLE);
+			return 0;
+		}
+		map = lua_touserdata(L, -1);
 	}
-	map = lua_touserdata(L, -1);
 	lua_pop(L, 1);
 	
 	/* TODO: Maybe background colour metadata in the map file? */
@@ -375,8 +387,10 @@ static int map_update(struct game_state *s, struct bitmap *bmp) {
 	
 	process_timeouts(L);
 	
-	for(i = 0; i < 3; i++)
-		map_render(map, bmp, i, 0, 0);
+	if(map) {
+		for(i = 0; i < 3; i++)
+			map_render(map, bmp, i, 0, 0);
+	}
 	
 	if(kb_hit()) { /* FIXME */
 		change_state(NULL);
@@ -386,17 +400,20 @@ static int map_update(struct game_state *s, struct bitmap *bmp) {
 	return 1;
 }
 
-static int map_deinit(struct game_state *s) {
+static int lus_deinit(struct game_state *s) {
 	struct map *map = NULL;	
 	lua_State *L = s->data;
 	struct timeout *timeouts;
 	
 	lua_getglobal(L, MAP_VARIABLE);
-	if(!lua_islightuserdata(L, -1)) {
-		/* Don't ever do anything to ___the_map in your Lua scripts */
-		fprintf(log_file, "error: Variable %s got tampered with (map_deinit)\n", MAP_VARIABLE);
-	} else {
-		map = lua_touserdata(L, -1);
+	if(!lua_isnil(L, -1)) {
+		if(!lua_islightuserdata(L, -1)) {
+			/* Don't ever do anything to ___the_map in your Lua scripts */
+			fprintf(log_file, "error: Variable %s got tampered with (map_deinit)\n", MAP_VARIABLE);
+		} else {
+			map = lua_touserdata(L, -1);
+			map_free(map);
+		}
 	}
 	lua_pop(L, 1);
 	
@@ -412,7 +429,6 @@ static int map_deinit(struct game_state *s) {
 	lua_close(L);
 	L = NULL;
 	
-	map_free(map);
 	ts_free_all();
 	
 	return 1;
@@ -424,9 +440,9 @@ struct game_state *get_lua_state(const char *name) {
 		return NULL;
 	state->name = name;
 	
-	state->init = map_init;
-	state->update = map_update;
-	state->deinit = map_deinit;
+	state->init = lus_init;
+	state->update = lus_update;
+	state->deinit = lus_deinit;
 	
 	return state;
 }
