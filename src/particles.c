@@ -3,10 +3,6 @@
 
 #include "bmp.h"
 
-/*
- * TODO: If x,y,dx,dy are doubles we can have more control
- * over how the particles move.
- */
 struct particle {
 	float x, y;
 	float dx, dy;

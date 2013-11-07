@@ -225,7 +225,7 @@ void advanceFrame() {
 			case SDL_WINDOWEVENT_RESIZED:
 				screenWidth = event.window.data1;
 				screenHeight = event.window.data2;
-				fprintf(log_file, "Window resized to %dx%d\n", screenWidth, screenHeight);
+				fprintf(log_file, "info: Window resized to %dx%d\n", screenWidth, screenHeight);
 				fflush(log_file);
 				break;
 			default: break;
@@ -306,7 +306,12 @@ int main(int argc, char *argv[]) {
 	if(!log_file) {
 		log_file = stdout;
 	}
-
+	
+	/* Don't quite know how to use this in Windows yet.
+	SDL_LogSetAllPriority(SDL_LOG_PRIORITY_WARN);
+	SDL_Log("Testing log capability.");
+	*/
+	
 	SDL_VERSION(&compiled);
 	SDL_GetVersion(&linked);
 	fprintf(log_file, "info: SDL version %d.%d.%d (compile)\n", compiled.major, compiled.minor, compiled.patch);

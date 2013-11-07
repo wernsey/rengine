@@ -21,28 +21,46 @@
 #include "resources.h"
 #include "tileset.h"
 #include "utils.h"
+#include "particles.h"
 
 #define MAX_TIMEOUTS 20
 
 /* Don't tamper with this variable from your Lua scripts. */
 #define STATE_DATA_VAR	"___state_data"
 
-struct timeout {
-	struct _timeout_element {
-		int fun;
-		int time;
-		Uint32 start;
-	} to[MAX_TIMEOUTS];
-	int top;
+struct _update_function {
+	int ref;
+	struct _update_function *next;
 };
 
 struct lustate_data {
 	struct bitmap *bmp;
-	struct map *map;
-	struct timeout timeouts;	
+	struct map *map;	
+
+	struct _timeout_element {
+		int fun;
+		int time;
+		Uint32 start;
+	} timeout[MAX_TIMEOUTS];
+	int n_timeout;
+	
+	struct _update_function *update_fcn;
 };
 
 /* LUA FUNCTIONS *********************************************************************************/
+
+static struct lustate_data *get_state_data(lua_State *L) {
+	struct lustate_data *sd;
+	lua_getglobal(L, STATE_DATA_VAR);
+	if(!lua_islightuserdata(L, -1)) {
+		luaL_error(L, "Variable %s got tampered with.", STATE_DATA_VAR);
+		return 0; /* satisfy the compiler */
+	} else {
+		sd = lua_touserdata(L, -1);
+	}
+	lua_pop(L, 1);
+	return sd;
+}
 
 static int l_log(lua_State *L) {
 	const char * s = lua_tolstring(L, 1, NULL);
@@ -54,24 +72,14 @@ static int l_log(lua_State *L) {
 }
 
 static int l_set_timeout(lua_State *L) {
-	struct timeout *timeouts;
-	
-	lua_getglobal(L, STATE_DATA_VAR);
-	if(!lua_islightuserdata(L, -1)) {
-		luaL_error(L, "Variable %s got tampered with.", STATE_DATA_VAR);
-		return 0; /* satisfy the compiler */
-	} else {
-		struct lustate_data *sd = lua_touserdata(L, -1);
-		timeouts = &sd->timeouts;
-	}
-	lua_pop(L, 1);
+	struct lustate_data *sd = get_state_data(L);
 
 	/* This link was useful: 
 	http://stackoverflow.com/questions/2688040/how-to-callback-a-lua-function-from-a-c-function 
 	*/
 	if(lua_gettop(L) == 2 && lua_isfunction(L, -2) && lua_isnumber(L, -1)) {
 		
-		if(timeouts->top == MAX_TIMEOUTS) {
+		if(sd->n_timeout == MAX_TIMEOUTS) {
 			luaL_error(L, "Maximum number of timeouts [%d] reached", MAX_TIMEOUTS);
 		}
 		
@@ -79,12 +87,12 @@ static int l_set_timeout(lua_State *L) {
 		lua_pushvalue(L, -2);
 		
 		/* And create a reference to it in the special LUA_REGISTRYINDEX */
-		timeouts->to[timeouts->top].fun = luaL_ref(L, LUA_REGISTRYINDEX);
+		sd->timeout[sd->n_timeout].fun = luaL_ref(L, LUA_REGISTRYINDEX);
 		
-		timeouts->to[timeouts->top].time = luaL_checkinteger(L, 2);		
-		timeouts->to[timeouts->top].start = SDL_GetTicks();
+		sd->timeout[sd->n_timeout].time = luaL_checkinteger(L, 2);		
+		sd->timeout[sd->n_timeout].start = SDL_GetTicks();
 		
-		timeouts->top++;
+		sd->n_timeout++;
 		
 	} else {
 		luaL_error(L, "setTimeout() requires a function and a time as parameters");
@@ -94,24 +102,24 @@ static int l_set_timeout(lua_State *L) {
 }
 
 static void process_timeouts(lua_State *L) {
-	int i = 0;	
-	struct timeout *timeouts;
+	struct lustate_data *sd;
+	int i = 0;
 	
 	lua_getglobal(L, STATE_DATA_VAR);
 	if(!lua_islightuserdata(L, -1)) {
-		luaL_error(L, "Variable %s got tampered with.", STATE_DATA_VAR);
+		/* Can't call LuaL_error here. */
+		fprintf(log_file, "Variable %s got tampered with.", STATE_DATA_VAR);
 		return;
 	} else {
-		struct lustate_data *sd = lua_touserdata(L, -1);
-		timeouts = &sd->timeouts;
+		sd = lua_touserdata(L, -1);
 	}
 	lua_pop(L, 1);
 	
-	while(i < timeouts->top) {
-		Uint32 elapsed = SDL_GetTicks() - timeouts->to[i].start;
-		if(elapsed > timeouts->to[i].time) {			
+	while(i < sd->n_timeout) {
+		Uint32 elapsed = SDL_GetTicks() - sd->timeout[i].start;
+		if(elapsed > sd->timeout[i].time) {			
 			/* Retrieve the callback */
-			lua_rawgeti(L, LUA_REGISTRYINDEX, timeouts->to[i].fun);
+			lua_rawgeti(L, LUA_REGISTRYINDEX, sd->timeout[i].fun);
 			
 			/* Call it */
 			if(lua_pcall(L, 0, 0, 0)) {
@@ -119,15 +127,54 @@ static void process_timeouts(lua_State *L) {
 				fprintf(log_file, "lua: %s\n", lua_tostring(L, -1));				
 			}
 			/* Release the reference so that it can be collected */
-			luaL_unref(L, LUA_REGISTRYINDEX, timeouts->to[i].fun);
+			luaL_unref(L, LUA_REGISTRYINDEX, sd->timeout[i].fun);
 			
 			/* Now delete this timeout by replacing it with the last one */
-			timeouts->to[i] = timeouts->to[--timeouts->top];
+			sd->timeout[i] = sd->timeout[--sd->n_timeout];
 		} else {
 			i++;
 		}
 	}
 	fflush(log_file);
+}
+
+/* ***********************************************************************************************/
+
+static int l_onUpdate(lua_State *L) {
+	struct lustate_data *sd = get_state_data(L);
+
+	if(lua_gettop(L) == 1 && lua_isfunction(L, -1)) {
+		struct _update_function *fn;
+				
+		fn = malloc(sizeof *fn);
+		if(!fn)
+			luaL_error(L, "Out of memory");
+		
+		/* And create a reference to it in the special LUA_REGISTRYINDEX */
+		fn->ref = luaL_ref(L, LUA_REGISTRYINDEX);		
+		fprintf(log_file, "info: Registering onUpdate() callback %d\n", fn->ref);
+		
+		fn->next = sd->update_fcn;
+		sd->update_fcn = fn;
+		
+		lua_pushinteger(L, fn->ref);
+		
+	} else {
+		luaL_error(L, "onUpdate() requires a function as a parameter");
+	}
+	
+	return 1;
+}
+
+static int l_createParticle(lua_State *L) {
+	float x = luaL_checknumber(L, -6);
+	float y = luaL_checknumber(L, -5);
+	float dx = luaL_checknumber(L, -4);
+	float dy = luaL_checknumber(L, -3);
+	int life = luaL_checkinteger(L, -2); 
+	int color = bm_color_atoi(luaL_checkstring(L, -1));	
+	add_particle(x, y, dx, dy, life, color);
+	return 0;
 }
 
 /* The C(ell) object *****************************************************************************/
@@ -289,17 +336,19 @@ static int lus_init(struct game_state *s) {
 		
 	fprintf(log_file, "info: Initializing Map state '%s'\n", s->name);
 	
+	/* Load the Lua script */
 	script_file = ini_get(game_ini, s->name, "script", NULL);	
 	if(!script_file) {
 		fprintf(log_file, "error: Map state '%s' doesn't specify a script file.\n", s->name);
 		return 0;
 	}
-	
 	script = re_get_script(script_file);
 	if(!script) {
 		fprintf(log_file, "error: Script %s was not found (state %s).\n", script_file, s->name);
 		return 0;
 	}
+	
+	/* Create the Lua interpreter */
 	L = luaL_newstate();
 	if(!L) { 
 		fprintf(log_file, "error: Couldn't create Lua state.\n");
@@ -308,15 +357,21 @@ static int lus_init(struct game_state *s) {
 	s->data = L;
 	luaL_openlibs(L);
 	
+	/* Create and init the State Data that the interpreter carries with it. */
 	sd = malloc(sizeof *sd);
 	if(!sd)
 		return 0;
-	sd->timeouts.top = 0;
-	sd->map = NULL;
 	
+	sd->update_fcn = NULL;	
+	sd->n_timeout = 0;
+	sd->map = NULL;
+	sd->bmp = NULL;
+	
+	/* Store the State Data in the interpreter */
 	lua_pushlightuserdata(L, sd);		
 	lua_setglobal(L, STATE_DATA_VAR);
 	
+	/* Load the map, if one is specified. */
 	map_file = ini_get(game_ini, s->name, "map", NULL);
 	if(map_file) {
 		map_text = re_get_script(map_file);
@@ -335,11 +390,18 @@ static int lus_init(struct game_state *s) {
 		fprintf(log_file, "info: Lua state %s does not specify a map file.\n", s->name);
 	}	
 	
+	/* Register some Lua variables. */
 	lua_pushcfunction(L, l_log);
     lua_setglobal(L, "log");
 	
 	lua_pushcfunction(L, l_set_timeout);
     lua_setglobal(L, "setTimeout");
+	
+	lua_pushcfunction(L, l_onUpdate);
+    lua_setglobal(L, "onUpdate");
+	
+	lua_pushcfunction(L, l_createParticle);
+    lua_setglobal(L, "createParticle");
 	
 	lua_pushinteger(L, 0);
     lua_setglobal(L, "BACKGROUND");
@@ -350,6 +412,7 @@ static int lus_init(struct game_state *s) {
 	
 	cell_obj_meta(L);
 	
+	/* Load the Lua script, and execute it. */
 	if(luaL_loadstring(L, script)) {		
 		fprintf(log_file, "error: Unable to load script %s (state %s).\n", script_file, s->name);
 		fprintf(log_file, "lua: %s\n", lua_tostring(L, -1));
@@ -371,6 +434,7 @@ static int lus_update(struct game_state *s, struct bitmap *bmp) {
 	int i;
 	struct lustate_data *sd = NULL;
 	lua_State *L = s->data;
+	struct _update_function *fn;
 	
 	assert(L);
 	
@@ -389,11 +453,31 @@ static int lus_update(struct game_state *s, struct bitmap *bmp) {
 	
 	sd->bmp = bmp;
 	
+	lua_pushinteger(L, bmp->w);
+    lua_setglobal(L, "SCREEN_WIDTH");
+	lua_pushinteger(L, bmp->h);
+    lua_setglobal(L, "SCREEN_HEIGHT");
+	
 	/* TODO: Maybe background colour metadata in the map file? */
 	bm_set_color_s(bmp, "black");
 	bm_clear(bmp);
 	
 	process_timeouts(L);
+	
+	fn = sd->update_fcn;
+	while(fn) {				
+		/* Retrieve the callback */
+		lua_rawgeti(L, LUA_REGISTRYINDEX, fn->ref);
+		
+		/* Call it */
+		if(lua_pcall(L, 0, 0, 0)) {
+			fprintf(log_file, "error: Unable to execute onUpdate() callback (%d)\n", fn->ref);
+			fprintf(log_file, "lua: %s\n", lua_tostring(L, -1));
+			/* Should we remove it maybe? */
+		}
+		
+		fn = fn->next;
+	}
 	
 	if(sd->map) {
 		for(i = 0; i < 3; i++)
@@ -420,8 +504,17 @@ static int lus_deinit(struct game_state *s) {
 		if(!lua_islightuserdata(L, -1)) {
 			fprintf(log_file, "error: Variable %s got tampered with (map_deinit)\n", STATE_DATA_VAR);
 		} else {
+			struct _update_function *fn;
+			
 			sd = lua_touserdata(L, -1);
 			map_free(sd->map);
+			
+			while(sd->update_fcn) {
+				fn = sd->update_fcn;
+				sd->update_fcn = sd->update_fcn->next;
+				free(fn);
+			}
+			
 			free(sd);
 		}
 	}
