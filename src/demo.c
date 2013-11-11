@@ -5,6 +5,7 @@
 #include "states.h"
 #include "game.h"
 #include "resources.h"
+#include "log.h"
 
 #include "rengine.xbm"
 
@@ -13,7 +14,7 @@ static struct bitmap *dummy;
 static int dem_init(struct game_state *s) {
 	dummy = bm_fromXbm(rengine_width, rengine_height, rengine_bits);
 	if(!dummy) {
-		fprintf(log_file, "error: unable to load rengine.xbm");
+		rerror("unable to load rengine.xbm");
 		return 0;
 	}
 	bm_set_color_s(dummy, "#000000");

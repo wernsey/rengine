@@ -1,5 +1,3 @@
-extern FILE *log_file;
-
 extern int quit;
 
 extern int fps;

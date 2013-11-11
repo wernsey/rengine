@@ -22,6 +22,7 @@
 #include "tileset.h"
 #include "utils.h"
 #include "particles.h"
+#include "log.h"
 
 #define MAX_TIMEOUTS 20
 
@@ -65,8 +66,7 @@ static struct lustate_data *get_state_data(lua_State *L) {
 static int l_log(lua_State *L) {
 	const char * s = lua_tolstring(L, 1, NULL);
 	if(s) {
-		fprintf(log_file, "lua: %s\n", s);
-		fflush(log_file);
+		sublog("Lua", "%s", s);
 	}
 	return 0;
 }
@@ -108,7 +108,7 @@ static void process_timeouts(lua_State *L) {
 	lua_getglobal(L, STATE_DATA_VAR);
 	if(!lua_islightuserdata(L, -1)) {
 		/* Can't call LuaL_error here. */
-		fprintf(log_file, "Variable %s got tampered with.", STATE_DATA_VAR);
+		rerror("Variable %s got tampered with.", STATE_DATA_VAR);
 		return;
 	} else {
 		sd = lua_touserdata(L, -1);
@@ -123,8 +123,7 @@ static void process_timeouts(lua_State *L) {
 			
 			/* Call it */
 			if(lua_pcall(L, 0, 0, 0)) {
-				fprintf(log_file, "error: Unable to execute setTimeout() callback\n");
-				fprintf(log_file, "lua: %s\n", lua_tostring(L, -1));				
+				rerror("Unable to execute setTimeout() callback: %s", lua_tostring(L, -1));				
 			}
 			/* Release the reference so that it can be collected */
 			luaL_unref(L, LUA_REGISTRYINDEX, sd->timeout[i].fun);
@@ -135,7 +134,6 @@ static void process_timeouts(lua_State *L) {
 			i++;
 		}
 	}
-	fflush(log_file);
 }
 
 /* ***********************************************************************************************/
@@ -152,7 +150,7 @@ static int l_onUpdate(lua_State *L) {
 		
 		/* And create a reference to it in the special LUA_REGISTRYINDEX */
 		fn->ref = luaL_ref(L, LUA_REGISTRYINDEX);		
-		fprintf(log_file, "info: Registering onUpdate() callback %d\n", fn->ref);
+		rlog("Registering onUpdate() callback %d", fn->ref);
 		
 		fn->next = sd->update_fcn;
 		sd->update_fcn = fn;
@@ -334,24 +332,24 @@ static int lus_init(struct game_state *s) {
 	lua_State *L = NULL;
 	struct lustate_data *sd;
 		
-	fprintf(log_file, "info: Initializing Map state '%s'\n", s->name);
+	rlog("Initializing Map state '%s'", s->name);
 	
 	/* Load the Lua script */
 	script_file = ini_get(game_ini, s->name, "script", NULL);	
 	if(!script_file) {
-		fprintf(log_file, "error: Map state '%s' doesn't specify a script file.\n", s->name);
+		rerror("Map state '%s' doesn't specify a script file.", s->name);
 		return 0;
 	}
 	script = re_get_script(script_file);
 	if(!script) {
-		fprintf(log_file, "error: Script %s was not found (state %s).\n", script_file, s->name);
+		rerror("Script %s was not found (state %s).", script_file, s->name);
 		return 0;
 	}
 	
 	/* Create the Lua interpreter */
 	L = luaL_newstate();
 	if(!L) { 
-		fprintf(log_file, "error: Couldn't create Lua state.\n");
+		rerror("Couldn't create Lua state.");
 		return 0;
 	}
 	s->data = L;
@@ -376,18 +374,18 @@ static int lus_init(struct game_state *s) {
 	if(map_file) {
 		map_text = re_get_script(map_file);
 		if(!map_text) {
-			fprintf(log_file, "error: Unable to retrieve map resource '%s' (state %s).\n", map_file, s->name);
+			rerror("Unable to retrieve map resource '%s' (state %s).", map_file, s->name);
 			return 0;		
 		}
 		
 		sd->map = map_parse(map_text);
 		if(!sd->map) {
-			fprintf(log_file, "error: Unable to parse map '%s' (state %s).\n", map_file, s->name);
+			rerror("Unable to parse map '%s' (state %s).", map_file, s->name);
 			return 0;		
 		}
 		free(map_text);
 	} else {
-		fprintf(log_file, "info: Lua state %s does not specify a map file.\n", s->name);
+		rlog("Lua state %s does not specify a map file.", s->name);
 	}	
 	
 	/* Register some Lua variables. */
@@ -414,16 +412,16 @@ static int lus_init(struct game_state *s) {
 	
 	/* Load the Lua script, and execute it. */
 	if(luaL_loadstring(L, script)) {		
-		fprintf(log_file, "error: Unable to load script %s (state %s).\n", script_file, s->name);
-		fprintf(log_file, "lua: %s\n", lua_tostring(L, -1));
+		rerror("Unable to load script %s (state %s).", script_file, s->name);
+		sublog("lua", "%s", lua_tostring(L, -1));
 		free(script);				
 		return 0;
 	}
 	free(script);
 	
 	if(lua_pcall(L, 0, 0, 0)) {
-		fprintf(log_file, "error: Unable to execute script %s (state %s).\n", script_file, s->name);
-		fprintf(log_file, "lua: %s\n", lua_tostring(L, -1));
+		rerror("Unable to execute script %s (state %s).", script_file, s->name);
+		sublog("lua", "%s", lua_tostring(L, -1));
 		return 0;
 	}
 		
@@ -441,12 +439,12 @@ static int lus_update(struct game_state *s, struct bitmap *bmp) {
 	lua_getglobal(L, STATE_DATA_VAR);
 	if(!lua_isnil(L,-1)) {
 		if(!lua_islightuserdata(L, -1)) {
-			fprintf(log_file, "error: Variable %s got tampered with (lus_update)\n", STATE_DATA_VAR);
+			rerror("Variable %s got tampered with (lus_update)", STATE_DATA_VAR);
 			return 0;
 		}
 		sd = lua_touserdata(L, -1);
 	} else {
-		fprintf(log_file, "error: Variable %s got tampered with (lus_update)\n", STATE_DATA_VAR);
+		rerror("Variable %s got tampered with (lus_update)", STATE_DATA_VAR);
 		return 0;
 	}
 	lua_pop(L, 1);
@@ -471,8 +469,8 @@ static int lus_update(struct game_state *s, struct bitmap *bmp) {
 		
 		/* Call it */
 		if(lua_pcall(L, 0, 0, 0)) {
-			fprintf(log_file, "error: Unable to execute onUpdate() callback (%d)\n", fn->ref);
-			fprintf(log_file, "lua: %s\n", lua_tostring(L, -1));
+			rerror("Unable to execute onUpdate() callback (%d)", fn->ref);
+			sublog("lua", "%s", lua_tostring(L, -1));
 			/* Should we remove it maybe? */
 		}
 		
@@ -502,7 +500,7 @@ static int lus_deinit(struct game_state *s) {
 	lua_getglobal(L, STATE_DATA_VAR);
 	if(!lua_isnil(L,-1)) {
 		if(!lua_islightuserdata(L, -1)) {
-			fprintf(log_file, "error: Variable %s got tampered with (map_deinit)\n", STATE_DATA_VAR);
+			rerror("Variable %s got tampered with (map_deinit)", STATE_DATA_VAR);
 		} else {
 			struct _update_function *fn;
 			

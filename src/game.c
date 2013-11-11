@@ -17,6 +17,7 @@
 #include "utils.h"
 #include "states.h"
 #include "resources.h"
+#include "log.h"
 
 /* Some Defaults *************************************************/
 
@@ -59,8 +60,6 @@ struct ini_file *game_ini = NULL;
 
 static Uint32 frameStart;
 
-FILE *log_file;
-
 struct game_state *get_demo_state(const char *name); /* demo.c */
 
 int mouse_x = 0, mouse_y = 0;
@@ -73,10 +72,10 @@ char keys[SDL_NUM_SCANCODES];
 int init(const char *appTitle, int virt_width, int virt_height) {
 	int flags = SDL_WINDOW_SHOWN;
 	
-	fprintf(log_file, "info: Creating Window.\n");
+	rlog("Creating Window.");
 	
 	if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_AUDIO) < 0) {
-		fprintf(log_file, "error SDL_Init: %s\n", SDL_GetError());
+		rerror("SDL_Init: %s", SDL_GetError());
 		return 1;
 	}
 	atexit(SDL_Quit);
@@ -90,26 +89,26 @@ int init(const char *appTitle, int virt_width, int virt_height) {
 	
 	win = SDL_CreateWindow(appTitle, 100, 100, screenWidth, screenHeight, flags);	
 	if(!win) {
-		fprintf(log_file, "error: SDL_CreateWindow: %s\n", SDL_GetError());
+		rerror("SDL_CreateWindow: %s", SDL_GetError());
 		return 0;
 	}
 	
 	ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 	if(!ren) {
-		fprintf(log_file, "error: SDL_CreateRenderer: %s\n", SDL_GetError());
+		rerror("SDL_CreateRenderer: %s", SDL_GetError());
 		return 0;
 	}	
 	
-	fprintf(log_file, "info: Window Created.\n");
+	rlog("Window Created.");
 	
 	bmp = bm_create(virt_width, virt_height);
 	
 	tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING, bmp->w, bmp->h);
 	if(!tex) {
-		fprintf(log_file, "error: SDL_CreateTexture: %s\n", SDL_GetError());
+		rerror("SDL_CreateTexture: %s", SDL_GetError());
 		return 0;
 	}
-	fprintf(log_file, "info: Texture Created.\n");
+	rlog("Texture Created.");
 	
 	reset_keys();
 	
@@ -123,15 +122,13 @@ int handleSpecialKeys(SDL_Scancode key) {
 	} else if (key == SDL_SCANCODE_F11) {
 		if(!fullscreen) {		
 			if(SDL_SetWindowFullscreen(win, SDL_WINDOW_FULLSCREEN_DESKTOP) < 0) {
-				fprintf(log_file, "error: Unable to set window to fullscreen: %s\n", SDL_GetError());
-				fflush(log_file);
+				rerror("Unable to set window to fullscreen: %s", SDL_GetError());
 			} else {
 				fullscreen = !fullscreen;
 			}
 		} else {	
 			if(SDL_SetWindowFullscreen(win, 0) < 0) {
-				fprintf(log_file, "error: Unable to set window to windowed: %s\n", SDL_GetError());
-				fflush(log_file);
+				rerror("Unable to set window to windowed: %s", SDL_GetError());
 			} else {
 				fullscreen = !fullscreen;
 			}
@@ -140,8 +137,7 @@ int handleSpecialKeys(SDL_Scancode key) {
 	} else if(key == SDL_SCANCODE_F12) {
 		const char *filename = "save.bmp";
 		bm_save(bmp, filename);
-		fprintf(log_file, "Screenshot saved as %s\n", filename);
-		fflush(log_file);
+		rlog("Screenshot saved as %s", filename);
 		return 1;
 	}
 	return 0;
@@ -225,8 +221,7 @@ void advanceFrame() {
 			case SDL_WINDOWEVENT_RESIZED:
 				screenWidth = event.window.data1;
 				screenHeight = event.window.data2;
-				fprintf(log_file, "info: Window resized to %dx%d\n", screenWidth, screenHeight);
-				fflush(log_file);
+				rlog("Window resized to %dx%d", screenWidth, screenHeight);
 				break;
 			default: break;
 			}
@@ -258,7 +253,7 @@ void usage(const char *name) {
 	fprintf(stderr, "where options:\n");
 	fprintf(stderr, " -p pakfile  : Load game from PAK file.\n");
 	fprintf(stderr, " -g inifile  : Use a game INI file instead of a pak file.\n");
-	fprintf(stderr, " -l logfile  : Use specific log file.\n");
+	fprintf(stderr, " -l rlogfile  : Use specific rlog file.\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -272,7 +267,7 @@ int main(int argc, char *argv[]) {
 	
 	const char *game_filename = "game.ini";
 	
-	const char *log_filename = "logfile.txt";
+	const char *rlog_filename = "rlogfile.txt";
 	
 	const char *startstate;
 	
@@ -290,7 +285,7 @@ int main(int argc, char *argv[]) {
 				pak_filename = NULL;
 			} break;
 			case 'l': {
-				log_filename = optarg;
+				rlog_filename = optarg;
 			} break;
 			case 'd': {
 				demo = 1;
@@ -302,34 +297,31 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	
-	log_file = fopen(log_filename, "w");
-	if(!log_file) {
-		log_file = stdout;
-	}
+	log_init(rlog_filename);
 	
 	/* Don't quite know how to use this in Windows yet.
-	SDL_LogSetAllPriority(SDL_LOG_PRIORITY_WARN);
-	SDL_Log("Testing log capability.");
+	SDL_rlogSetAllPriority(SDL_rlog_PRIORITY_WARN);
+	SDL_rlog("Testing rlog capability.");
 	*/
 	
 	SDL_VERSION(&compiled);
 	SDL_GetVersion(&linked);
-	fprintf(log_file, "info: SDL version %d.%d.%d (compile)\n", compiled.major, compiled.minor, compiled.patch);
-	fprintf(log_file, "info: SDL version %d.%d.%d (link)\n", linked.major, linked.minor, linked.patch);
+	rlog("SDL version %d.%d.%d (compile)", compiled.major, compiled.minor, compiled.patch);
+	rlog("SDL version %d.%d.%d (link)", linked.major, linked.minor, linked.patch);
 	
 	re_initialize();
 	
 	if(!demo) {
 		if(pak_filename) {
-			fprintf(log_file, "info: Loading game PAK file: %s\n", pak_filename);	
+			rlog("Loading game PAK file: %s", pak_filename);	
 			if(!rs_read_pak(pak_filename)) {
-				fprintf(log_file, "error: Unable to open PAK file '%s'; Playing demo mode\n", pak_filename);
+				rerror("Unable to open PAK file '%s'; Playing demo mode.", pak_filename);
 				goto start_demo;
 			}
 		} else {
-			fprintf(log_file, "info: Not using a pak file. Using %s instead.\n", game_filename);
+			rlog("Not using a pak file. Using %s instead.", game_filename);
 		}		
-		fflush(log_file);
+		
 		game_ini = re_get_ini(game_filename);
 		if(game_ini) {	
 			appTitle = ini_get(game_ini, "init", "appTitle", "Rengine");
@@ -352,44 +344,42 @@ int main(int argc, char *argv[]) {
 			startstate = ini_get(game_ini, "init", "startstate", NULL);
 			if(startstate) {
 				if(!set_state(startstate)) {
-					fprintf(log_file, "error: Unable to set initial state: %s\n", startstate);
+					rerror("Unable to set initial state: %s", startstate);
 					quit = 1;
 				}
 			} else {
-				fprintf(log_file, "error: No initial state in %s\n", game_filename);
+				rerror("No initial state in %s", game_filename);
 				quit = 1;
 			}
 		} else {
-			fprintf(log_file, "error: No game INI\n");
+			rerror("No game INI");
 			quit = 1;
 		}
 	} else {
 start_demo:
-		fprintf(log_file, "info: Starting demo mode\n");
+		rlog("Starting demo mode");
 		current_state = get_demo_state("demo");
 		if(!current_state->init(current_state))
 			quit = 1;
 	}
 	
-	fprintf(log_file, "info: Initialising...\n");
-	fflush(log_file);
+	rlog("Initialising...");
 		
 	if(!init(appTitle, virt_width, virt_height)) {
 		return 1;
 	}
 	
-	SDL_Log("Test log message");
+	SDL_Log("Test rlog message");
 	
 	frameStart = SDL_GetTicks();	
 	
-	fprintf(log_file, "info: Event loop starting...\n");
-	fflush(log_file);
-	
+	rlog("Event loop starting...");
+
 	/* If I used SDL_WINDOW_FULLSCREEN in SDL_CreateWindow() it 
 	had some strange problems when you shutdown the engine. */
 	if(fullscreen) {
 		if(SDL_SetWindowFullscreen(win, SDL_WINDOW_FULLSCREEN_DESKTOP) < 0) {
-			fprintf(log_file, "error: Unable to set window to fullscreen: %s\n", SDL_GetError());
+			rerror("Unable to set window to fullscreen: %s", SDL_GetError());
 		} 
 	}
 	
@@ -404,16 +394,15 @@ start_demo:
 		advanceFrame();
 	}
 	
-	fprintf(log_file, "info: Event loop stopped.\n");
-	fflush(log_file);
+	rlog("Event loop stopped.");
 	
 	if(current_state && current_state->deinit)
 		current_state->deinit(current_state);	
 
 	/*
 	if(fullscreen && SDL_SetWindowFullscreen(win, 0) < 0) {
-		fprintf(log_file, "error: Unable to reset window to windowed: %s\n", SDL_GetError());
-		fflush(log_file);
+		fprintf(rlog_file, "rerror: Unable to reset window to windowed: %s\n", SDL_GetError());
+		fflush(rlog_file);
 	}*/
 	
 	bm_free(bmp);
@@ -430,11 +419,9 @@ start_demo:
 	
 	re_clean_up();
 	
-	fprintf(log_file, "info: Engine shut down.\n");
-	fflush(log_file);
+	rlog("Engine shut down.");
 	
-	if(log_file != stdout)
-		fclose(log_file);
+	log_deinit();
 	
 	return 0;
 }

@@ -14,6 +14,7 @@
 #include "game.h"
 #include "particles.h"
 #include "resources.h"
+#include "log.h"
 
 /* Globals *******************************************/
 
@@ -124,7 +125,7 @@ static void apply_styles(const char *state) {
 	if(image) {
 		style.bmp = re_get_bmp(image);
 		if(!style.bmp) {
-			fprintf(log_file, "error: Unable to load '%s'\n", image);
+			rerror("Unable to load '%s'", image);
 		} else {		
 			style.image_align = ini_get(game_ini, state, "image-align", "top");
 			style.image_trans = ini_get(game_ini, state, "image-mask", NULL);
@@ -284,7 +285,7 @@ static int static_update(struct game_state *s, struct bitmap *bmp) {
 		
 		next = get_state(nextstate);
 		if(!next) {
-			fprintf(log_file, "error: State '%s' does not exist\n", nextstate);
+			rerror("State '%s' does not exist.", nextstate);
 		}
 		
 		change_state(next);
@@ -389,7 +390,7 @@ static int leftright_update(struct game_state *s, struct bitmap *bmp) {
 				
 				next = get_state(nextstate);
 				if(!next) {
-					fprintf(log_file, "error: State '%s' does not exist\n", nextstate);
+					rerror("State '%s' does not exist", nextstate);
 				}
 				
 				change_state(next);
@@ -402,7 +403,7 @@ static int leftright_update(struct game_state *s, struct bitmap *bmp) {
 				
 				next = get_state(nextstate);
 				if(!next) {
-					fprintf(log_file, "error: State '%s' does not exist\n", nextstate);
+					rerror("State '%s' does not exist", nextstate);
 				}
 				
 				change_state(next);				
@@ -457,7 +458,7 @@ static struct game_state *get_leftright_state(const char *name) {
 int change_state(struct game_state *next) {
 	if(current_state && current_state->deinit) {
 		if(!current_state->deinit(current_state)) {
-			fprintf(log_file, "error: Deinitialising new state\n");
+			rlog("Deinitialising new state");
 			return 0;
 		}
 		free(current_state);
@@ -465,11 +466,10 @@ int change_state(struct game_state *next) {
 	current_state = next;	
 	if(current_state && current_state->init) {
 		if(!current_state->init(current_state)) {
-			fprintf(log_file, "error: Initialising new state\n");
+			rerror("Initialising new state");
 			return 0;
 		}
 	}
-	fflush(log_file);
 	return 1;
 }
 
@@ -481,14 +481,14 @@ static struct game_state *get_state(const char *name) {
 	if(!name) return NULL;
 	
 	if(!ini_has_section(game_ini, name)) {
-		fprintf(log_file, "error: No state %s in ini file\n", name);
+		rerror("No state %s in ini file", name);
 		quit = 1;
 		return NULL;
 	}
 	
 	type = ini_get(game_ini, name, "type", NULL);
 	if(!type) {
-		fprintf(log_file, "error: No state type for state '%s' in ini file\n", name);
+		rerror("No state type for state '%s' in ini file", name);
 		quit = 1;
 		return NULL;
 	}
@@ -502,12 +502,12 @@ static struct game_state *get_state(const char *name) {
 	} else if(!my_stricmp(type, "musl")) {
 		next = get_mus_state(name);
 	} else {
-		fprintf(log_file, "error: Invalid type '%s' for state '%s' in ini file\n", type, name);
+		rerror("Invalid type '%s' for state '%s' in ini file", type, name);
 		quit = 1;
 		return NULL;
 	}
 	if(!next) {
-		fprintf(log_file, "error: Memory allocation error obtaining state %s\n", name);
+		rerror("Memory allocation error obtaining state %s", name);
 		quit = 1;
 	}
 	return next;
@@ -515,7 +515,7 @@ static struct game_state *get_state(const char *name) {
 
 int set_state(const char *name) {
 	struct game_state *next;
-	fprintf(log_file, "info: Changing to state '%s'\n", name);
+	rlog("Changing to state '%s'", name);
 	next = get_state(name);	
 	return change_state(next);
 }

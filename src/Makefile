@@ -34,7 +34,7 @@ EXECUTABLES = $(GAME_BIN)
 
 SOURCES= bmp.c game.c ini.c utils.c pak.c particles.c \
 	states.c demo.c resources.c musl.c mustate.c hash.c \
-	lexer.c tileset.c map.c json.c luastate.c 
+	lexer.c tileset.c map.c json.c luastate.c log.c
 
 FONTS = fonts/bold.xbm fonts/circuit.xbm fonts/hand.xbm fonts/normal.xbm \
 		fonts/small.xbm fonts/smallinv.xbm fonts/thick.xbm
@@ -66,10 +66,12 @@ bmp.o: bmp.c ../include/bmp.h ../fonts/bold.xbm \
  ../fonts/circuit.xbm ../fonts/hand.xbm ../fonts/normal.xbm \
  ../fonts/small.xbm ../fonts/smallinv.xbm ../fonts/thick.xbm
 demo.o: demo.c ../include/bmp.h ../include/states.h \
- ../include/game.h ../include/resources.h ../rengine.xbm
+ ../include/game.h ../include/resources.h ../include/log.h \
+ ../rengine.xbm
 game.o: game.c ../include/bmp.h \
  ../include/ini.h ../include/game.h ../include/particles.h \
- ../include/utils.h ../include/states.h ../include/resources.h
+ ../include/utils.h ../include/states.h ../include/resources.h \
+ ../include/log.h
 hash.o: hash.c ../include/hash.h
 ini.o: ini.c ../include/ini.h \
  ../include/utils.h
@@ -82,19 +84,21 @@ map.o: map.c ../include/tileset.h \
 luastate.o: luastate.c ../include/bmp.h \
  ../include/states.h ../include/map.h ../include/game.h ../include/ini.h \
  ../include/resources.h ../include/tileset.h ../include/utils.h \
- ../include/particles.h
+ ../include/particles.h ../include/log.h
 musl.o: musl.c ../include/musl.h
 mustate.o: mustate.c ../include/bmp.h \
  ../include/states.h ../include/musl.h ../include/game.h ../include/ini.h \
- ../include/resources.h ../include/utils.h ../include/particles.h
+ ../include/resources.h ../include/utils.h ../include/particles.h \
+ ../include/log.h
 pak.o: pak.c ../include/pak.h
 particles.o: particles.c ../include/bmp.h
 resources.o: resources.c ../include/pak.h \
  ../include/bmp.h ../include/ini.h ../include/game.h ../include/utils.h \
- ../include/hash.h
+ ../include/hash.h ../include/log.h
 states.o: states.c ../include/ini.h \
  ../include/bmp.h ../include/states.h ../include/utils.h \
- ../include/game.h ../include/particles.h ../include/resources.h
+ ../include/game.h ../include/particles.h ../include/resources.h \
+ ../include/log.h
 tileset.o: tileset.c ../include/bmp.h ../include/tileset.h \
  ../include/lexer.h ../include/json.h ../include/utils.h
 utils.o: utils.c
