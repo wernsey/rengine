@@ -15,11 +15,11 @@
 
 #include "bmp.h"
 #include "states.h"
+#include "tileset.h"
 #include "map.h"
 #include "game.h"
 #include "ini.h"
 #include "resources.h"
-#include "tileset.h"
 #include "utils.h"
 #include "particles.h"
 #include "log.h"
@@ -265,7 +265,7 @@ static int cell_tostring(lua_State *L) {
 }
 
 static int cell_set(lua_State *L) {
-	
+	struct lustate_data *sd = get_state_data(L);
 	cell_obj **os = luaL_checkudata(L,1, "CellObj");
 	cell_obj *o;
 	int l = luaL_checkint(L,2);
@@ -276,7 +276,9 @@ static int cell_set(lua_State *L) {
 		lua_pushfstring(L, "Invalid level passed to CellObj.set()");
 		lua_error(L);
 	}
-	if(si < 0 || si >= ts_get_num()) {
+	
+	assert(sd->map); /* cant create a CellObj if this is false. */
+	if(si < 0 || si >= ts_get_num(&sd->map->tiles)) {
 		lua_pushfstring(L, "Invalid si passed to CellObj.set()");
 		lua_error(L);
 	}
@@ -520,8 +522,6 @@ static int lus_deinit(struct game_state *s) {
 	
 	lua_close(L);
 	L = NULL;
-	
-	ts_free_all();
 	
 	return 1;
 }
