@@ -46,7 +46,8 @@ debug:
 	make "BUILD=debug"
 
 $(EDIT_BIN): main.o editor.o BMCanvas.o LevelCanvas.o TileCanvas.o \
-				bmp.o tileset.o map.o lexer.o json.o hash.o utils.o
+				bmp.o tileset.o map.o lexer.o json.o hash.o utils.o \
+				log.o
 	g++ -o $@  $^ $(LPPFLAGS)
 	
 editor.o : editor.cxx editor.h 
@@ -82,6 +83,8 @@ json.o: ../src/json.c ../include/json.h
 hash.o: ../src/hash.c ../include/hash.h
 	$(CC) -c $(CFLAGS) $< -o $@
 utils.o: ../src/utils.c ../include/utils.h
+	$(CC) -c $(CFLAGS) $< -o $@
+log.o: ../src/log.c ../include/log.h
 	$(CC) -c $(CFLAGS) $< -o $@
 
 .PHONY : clean

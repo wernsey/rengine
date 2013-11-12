@@ -31,8 +31,8 @@ int LevelCanvas::handle(int event) {
 				int mx = (Fl::event_x() - x())/zoom();
 				int my = (Fl::event_y() - y())/zoom();
 				
-				dragStartX = mx/_map->tw;
-				dragStartY = my/_map->th;
+				dragStartX = mx/_map->tiles.tw;
+				dragStartY = my/_map->tiles.th;
 			}
 			return 1;
 		}
@@ -47,8 +47,8 @@ int LevelCanvas::handle(int event) {
 			int mx = (Fl::event_x() - x())/zoom();
 			int my = (Fl::event_y() - y())/zoom();
 			
-			dragX = mx/_map->tw;
-			dragY = my/_map->th;
+			dragX = mx/_map->tiles.tw;
+			dragY = my/_map->tiles.th;
 			redraw();
 			return 1;
 		}
@@ -62,8 +62,8 @@ int LevelCanvas::handle(int event) {
 				int mx = (Fl::event_x() - x())/zoom();
 				int my = (Fl::event_y() - y())/zoom();
 				
-				int col = mx/_map->tw;
-				int row = my/_map->th;	
+				int col = mx/_map->tiles.tw;
+				int row = my/_map->tiles.th;	
 							
 				if(Fl::event_button() == FL_LEFT_MOUSE) {
 					
@@ -73,13 +73,13 @@ int LevelCanvas::handle(int event) {
 					tileset *ts = tc->getTileset();
 					if(!ts) 
 						return 1;
-					int tsi = ts_index_of( ts->name );
+					int tsi = ts_index_of(&_map->tiles, ts->name );
 					if(tsi < 0) 
 						return 1;
 					
 					int ti = tc->selectedIndex();
 					
-					struct tile_meta *meta = ts_has_meta_ti(ts, ti);
+					struct tile_meta *meta = ts_has_meta_ti(&_map->tiles, ts, ti);
 					
 					int x1 = MY_MIN(dragStartX, col), y1 = MY_MIN(dragStartY, row), 
 						x2 = MY_MAX(dragStartX, col), y2 = MY_MAX(dragStartY, row);
@@ -112,8 +112,8 @@ int LevelCanvas::handle(int event) {
 					
 				} else if(Fl::event_button() == FL_RIGHT_MOUSE) {	
 					
-					selCol = mx/_map->tw;
-					selRow = my/_map->th;
+					selCol = mx/_map->tiles.tw;
+					selRow = my/_map->tiles.th;
 					
 					if(select_callback)
 						select_callback(this);
@@ -138,14 +138,14 @@ void LevelCanvas::paint() {
 	clear();
 	pen("#808080");
 	
-	int w = _map->nc * _map->tw;
-	int h = _map->nr * _map->th;
+	int w = _map->nc * _map->tiles.tw;
+	int h = _map->nr * _map->tiles.th;
 	
 	for(int j = 0; j < _map->nr; j++) {
-		line(0, j * _map->th, w, j * _map->th);
+		line(0, j * _map->tiles.th, w, j * _map->tiles.th);
 	}
 	for(int j = 0; j < _map->nr; j++) {
-		line(j * _map->tw, 0, j * _map->tw, h);
+		line(j * _map->tiles.tw, 0, j * _map->tiles.tw, h);
 	}
 	
 	for(int i = 0; i < _map->nl; i++) {
@@ -159,8 +159,8 @@ void LevelCanvas::paint() {
 			for(int i = 0; i < _map->nc; i++) {
 				map_cell *c = map_get_cell(_map, i, j);
 				if(c->flags & TS_FLAG_BARRIER) {
-					for(int y = j * _map->th; y < (j + 1) * _map->th; y++)
-						for(int x = i * _map->tw; x < (i + 1) * _map->tw; x++) {
+					for(int y = j * _map->tiles.th; y < (j + 1) * _map->tiles.th; y++)
+						for(int x = i * _map->tiles.tw; x < (i + 1) * _map->tiles.tw; x++) {
 							if((x + y) % 2) 
 								putpixel(x, y);
 						}
@@ -169,10 +169,10 @@ void LevelCanvas::paint() {
 	}
 	
 	if(selRow >= 0 && selCol >= 0) {
-		int x = selCol * _map->tw;
-		int y = selRow * _map->th;
+		int x = selCol * _map->tiles.tw;
+		int y = selRow * _map->tiles.th;
 		pen("white");
-		rect(x, y, x + _map->tw - 1, y +  _map->th - 1);
+		rect(x, y, x + _map->tiles.tw - 1, y +  _map->tiles.th - 1);
 	}
 	
 	if(dragStartX >= 0 && dragStartY >= 0) {		
@@ -181,7 +181,7 @@ void LevelCanvas::paint() {
 			x2 = MY_MAX(dragStartX, dragX) + 1, 
 			y2 = MY_MAX(dragStartY, dragY) + 1;
 		pen("red");
-		rect(x1 * _map->tw, y1 * _map->th, x2 * _map->tw, y2 * _map->th);
+		rect(x1 * _map->tiles.tw, y1 * _map->tiles.th, x2 * _map->tiles.tw, y2 * _map->tiles.th);
 		
 	}
 }
@@ -202,8 +202,8 @@ void LevelCanvas::setMap(map *m) {
 	if(_map)
 		map_free(_map);
 	_map = m; 
-	int w = m->tw * m->nc;
-	int h = m->th * m->nr;
+	int w = m->tiles.tw * m->nc;
+	int h = m->tiles.th * m->nr;
 	resize(x(), y(), w, h);
 	
 	redraw();

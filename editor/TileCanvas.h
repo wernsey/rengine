@@ -3,6 +3,7 @@
 
 #include "BMCanvas.h"
 #include "tileset.h"
+#include "map.h"
 
 class TileCanvas;
 
@@ -18,8 +19,9 @@ public:
 
 	virtual void paint(); 
 
-	void setTileset(tileset *tiles);
+	void setMap(map *m);
 
+	void setTileset(tileset *tiles);
 	tileset *getTileset() {return tiles;}
 	
 	void setSelectCallback(tile_select_callback select_callback) {this->select_callback = select_callback;}
@@ -35,6 +37,7 @@ public:
 	void drawBarriers(bool d) { _drawBarriers = d;}
 	
 private:
+	map *_map;
 	tileset *tiles;
 
 	int selRow, selCol;

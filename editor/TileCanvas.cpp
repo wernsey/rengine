@@ -5,9 +5,9 @@
 #include "TileCanvas.h"
 
 TileCanvas::TileCanvas(int x, int y, int w, int h) 
-: BMCanvas(x, y, w, h, "Tile View"), selRow(0), selCol(0), 
-	_drawBarriers(false), select_callback(NULL) {
-	tiles = NULL;
+: BMCanvas(x, y, w, h, "Tile View"), _map(0), selRow(0), selCol(0), 
+	_drawBarriers(false), select_callback(0) {
+	tiles = 0;
 	zoom(1.0);
 }
 
@@ -23,8 +23,8 @@ int TileCanvas::handle(int event) {
 					int mx = (Fl::event_x() - x())/zoom();
 					int my = (Fl::event_y() - y())/zoom();
 					
-					selCol = mx/tiles->tw;
-					selRow = my/tiles->th;
+					selCol = mx/_map->tiles.tw;
+					selRow = my/_map->tiles.th;
 					
 					
 					if(select_callback)
@@ -53,12 +53,12 @@ void TileCanvas::paint() {
 			for(int n = 0; n < tiles->nmeta; n++) {
 				struct tile_meta *m = &tiles->meta[n];
 				if(m->flags & TS_FLAG_BARRIER) {				
-					int tr = tiles->bm->w / tiles->tw;
+					int tr = tiles->bm->w / _map->tiles.tw;
 					int row = m->ti / tr;
 					int col = m->ti % tr;
 					
-					for(int y = row * tiles->th; y < (row + 1) * tiles->th; y++)
-						for(int x = col * tiles->tw; x < (col + 1) * tiles->tw; x++) {
+					for(int y = row * _map->tiles.th; y < (row + 1) * _map->tiles.th; y++)
+						for(int x = col * _map->tiles.tw; x < (col + 1) * _map->tiles.tw; x++) {
 							if((x + y) % 2) 
 								putpixel(x, y);
 						}
@@ -67,10 +67,10 @@ void TileCanvas::paint() {
 		}
 		
 		if(selRow >= 0 && selCol >= 0) {
-			int x = selCol * (tiles->tw + tiles->border);
-			int y = selRow * (tiles->th + tiles->border);
+			int x = selCol * (_map->tiles.tw + _map->tiles.border);
+			int y = selRow * (_map->tiles.th + _map->tiles.border);
 			pen("white");
-			rect(x, y, x + tiles->tw - 1, y + tiles->th - 1);
+			rect(x, y, x + _map->tiles.tw - 1, y + _map->tiles.th - 1);
 		}
 	}
 }
@@ -79,7 +79,7 @@ int TileCanvas::selectedIndex() {
 	if(selRow < 0 || selCol < 0) {
 		return -1;
 	}
-	int tr = tiles->bm->w / tiles->tw;
+	int tr = tiles->bm->w / _map->tiles.tw;
 	return selRow * tr + selCol;
 }
 
@@ -87,6 +87,10 @@ void TileCanvas::deselect() {
 	selRow = 0;
 	selCol = 0;
 	redraw();
+}
+
+void TileCanvas::setMap(map *m) { 
+	_map = m;
 }
 
 void TileCanvas::setTileset(tileset *tiles) {	

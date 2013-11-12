@@ -9,7 +9,7 @@
 #include "json.h"
 #include "utils.h"
 
-#define MAP_FILE_VERSION 1.0
+#define MAP_FILE_VERSION 1.1
 
 struct map *map_create(int nr, int nc, int tw, int th, int nl) {
 	int i;
@@ -18,10 +18,10 @@ struct map *map_create(int nr, int nc, int tw, int th, int nl) {
 		return NULL;
 	m->nr = nr;
 	m->nc = nc;
-	m->tw = tw;
-	m->th = th;
 	m->nl = nl;
 	m->dirty = 0;
+	
+	ts_init(&m->tiles, tw, th, 0); /* FIXME: The Border. */
 	
 	m->cells = calloc(nr * nc, sizeof *m->cells);
 	
@@ -95,10 +95,10 @@ void map_render(struct map *m, struct bitmap *bmp, int layer, int scroll_x, int 
 			if(tile->ti >= 0) {
 				int r, c;
 				if(tsi != tile->si) {
-					ts = ts_get(tile->si);
+					ts = ts_get(&m->tiles, tile->si);
 					assert(ts);
 					tsi = tile->si;
-					nht = ts->bm->w / m->tw;
+					nht = ts->bm->w / m->tiles.tw;
 				}
 				assert(ts != NULL);
 				assert(nht > 0);
@@ -106,11 +106,11 @@ void map_render(struct map *m, struct bitmap *bmp, int layer, int scroll_x, int 
 				r = tile->ti / nht;
 				c = tile->ti % nht;
 				
-				bm_maskedblit(bmp, x, y, ts->bm, c * m->tw, r * m->th, m->tw, m->th);
+				bm_maskedblit(bmp, x, y, ts->bm, c * m->tiles.tw, r * m->tiles.th, m->tiles.tw, m->tiles.th);
 			}
-			x += m->tw;
+			x += m->tiles.tw;
 		}
-		y += m->th;
+		y += m->tiles.th;
 	}
 }
 
@@ -126,6 +126,7 @@ void map_free(struct map *m) {
 		free(m->cells[i].id);
 		free(m->cells[i].clas);
 	}
+	ts_deinit(&m->tiles);
 	free(m->cells);
 	free(m);
 }
@@ -140,7 +141,6 @@ int map_save(struct map *m, const char *filename) {
 	fprintf(f, "\"version\" : %.2f,\n", MAP_FILE_VERSION);
 	
 	fprintf(f, "\"rows\" : %d,\n\"columns\" : %d,\n", m->nr, m->nc);
-	fprintf(f, "\"tile_width\" : %d,\n\"tile_height\" : %d,\n", m->tw, m->th);
 	
 	fprintf(f, "\"num_layers\" : %d,\n", m->nl);
 	fprintf(f, "\"cells\" : [\n");
@@ -164,7 +164,7 @@ int map_save(struct map *m, const char *filename) {
 	fprintf(f, "],\n");
 	
 	fprintf(f, "\"tilesets\" : ");
-	ts_write_all(f);
+	ts_write_all(&m->tiles, f);
 	
 	fprintf(f, "}\n");
 	fclose(f);
@@ -200,14 +200,11 @@ struct map *map_parse(const char *text) {
 	}
 		
 	version = json_get_number(j, "version");
-	if(version < 1.0) {
+	if(version < 1.1) {
 		json_free(j);
 		return NULL;
 	}
-	
-	/* Clear the tilesets, otherwise the indexes won't make sense. */
-	ts_free_all();
-	
+		
 	nr = json_get_number(j, "rows");
 	nc = json_get_number(j, "columns");
 	tw = json_get_number(j, "tile_width");
@@ -260,7 +257,7 @@ struct map *map_parse(const char *text) {
 	}
 		
 	a = json_get_object(j, "tilesets");
-	ts_read_all(a);	
+	ts_read_all(&m->tiles, a);	
 	
 	json_free(j);
 	

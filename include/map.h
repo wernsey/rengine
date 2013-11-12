@@ -1,3 +1,5 @@
+#ifndef MAP_H
+#define MAP_H
 #if defined(__cplusplus) || defined(c_plusplus)
 extern "C" {
 #endif
@@ -16,10 +18,12 @@ struct map_cell {
 
 struct map {
 	int nr, nc;
-	int tw, th;
 	char dirty;
+	
 	int nl;
 	struct map_cell *cells;
+	
+	struct tile_collection tiles;
 };
 
 struct map *map_create(int nr, int nc, int tw, int th, int nl);
@@ -43,3 +47,4 @@ struct map_cell *map_get_cell(struct map *m, int x, int y);
 #if defined(__cplusplus) || defined(c_plusplus)
 } /* extern "C" */
 #endif
+#endif /* MAP_H */

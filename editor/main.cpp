@@ -6,6 +6,7 @@
 #endif
 
 #include "editor.h"
+#include "log.h"
 
 /*****************************************************************************************
  * GLOBALS ******************************************************************************/
@@ -40,8 +41,8 @@ void new_btn_ok_cb(Fl_Button* w, void*) {
 	canvas->parent()->redraw();
 	
 	tileset_file = NULL;
-	ts_free_all();
 	tileSetSelect->clear();
+	tiles->setMap(canvas->getMap());
 	tiles->setTileset(NULL);
 	tiles->redraw();
 	
@@ -75,10 +76,13 @@ void open_cb(Fl_Menu_* w, void*) {
 	
 	map_file = filename;
 	canvas->setMap(m);
+	tiles->setMap(canvas->getMap());
+	tiles->setTileset(NULL);
 	
 	tileSetSelect->clear();
-	for(int i = 0; i < ts_get_num(); i++) {
-		tileset *ts = ts_get(i);
+	tile_collection *tc = &canvas->getMap()->tiles;
+	for(int i = 0; i < ts_get_num(tc); i++) {
+		tileset *ts = ts_get(tc, i);
 		tileSetSelect->add(ts->name);
 	}
 }
@@ -129,13 +133,15 @@ void quit_cb(Fl_Menu_* w, void*) {
  * TILE SET MENU ************************************************************************/
 
 void tilesetadd_cb(Fl_Menu_* w, void*) {
+	if(!canvas->getMap()) return;
 	char * filename = fl_file_chooser("Choose Bitmap", "Bitmap files (*.bmp)", "", 1);
 	if(filename != NULL) {
-		if(ts_find(filename)) {
+		tile_collection *tc = &canvas->getMap()->tiles;
+		if(ts_find(tc, filename)) {
 			fl_alert("Tileset %s is already\nin the collection.", filename);
 			return;
 		}		
-		int index = ts_add(filename, g_tilewidth, g_tileheight, 0);
+		int index = ts_add(tc, filename);
 		if(index < 0) {
 			fl_alert("Unable to load %s", filename);
 			return;
@@ -148,16 +154,20 @@ void tilesetadd_cb(Fl_Menu_* w, void*) {
 }
 
 void tilesetsave_cb(Fl_Menu_* w, void*p) {
+	if(!canvas->getMap()) return;
+	tile_collection *tc = &canvas->getMap()->tiles;
 	if(tileset_file)
-		ts_save_all(tileset_file);
+		ts_save_all(tc, tileset_file);
 	else
 		tilesetsaveas_cb(w, p);
 }
 
 void tilesetsaveas_cb(Fl_Menu_* w, void*) {
+	if(!canvas->getMap()) return;
 	char * filename = fl_file_chooser("Choose Filename For Tileset", "Tileset files (*.tls)", "", 1);	
 	if(filename != NULL) {
-		if(ts_save_all(filename)) {			
+		tile_collection *tc = &canvas->getMap()->tiles;
+		if(ts_save_all(tc, filename)) {			
 			tileset_file = filename;
 		} else {
 			fl_alert("Unable to export tileset to %s", filename);
@@ -166,18 +176,19 @@ void tilesetsaveas_cb(Fl_Menu_* w, void*) {
 }
 
 void tilesetload_cb(Fl_Menu_* w, void*) {	
-	int start = ts_get_num();
+	if(!canvas->getMap()) return;
+	tile_collection *tc = &canvas->getMap()->tiles;
+	int start = ts_get_num(tc);
 	char * filename = fl_file_chooser("Choose Tileset", "Tileset files (*.tls)", "", 1);
 	if(!filename)
 		return;
-	
-	if(!ts_load_all(filename)) {
+	if(!ts_load_all(tc, filename)) {
 		fl_alert("Unable to import tileset %s", filename);
 		return;
 	}
 	tileset_file = filename;
-	for(int i = start; i < ts_get_num(); i++) {
-		tileset *ts = ts_get(i);
+	for(int i = start; i < ts_get_num(tc); i++) {
+		tileset *ts = ts_get(tc, i);
 		tileSetSelect->add(ts->name);
 	}
 }
@@ -251,7 +262,8 @@ void mapDrawBarrier_cb(Fl_Check_Button *b, void*) {
 
 void tileset_cb(Fl_Browser*w, void*p) {
 	int i = w->value();
-	struct tileset *ts = ts_find(w->text(i));
+	tile_collection *tc = &canvas->getMap()->tiles;
+	struct tileset *ts = ts_find(tc, w->text(i));
 	
 	if(!ts) 
 		return;
@@ -263,10 +275,11 @@ void tileset_cb(Fl_Browser*w, void*p) {
 	tiles->parent()->redraw();
 }
 
-void tile_select_cb(TileCanvas *canvas) {
-	tileset *ts = canvas->getTileset();	
+void tile_select_cb(TileCanvas *tileCanvas) {
+	tileset *ts = tileCanvas->getTileset();	
 	if(!ts) return;
-	tile_meta *meta = ts_has_meta(ts, canvas->row(), canvas->col());
+	tile_collection *tc = &canvas->getMap()->tiles;
+	tile_meta *meta = ts_has_meta(tc, ts, canvas->row(), canvas->col());
 	if(meta) {
 		tilesClass->value(meta->clas);
 		tileIsBarrier->value(meta->flags & TS_FLAG_BARRIER);
@@ -275,7 +288,7 @@ void tile_select_cb(TileCanvas *canvas) {
 		tileIsBarrier->value(0);
 	}
 	char buffer[128];
-	snprintf(buffer, sizeof buffer, "si: %d ti:%d", ts_index_of( ts->name ), tiles->selectedIndex());
+	snprintf(buffer, sizeof buffer, "si: %d ti:%d", ts_index_of(tc, ts->name ), tiles->selectedIndex());
 	tilesStatus->value(buffer);
 }
 
@@ -289,7 +302,8 @@ void tileClass_cb(Fl_Input*in, void*p) {
 	tileset *ts = tiles->getTileset();	
 	if(!ts) return;
 	
-	tile_meta *meta = ts_get_meta(ts, tiles->row(), tiles->col());
+	tile_collection *tc = &canvas->getMap()->tiles;
+	tile_meta *meta = ts_get_meta(tc, ts, tiles->row(), tiles->col());
 	if(!meta) {
 		fl_alert("out of memory :(");
 		return;
@@ -300,10 +314,11 @@ void tileClass_cb(Fl_Input*in, void*p) {
 }
 
 void tileBarrier_cb(Fl_Check_Button*w, void*p) {
+	tile_collection *tc = &canvas->getMap()->tiles;
 	tileset *ts = tiles->getTileset();	
 	if(!ts) return;
 	
-	tile_meta *meta = ts_get_meta(ts, tiles->row(), tiles->col());
+	tile_meta *meta = ts_get_meta(tc, ts, tiles->row(), tiles->col());
 	if(!meta) {
 		fl_alert("out of memory :(");
 		return;
@@ -342,6 +357,8 @@ void zoomInCb(Fl_Button *w, void *p) {
  * THE MAIN FUNCTION ********************************************************************/
 
 int main(int argc, char *argv[]) {
+	
+	log_init("editor.log");
 	
 	make_window();
 	

@@ -10,72 +10,77 @@
 #include "json.h"
 #include "utils.h"
 
-#define TILE_FILE_VERSION 1.0f
+#define TILE_FILE_VERSION 1.1f
 
-static struct tileset **tilesets = NULL;
-static int ntilesets = 0;
-
-static struct tileset *ts_make(const char *filename, int tw, int th, int border);
+static struct tileset *ts_make(const char *filename);
 
 static void ts_free(struct tileset *t);
 
-int ts_add(const char *filename, int tw, int th, int border) {
-	tilesets = realloc(tilesets, (ntilesets + 1) * sizeof *tilesets);
-	if(!tilesets) {
-		ntilesets = 0;
-		return -1;
-	}
-	tilesets[ntilesets] = ts_make(filename, tw, th, border);
-	if(!tilesets[ntilesets]) {
-		return -1;
-	}
-	return ntilesets++;
-}
+void ts_init(struct tile_collection *tc, int tw, int th, int border) {
+	tc->tilesets = NULL;
+	tc->ntilesets = 0;
+	tc->tw = tw;
+	tc->th = th;
+	tc->border = border;
+};
 
-void ts_free_all() {
+void ts_deinit(struct tile_collection *tc) {
 	int i;
-	if(!tilesets) 
+	if(!tc->tilesets) 
 		return;
 	
-	for(i = 0; i < ntilesets; i++) {
-		ts_free(tilesets[i]);
+	for(i = 0; i < tc->ntilesets; i++) {
+		ts_free(tc->tilesets[i]);
 	}
-	free(tilesets);
-	tilesets = NULL;
-	ntilesets = 0;
+	free(tc->tilesets);
+	tc->tilesets = NULL;
+	tc->ntilesets = 0;
 }
 
-struct tileset *ts_get(int i) {
-	if(i >= ntilesets || i < 0) 
+int ts_add(struct tile_collection *tc, const char *filename) {
+	tc->tilesets = realloc(tc->tilesets, (tc->ntilesets + 1) * sizeof *tc->tilesets);
+	if(!tc->tilesets) {
+		tc->ntilesets = 0;
+		return -1;
+	}
+	tc->tilesets[tc->ntilesets] = ts_make(filename);
+	if(!tc->tilesets[tc->ntilesets]) {
+		return -1;
+	}
+	return tc->ntilesets++;
+}
+
+struct tileset *ts_get(struct tile_collection *tc, int i) {
+	if(i >= tc->ntilesets || i < 0) 
 		return NULL;
-	return tilesets[i];
+	return tc->tilesets[i];
 }
 
-int ts_get_num() {
-	return ntilesets;
+int ts_get_num(struct tile_collection *tc) {
+	return tc->ntilesets;
 }
 
-struct tileset *ts_find(const char *name) {
+struct tileset *ts_find(struct tile_collection *tc, const char *name) {
 	int i;
 	if(!name) return NULL;
-	for(i = 0; i < ntilesets; i++) {
-		if(!strcmp(tilesets[i]->name, name))
-			return tilesets[i];
+	for(i = 0; i < tc->ntilesets; i++) {
+		if(!strcmp(tc->tilesets[i]->name, name))
+			return tc->tilesets[i];
 	}
 	return NULL;
 }
 
-int ts_index_of(const char *name) {
+int ts_index_of(struct tile_collection *tc, const char *name) {
 	int i;
 	if(!name) return -1;
-	for(i = 0; i < ntilesets; i++) {
-		if(!strcmp(tilesets[i]->name, name))
+	for(i = 0; i < tc->ntilesets; i++) {
+		if(!strcmp(tc->tilesets[i]->name, name))
 			return i;
 	}
 	return -1;
 }
 
-static struct tileset *ts_make(const char *filename, int tw, int th, int border) {
+static struct tileset *ts_make(const char *filename) {
 	struct bitmap *bm = bm_load(filename);
 	if(bm) {
 		struct tileset *t = malloc(sizeof *t);
@@ -93,11 +98,7 @@ static struct tileset *ts_make(const char *filename, int tw, int th, int border)
 			saved/loaded from the timeset file
 		*/
 		bm_set_color_s(t->bm, "#FF00FF");
-		
-		t->tw = tw;
-		t->th = th;
-		t->border = border;
-		
+				
 		t->nmeta = 0;
 		t->meta = NULL;
 		
@@ -114,7 +115,7 @@ static void ts_free(struct tileset *t) {
 }
 
 
-struct tile_meta *ts_has_meta_ti(struct tileset *t, int ti) {
+struct tile_meta *ts_has_meta_ti(struct tile_collection *tc, struct tileset *t, int ti) {
 	int i;
 	if(!t) {
 		return NULL;
@@ -129,22 +130,22 @@ struct tile_meta *ts_has_meta_ti(struct tileset *t, int ti) {
 	return NULL;
 }
 
-struct tile_meta *ts_has_meta(struct tileset *t, int row, int col) {
+struct tile_meta *ts_has_meta(struct tile_collection *tc, struct tileset *t, int row, int col) {
 	int tr, n;
 	if(!t)
 		return NULL;
 		
-	tr = t->bm->w / t->tw;
+	tr = t->bm->w / tc->tw;
 	n = row * tr + col;
 	
-	return ts_has_meta_ti(t, n);
+	return ts_has_meta_ti(tc, t, n);
 }
 
-struct tile_meta *ts_get_meta(struct tileset *t, int row, int col) {
+struct tile_meta *ts_get_meta(struct tile_collection *tc, struct tileset *t, int row, int col) {
 	if(!t) {
 		return NULL;
 	} else {
-		struct tile_meta *m = ts_has_meta(t, row, col);
+		struct tile_meta *m = ts_has_meta(tc, t, row, col);
 		if(m) return m;
 		
 		/* not found - resize the list */
@@ -153,7 +154,7 @@ struct tile_meta *ts_get_meta(struct tileset *t, int row, int col) {
 			t->nmeta = 0;
 			return NULL;
 		} else {
-			int tr = t->bm->w / t->tw;
+			int tr = t->bm->w / tc->tw;
 			int n = row * tr + col;
 			
 			m = &t->meta[t->nmeta - 1];
@@ -184,14 +185,14 @@ int ts_valid_class(const char *clas) {
 	return 1;
 }
 
-int ts_save_all(const char *filename) {
+int ts_save_all(struct tile_collection *tc, const char *filename) {
 	FILE *f = fopen(filename, "w");
-	int r = ts_write_all(f);
+	int r = ts_write_all(tc, f);
 	fclose(f);
 	return r;
 }
 
-int ts_write_all(FILE *f) {
+int ts_write_all(struct tile_collection *tc, FILE *f) {
 	int i, j;
 	
 	char buffer[128];
@@ -199,15 +200,15 @@ int ts_write_all(FILE *f) {
 	fprintf(f, "{\n");	
 	fprintf(f, "\"type\" : \"TILESET\",\n");
 	fprintf(f, "\"version\" : %.2f,\n", TILE_FILE_VERSION);
-	fprintf(f, "\"count\" : %d,\n", ntilesets);
+	fprintf(f, "\"count\" : %d,\n", tc->ntilesets);
+	fprintf(f, "\"tw\" : %d,\n  \"th\" : %d, \n", tc->tw, tc->th);
+	fprintf(f, "\"border\" : %d,\n\n", tc->border);
 	fprintf(f, "\"tilesets\": [\n");
-	for(i = 0; i < ntilesets; i++) {
-		struct tileset *t = tilesets[i];
-		fprintf(f, "  {\n");
-		
+	for(i = 0; i < tc->ntilesets; i++) {
+		struct tileset *t = tc->tilesets[i];
+		fprintf(f, "  {\n");		
 		fprintf(f, "  \"name\" : \"%s\",\n", json_escape(t->name, buffer, sizeof buffer));
-		fprintf(f, "  \"tw\" : %d,\n  \"th\" : %d, \n", t->tw, t->th);
-		fprintf(f, "  \"border\" : %d,\n  \"nmeta\" : %d, \n", t->border, t->nmeta);
+		fprintf(f, "  \"nmeta\" : %d,\n", t->nmeta);
 		fprintf(f, "  \"meta\" : [\n");
 		for(j = 0; j < t->nmeta; j++) {
 			struct tile_meta *m = &t->meta[j];
@@ -218,7 +219,7 @@ int ts_write_all(FILE *f) {
 			fprintf(f, "}%c\n", (j < t->nmeta - 1) ? ',' : ' ');
 		}
 		fprintf(f, "  ]\n");
-		fprintf(f, "  }%c\n", (i < ntilesets - 1) ? ',' : ' ');		
+		fprintf(f, "  }%c\n", (i < tc->ntilesets - 1) ? ',' : ' ');		
 	}
 	fprintf(f, "]\n");
 	fprintf(f, "}\n");
@@ -229,7 +230,7 @@ int ts_write_all(FILE *f) {
 /* Depending on what you want to do, you may
  *	want to call ts_free_all() first.
  */
-int ts_load_all(const char *filename) {
+int ts_load_all(struct tile_collection *tc, const char *filename) {
 	int r;
 	struct json *j;
 	char *text = my_readfile (filename);	
@@ -242,14 +243,14 @@ int ts_load_all(const char *filename) {
 		return 0;
 	}
 	
-	r = ts_read_all(j);
+	r = ts_read_all(tc, j);
 	free(text);
 	json_free(j);
 	
 	return r;
 }
 
-int ts_read_all(struct json *j) {
+int ts_read_all(struct tile_collection *tc, struct json *j) {
 	double version;
 	
 	struct json *a, *e;
@@ -259,9 +260,13 @@ int ts_read_all(struct json *j) {
 	}
 	
 	version = json_get_number(j, "version");
-	if(version < 1.0) {
+	if(version < 1.1) {
 		return 0;
 	}
+	
+	tc->tw = json_get_number(j, "tw");
+	tc->th = json_get_number(j, "th");
+	tc->border = json_get_number(j, "border");
 	
 	a = json_get_array(j, "tilesets");
 	if(!a) {
@@ -270,23 +275,20 @@ int ts_read_all(struct json *j) {
 	
 	e = a->value;
 	while(e) {
-		int tw, th, border, nmeta, y;
+		int nmeta, y;
 		const char *name;
 		struct tileset *t;
 		struct json *aa, *ee;
 		
 		name = json_get_string(e, "name");
-		tw = json_get_number(e, "tw");
-		th = json_get_number(e, "th");
-		border = json_get_number(e, "border");
 		nmeta = json_get_number(e, "nmeta");
 		(void)nmeta;
 				
-		y = ts_add(name, tw, th, border);
+		y = ts_add(tc, name);
 		if(y < 0) {
 			return 0;
 		}
-		t = ts_get(y);
+		t = ts_get(tc, y);
 		
 		t->nmeta = 0;
 		t->meta = NULL;
