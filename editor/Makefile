@@ -69,16 +69,23 @@ TileCanvas.o: TileCanvas.cpp TileCanvas.h ../include/bmp.h ../include/tileset.h
 main.o: main.cpp LevelCanvas.h BMCanvas.h \
 		TileCanvas.h TileCanvas.h editor.h ../include/bmp.h ../include/tileset.h ../include/map.h
 	g++ -c $(CPPFLAGS) $< -o $@
-
-bmp.o  : ../src/bmp.c ../include/bmp.h
+	
+bmp.o: ../src/bmp.c ../include/bmp.h ../fonts/bold.xbm \
+ ../fonts/circuit.xbm ../fonts/hand.xbm ../fonts/normal.xbm \
+ ../fonts/small.xbm ../fonts/smallinv.xbm ../fonts/thick.xbm
 	$(CC) -c $(CFLAGS) $< -o $@
-tileset.o: ../src/tileset.c ../include/tileset.h
+tileset.o: ../src/tileset.c ../include/bmp.h ../include/tileset.h \
+ ../include/lexer.h ../include/json.h ../include/utils.h \
+ ../include/log.h
 	$(CC) -c $(CFLAGS) $< -o $@
-map.o: ../src/map.c ../include/map.h
+map.o: ../src/map.c ../include/tileset.h \
+ ../include/bmp.h ../include/map.h ../include/json.h \
+ ../include/utils.h ../include/log.h
 	$(CC) -c $(CFLAGS) $< -o $@
 lexer.o: ../src/lexer.c ../include/lexer.h
 	$(CC) -c $(CFLAGS) $< -o $@
-json.o: ../src/json.c ../include/json.h
+json.o: ../src/json.c ../include/json.h ../include/lexer.h \
+ ../include/hash.h ../include/utils.h
 	$(CC) -c $(CFLAGS) $< -o $@
 hash.o: ../src/hash.c ../include/hash.h
 	$(CC) -c $(CFLAGS) $< -o $@
