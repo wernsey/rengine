@@ -9,6 +9,7 @@
 #include "lexer.h"
 #include "json.h"
 #include "utils.h"
+#include "log.h"
 
 #define TILE_FILE_VERSION 1.1f
 
@@ -67,6 +68,7 @@ struct tileset *ts_find(struct tile_collection *tc, const char *name) {
 		if(!strcmp(tc->tilesets[i]->name, name))
 			return tc->tilesets[i];
 	}
+	rerror("Couldn't find tileset %s", name);
 	return NULL;
 }
 
@@ -77,6 +79,7 @@ int ts_index_of(struct tile_collection *tc, const char *name) {
 		if(!strcmp(tc->tilesets[i]->name, name))
 			return i;
 	}
+	rerror("Couldn't find tileset %s", name);
 	return -1;
 }
 
@@ -85,6 +88,7 @@ static struct tileset *ts_make(const char *filename) {
 	if(bm) {
 		struct tileset *t = malloc(sizeof *t);
 		if(!t) { 
+			rerror("malloc failed while creating tileset for %s", filename);
 			bm_free(bm);
 			return NULL;
 		}
@@ -103,6 +107,8 @@ static struct tileset *ts_make(const char *filename) {
 		t->meta = NULL;
 		
 		return t;
+	} else {
+		rerror("Unable to load tileset bitmap %s", filename);
 	}
 	return NULL;
 }
@@ -187,6 +193,11 @@ int ts_valid_class(const char *clas) {
 
 int ts_save_all(struct tile_collection *tc, const char *filename) {
 	FILE *f = fopen(filename, "w");
+	if(!f) {
+		rerror("Unable to open %s for writing tileset", filename);
+		return 0;
+	}
+	rlog("Saving tileset to %s", filename);
 	int r = ts_write_all(tc, f);
 	fclose(f);
 	return r;
@@ -234,14 +245,18 @@ int ts_load_all(struct tile_collection *tc, const char *filename) {
 	int r;
 	struct json *j;
 	char *text = my_readfile (filename);	
-	if(!text)
+	if(!text) {
+		rerror("Unable to read tileset from %s", filename);
 		return 0;
+	}
 	
 	j = json_parse(text);
 	if(!j) {
-		/* TODO: Error handling can be better. */
+		rerror("Unable to parse JSON: %s", filename);
 		return 0;
 	}
+	
+	rlog("Loading tileset from %s", filename);
 	
 	r = ts_read_all(tc, j);
 	free(text);
@@ -256,11 +271,13 @@ int ts_read_all(struct tile_collection *tc, struct json *j) {
 	struct json *a, *e;
 	
 	if(!json_get_string(j, "type") || strcmp(json_get_string(j, "type"), "TILESET")) {
+		rerror("JSON object is not of type TILESET");
 		return 0;
 	}
 	
 	version = json_get_number(j, "version");
 	if(version < 1.1) {
+		rerror("Tileset version (%f) is too old", version);
 		return 0;
 	}
 	
@@ -270,6 +287,7 @@ int ts_read_all(struct tile_collection *tc, struct json *j) {
 	
 	a = json_get_array(j, "tilesets");
 	if(!a) {
+		rerror("Couldn't find tilesets in JSON object");
 		return 0;
 	}
 	

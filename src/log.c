@@ -53,3 +53,17 @@ void rwarn(const char *fmt, ...) {
 	va_end(arg);
 }
 
+static void inlog_ext(const char *file, int line, const char *subsys, const char *fmt, va_list arg) {	
+	fprintf(log_file, "%s:%s:%d: ", subsys, file, line);
+	vfprintf(log_file, fmt, arg);
+	fputs("\n", log_file);
+	fflush(log_file);
+}
+
+void sublog_ext(const char *file, int line, const char *subsys, const char *fmt, ...) {
+	va_list arg;	
+	va_start(arg, fmt);
+	inlog_ext(file, line, subsys, fmt, arg);
+	va_end(arg);
+}
+

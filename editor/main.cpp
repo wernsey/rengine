@@ -71,8 +71,10 @@ void open_cb(Fl_Menu_* w, void*) {
 		return;
 	
 	struct map * m = map_load(filename);
-	if(!m)
+	if(!m) {
 		fl_alert("Unable to open map %s", filename);
+		return;
+	}
 	
 	map_file = filename;
 	canvas->setMap(m);
@@ -89,8 +91,10 @@ void open_cb(Fl_Menu_* w, void*) {
 
 void save_cb(Fl_Menu_* w, void*p) {
 	map *m = canvas->getMap();
-	if(!m) 
+	if(!m) {
+		rlog("Not saving map, as none is defined yet.");
 		return;
+	}
 	if(map_file)
 		map_save(m, map_file);
 	else
@@ -359,6 +363,9 @@ void zoomInCb(Fl_Button *w, void *p) {
 int main(int argc, char *argv[]) {
 	
 	log_init("editor.log");
+	atexit(log_deinit);
+	
+	rlog("Starting editor.");
 	
 	make_window();
 	

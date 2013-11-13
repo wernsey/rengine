@@ -79,8 +79,9 @@ json.o: json.c ../include/json.h ../include/lexer.h \
  ../include/hash.h ../include/utils.h
 lexer.o: lexer.c ../include/lexer.h
 luop.o: luop.c 
-map.o: map.c ../include/tileset.h \
- ../include/bmp.h ../include/map.h ../include/json.h ../include/utils.h
+map.o: ../src/map.c ../include/tileset.h \
+ ../include/bmp.h ../include/map.h ../include/json.h \
+ ../include/utils.h ../include/log.h
 luastate.o: luastate.c ../include/bmp.h \
  ../include/states.h ../include/map.h ../include/game.h ../include/ini.h \
  ../include/resources.h ../include/tileset.h ../include/utils.h \
@@ -100,7 +101,8 @@ states.o: states.c ../include/ini.h \
  ../include/game.h ../include/particles.h ../include/resources.h \
  ../include/log.h
 tileset.o: tileset.c ../include/bmp.h ../include/tileset.h \
- ../include/lexer.h ../include/json.h ../include/utils.h
+ ../include/lexer.h ../include/json.h ../include/utils.h \
+ ../include/log.h
 utils.o: utils.c
 
 rengine.res : ../rengine.rc

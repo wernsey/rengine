@@ -8,6 +8,7 @@
 #include "map.h"
 #include "json.h"
 #include "utils.h"
+#include "log.h"
 
 #define MAP_FILE_VERSION 1.1
 
@@ -136,6 +137,12 @@ int map_save(struct map *m, const char *filename) {
 	char buffer[128];
 	
 	FILE *f = fopen(filename, "w");
+	if(!f) {
+		rerror("Unable to open %s for writing map file.", filename);
+		return 0;
+	}
+	rlog("Saving map file %s", filename);
+	
 	fprintf(f, "{\n");
 	fprintf(f, "\"type\" : \"2D_TILE_MAP\",\n");
 	fprintf(f, "\"version\" : %.2f,\n", MAP_FILE_VERSION);
@@ -174,8 +181,11 @@ int map_save(struct map *m, const char *filename) {
 struct map *map_load(const char *filename) {	
 	struct map *m;
 	char *text = my_readfile (filename);	
-	if(!text)
+	if(!text) {
+		rerror("Unable to read map file %s", filename);
 		return NULL;
+	}
+	rlog("Parsing map file %s", filename);
 	m = map_parse(text);	
 	free(text);
 	return m;
@@ -191,16 +201,19 @@ struct map *map_parse(const char *text) {
 	
 	j = json_parse(text);
 	if(!j) {
+		rerror("Unable to parse map file JSON");
 		return 0;
 	}
 	
 	if(!json_get_string(j, "type") || strcmp(json_get_string(j, "type"), "2D_TILE_MAP")) {
+		rerror("JSON object is not of type 2D_TILE_MAP");
 		json_free(j);
 		return 0;
 	}
 		
 	version = json_get_number(j, "version");
 	if(version < 1.1) {
+		rerror("Map version (%f) is too old", version);
 		json_free(j);
 		return NULL;
 	}
@@ -213,6 +226,7 @@ struct map *map_parse(const char *text) {
 	
 	m = map_create(nr, nc, tw, th, nl);
 	if(!m) {
+		rerror("Unable to create map.");
 		return NULL;
 	}
 	
