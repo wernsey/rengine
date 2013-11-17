@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include <unistd.h>  /* may not be portable */
+#include <unistd.h>  /* may not be portable, works with MinGW on Windows */
 
 #ifdef WIN32
 #include <SDL2/SDL.h>

@@ -62,13 +62,14 @@ void bm_free(struct bitmap *b);
 struct bitmap *bm_load(const char *filename);
 
 /*@ struct bitmap *bm_load_fp(FILE *f)
- *# Loads the a bitmap from a FILE* that's already open.\n
- *# Returns NULL if the file could not be loaded.
+ *# Loads the a bitmap from a {{FILE*}} that's already open.\n
+ *# Returns {{NULL}} if the file could not be loaded.
  */
 struct bitmap *bm_load_fp(FILE *f);
 
-/*@ int bm_write(struct bitmap *b, const char *fname)
- *# Saves the bitmap b to the file named fname 
+/*@ int bm_save(struct bitmap *b, const char *fname)
+ *# Saves the bitmap {{b}} to the file named {{fname}}.\n
+ *# Returns 1 on success, 0 on failure.
  */
 int bm_save(struct bitmap *b, const char *fname);
 
@@ -146,6 +147,13 @@ int bm_color_is(struct bitmap *bm, int x, int y, int r, int g, int b);
  *# If {{t}} is 0 it returns color1. If t is 1.0 it returns color2.
  */
 int bm_lerp(int color1, int color2, double t);
+
+/*@ int bm_brightness(int color, double adj)
+ *# Adjusts the brightness of a {{color}} by a factor of {{adj}}.\n
+ *# That is {{adj > 1.0}} makes the color brighter, while
+ *# {{adj < 1.0}} makes the color darker.
+ */
+int bm_brightness(int color, double adj);
 
 /*@ struct bitmap *bm_fromXbm(int w, int h, unsigned char *data)
  *# Creates a struct bitmap object from XBM data 

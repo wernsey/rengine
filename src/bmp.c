@@ -217,7 +217,7 @@ int bm_save(struct bitmap *b, const char *fname) {
 	rs = b->w * 3 + padding;	
 	assert(rs % 4 == 0);
 		
-	FILE *f = fopen(fname, "w");
+	FILE *f = fopen(fname, "wb");
 	if(!f) return 0;	
 		
 	hdr.creator1 = 0;
@@ -556,14 +556,16 @@ int bm_color_atoi(const char *text) {
 	}
 	if(text[0] == '#') text++;
 	
-	while(text[0]) {
+	/* TODO: I'd ought to support CSS like notation, like
+		rgb(x,y,z) as well as the 3-digit format
+		(eg. #0fb, which is the same as #00FFBB)
+	*/
+	while(isxdigit(text[0])) {
 		int c = tolower(text[0]);
 		if(c >= 'a' && c <= 'f') {
 			col = (col << 4) + (c - 'a' + 10); 
-		} else if(isdigit(c)) {
-			col = (col << 4) + (c - '0');
 		} else {
-			col <<= 4; 
+			col = (col << 4) + (c - '0');
 		}		
 		text++;
 	}	
@@ -612,6 +614,26 @@ int bm_lerp(int color1, int color2, double t) {
 	b3 = (b2 - b1) * t + b1;
 	
 	return (r3 << 16) | (g3 << 8) | (b3 << 0);
+}
+
+int bm_brightness(int color, double adj) {
+	int r, g, b;
+	if(adj < 0.0) return 0;
+	
+	r = (color >> 16) & 0xFF; 
+	g = (color >> 8) & 0xFF; 
+	b = (color >> 0) & 0xFF;
+	
+	r = (int)((double)r * adj);
+	if(r > 0xFF) r = 0xFF;
+	
+	g = (int)((double)g * adj);
+	if(g > 0xFF) g = 0xFF;
+	
+	b = (int)((double)b * adj);
+	if(b > 0xFF) b = 0xFF;
+	
+	return (r << 16) | (g << 8) | (b << 0);
 }
 
 int bm_width(struct bitmap *b) {
