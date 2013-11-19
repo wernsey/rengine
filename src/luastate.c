@@ -325,6 +325,29 @@ static void cell_obj_meta(lua_State *L) {
 	lua_setglobal(L, "C");
 }
 
+/* Graphics object G *****************************************************************************/
+
+static int gr_setcolor(lua_State *L) {
+	struct lustate_data *sd = get_state_data(L);
+	const char *c = luaL_checkstring(L,1);
+	bm_set_color_s(sd->bmp, c);
+	return 0;
+}
+
+static int gr_putpixel(lua_State *L) {
+	struct lustate_data *sd = get_state_data(L);
+	int x = luaL_checkint(L,1);
+	int y = luaL_checkint(L,2);
+	bm_putpixel(sd->bmp, x, y);
+	return 0;
+}
+
+static const luaL_Reg graphics_funcs[] = {
+  {"pixel",     gr_putpixel},
+  {"setcolor",  gr_setcolor},
+  {0, 0}
+};
+
 /* STATE FUNCTIONS *******************************************************************************/
 
 static int lus_init(struct game_state *s) {
@@ -409,6 +432,9 @@ static int lus_init(struct game_state *s) {
     lua_setglobal(L, "CENTER");
 	lua_pushinteger(L, 2);
     lua_setglobal(L, "FOREGROUND");
+		
+	luaL_newlib(L, graphics_funcs);
+	lua_setglobal(L, "G");
 	
 	cell_obj_meta(L);
 	

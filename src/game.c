@@ -267,7 +267,7 @@ int main(int argc, char *argv[]) {
 	
 	const char *game_filename = "game.ini";
 	
-	const char *rlog_filename = "rlogfile.txt";
+	const char *rlog_filename = "logfile.txt";
 	
 	const char *startstate;
 	
