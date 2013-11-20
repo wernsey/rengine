@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #ifdef WIN32
 #include <SDL.h>
@@ -18,9 +19,16 @@
 
 /* Globals *******************************************/
 
-struct game_state *current_state;
+#define MAX_NESTED_STATES 20
+
+static struct game_state *game_states[MAX_NESTED_STATES];
+static int state_top = 0;
+
+/*****************************************************/
 
 static struct game_state *get_state(const char *name);
+
+/* Styles ********************************************/
 
 static void apply_styles(struct game_state *s) {	
 	const char *font, *image;
@@ -432,23 +440,63 @@ static struct game_state *get_leftright_state(const char *name) {
 
 /* Functions *****************************************/
 
+/*
+#define MAX_NESTED_STATES 20
+
+static struct game_state *game_states[MAX_NESTED_STATES];
+static int state_top = 0;
+*/
+
+struct game_state *current_state() {
+	assert(state_top >= 0 && state_top < MAX_NESTED_STATES);
+	return game_states[state_top];
+}
+
+void states_initialize() {
+	int i;
+	for(i = 0; i < MAX_NESTED_STATES; i++) {
+		game_states[i] = NULL;
+	}
+}
+
 int change_state(struct game_state *next) {
-	if(current_state && current_state->deinit) {
-		if(!current_state->deinit(current_state)) {
-			rlog("Deinitialising new state");
+	
+	if(game_states[state_top] && game_states[state_top]->deinit) {
+		if(!game_states[state_top]->deinit(game_states[state_top])) {
+			rerror("Deinitialising old state");
 			return 0;
 		}
-		free(current_state);
+		free(game_states[state_top]);
 	}	
-	current_state = next;	
-	if(current_state){
-		if(current_state->init && !current_state->init(current_state)) {
+	game_states[state_top] = next;	
+	if(game_states[state_top]){
+		if(game_states[state_top]->init && !game_states[state_top]->init(game_states[state_top])) {
 			rerror("Initialising new state");
 			return 0;
 		}
-		apply_styles(current_state);
+		apply_styles(game_states[state_top]);
 	}
 	return 1;
+}
+
+int push_state(struct game_state *next) {
+	if(state_top > MAX_NESTED_STATES - 1) {
+		rerror("Too many nested states");
+		return 0;
+	}
+	state_top++;
+	return change_state(next);
+}
+
+int pop_state(struct game_state *next) {
+	int r;
+	if(state_top <= 0) {
+		rerror("State stack underflow.");
+		return 0;
+	}
+	r = change_state(NULL);
+	state_top--;
+	return r;
 }
 
 static struct game_state *get_state(const char *name) {
@@ -497,3 +545,4 @@ int set_state(const char *name) {
 	next = get_state(name);	
 	return change_state(next);
 }
+

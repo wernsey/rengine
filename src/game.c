@@ -271,6 +271,8 @@ int main(int argc, char *argv[]) {
 	
 	const char *startstate;
 	
+	struct game_state *gs;
+	
 	int demo = 0;
 	
 	SDL_version compiled, linked;
@@ -310,6 +312,7 @@ int main(int argc, char *argv[]) {
 	rlog("SDL version %d.%d.%d (link)", linked.major, linked.minor, linked.patch);
 	
 	re_initialize();
+	states_initialize();
 	
 	if(!demo) {
 		if(pak_filename) {
@@ -358,8 +361,7 @@ int main(int argc, char *argv[]) {
 	} else {
 start_demo:
 		rlog("Starting demo mode");
-		current_state = get_demo_state("demo");
-		if(!current_state->init(current_state))
+		if(!change_state(get_demo_state("demo")))
 			quit = 1;
 	}
 	
@@ -384,21 +386,23 @@ start_demo:
 	}
 	
 	while(!quit) {
-		if(current_state->update) 
-			current_state->update(current_state, bmp);	
-		
-		if(!current_state) {
+		gs = current_state();
+		if(!gs) {
 			break;
 		}
+		
+		if(gs->update) 
+			gs->update(gs, bmp);	
 		
 		advanceFrame();
 	}
 	
 	rlog("Event loop stopped.");
 	
-	if(current_state && current_state->deinit)
-		current_state->deinit(current_state);	
-
+	gs = current_state();
+	if(gs && gs->deinit)
+		gs->deinit(gs);	
+	
 	/*
 	if(fullscreen && SDL_SetWindowFullscreen(win, 0) < 0) {
 		fprintf(rlog_file, "rerror: Unable to reset window to windowed: %s\n", SDL_GetError());

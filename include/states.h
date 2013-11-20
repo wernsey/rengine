@@ -34,12 +34,18 @@ struct game_state {
 	} style;
 };
 
-/* TODO: There could be an array somewhere to push and pop states. */
-extern struct game_state *current_state;
+/* There could be an array somewhere to push and pop states. */
+struct game_state *current_state();
 
 int change_state(struct game_state *next);
 
+int push_state(struct game_state *next);
+int pop_state(struct game_state *next);
+
 int set_state(const char *name);
+
+void states_initialize();
 
 struct game_state *get_lua_state(const char *name); /* luastate.c */
 struct game_state *get_mus_state(const char *name); /* mustate.c */
+
