@@ -14,16 +14,10 @@ http://stackoverflow.com/q/1224708/115589
 It seems that the accepted solution is to not call `luaL_openlibs()`
 and rather copying and modifying linit.c according to your needs.
 
-The state files should not have any global variables. I need the states to
-be reentrant, so that you can push and pop states from a stack. This is
-useful in, say, an adventure game scenario where the town map is a state
-and the player enters a shop which is another state that gets pushed on
-the states stack. If the player then leaves the shop, the shop state is
-popped, so that the player is back in town where he left.
-
-This pushing and popping of states has some implications for the resource
-cache: The graphics used in the shop should be released if the player
-leaves, but not the town's graphics. This implies that either
+You can now push and pop states, but this has some implications on the
+resource cache that : The graphics used in the popped state should be
+released, but not the state we're returning to's graphics. This implies
+that either
 
 1. the resource cache should also work on a stack that gets pushed
 and popped,
@@ -77,8 +71,8 @@ The current way of doing it has its pros, so I should think about it
 first before committing to a course of action. The best place to think
 about it is where I actually use the API (which at the moment is Rengine)
 
-I still have to put audio into the engine. At the moment I have SDL_mixer 2.0.0 built,
-but without any support for additional file formats.
+I still have to put audio into the engine. At the moment I have SDL_mixer
+2.0.0 built, but without any support for additional file formats.
 
 # Editor:
 
@@ -91,10 +85,10 @@ implies that there should be a `SetDirty()` function that changes the
 titlebar, causes the user to be prompted for a save on exit, and disables
 the set working directory menu option.
 
-I should actually have the tilesets be part of the map structure. This
+~~I should actually have the tilesets be part of the map structure. This
 will help with managing resources when I implement the push/pop of game
 states later. _Are the tileset bitmaps obtained through the resources
-module?_
+module?_~~
 
 A menu option to reload the current tileset bitmap. The use case is that
 you may have the file open in a paint program while you're editing your
@@ -110,3 +104,9 @@ code with Rengine's.
 **Pakker** should also be scriptable. I forsee that manually adding files
 to PAKs will become unwieldy as the projects grow, so having a script to
 create PAK files could help. At the moment I think Musl with the pak API.
+
+# P.S.
+
+I Keep this file nicely formatted with this command:
+
+`fmt DEVNOTES.md > DEVNOTES.md~; mv DEVNOTES.md~ DEVNOTES.md`
