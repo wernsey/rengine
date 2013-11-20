@@ -342,9 +342,123 @@ static int gr_putpixel(lua_State *L) {
 	return 0;
 }
 
+static int gr_line(lua_State *L) {
+	struct lustate_data *sd = get_state_data(L);
+	int x0 = luaL_checkint(L,1);
+	int y0 = luaL_checkint(L,2);
+	int x1 = luaL_checkint(L,3);
+	int y1 = luaL_checkint(L,4);
+	bm_line(sd->bmp, x0, y0, x1, y1);
+	return 0;
+}
+
+static int gr_rect(lua_State *L) {
+	struct lustate_data *sd = get_state_data(L);
+	int x0 = luaL_checkint(L,1);
+	int y0 = luaL_checkint(L,2);
+	int x1 = luaL_checkint(L,3);
+	int y1 = luaL_checkint(L,4);
+	bm_rect(sd->bmp, x0, y0, x1, y1);
+	return 0;
+}
+
+static int gr_fillrect(lua_State *L) {
+	struct lustate_data *sd = get_state_data(L);
+	int x0 = luaL_checkint(L,1);
+	int y0 = luaL_checkint(L,2);
+	int x1 = luaL_checkint(L,3);
+	int y1 = luaL_checkint(L,4);
+	bm_fillrect(sd->bmp, x0, y0, x1, y1);
+	return 0;
+}
+
+static int gr_circle(lua_State *L) {
+	struct lustate_data *sd = get_state_data(L);
+	int x = luaL_checkint(L,1);
+	int y = luaL_checkint(L,2);
+	int r = luaL_checkint(L,3);
+	bm_circle(sd->bmp, x, y, r);
+	return 0;
+}
+
+static int gr_fillcircle(lua_State *L) {
+	struct lustate_data *sd = get_state_data(L);
+	int x = luaL_checkint(L,1);
+	int y = luaL_checkint(L,2);
+	int r = luaL_checkint(L,3);
+	bm_fillcircle(sd->bmp, x, y, r);
+	return 0;
+}
+
+static int gr_ellipse(lua_State *L) {
+	struct lustate_data *sd = get_state_data(L);
+	int x0 = luaL_checkint(L,1);
+	int y0 = luaL_checkint(L,2);
+	int x1 = luaL_checkint(L,3);
+	int y1 = luaL_checkint(L,4);
+	bm_ellipse(sd->bmp, x0, y0, x1, y1);
+	return 0;
+}
+
+static int gr_roundrect(lua_State *L) {
+	struct lustate_data *sd = get_state_data(L);
+	int x0 = luaL_checkint(L,1);
+	int y0 = luaL_checkint(L,2);
+	int x1 = luaL_checkint(L,3);
+	int y1 = luaL_checkint(L,4);
+	int r = luaL_checkint(L,5);
+	bm_roundrect(sd->bmp, x0, y0, x1, y1, r);
+	return 0;
+}
+
+static int gr_fillroundrect(lua_State *L) {
+	struct lustate_data *sd = get_state_data(L);
+	int x0 = luaL_checkint(L,1);
+	int y0 = luaL_checkint(L,2);
+	int x1 = luaL_checkint(L,3);
+	int y1 = luaL_checkint(L,4);
+	int r = luaL_checkint(L,5);
+	bm_fillroundrect(sd->bmp, x0, y0, x1, y1, r);
+	return 0;
+}
+
+static int gr_bezier3(lua_State *L) {
+	struct lustate_data *sd = get_state_data(L);
+	int x0 = luaL_checkint(L,1);
+	int y0 = luaL_checkint(L,2);
+	int x1 = luaL_checkint(L,3);
+	int y1 = luaL_checkint(L,4);
+	int x2 = luaL_checkint(L,5);
+	int y2 = luaL_checkint(L,6);
+	bm_bezier3(sd->bmp, x0, y0, x1, y1, x2, y2);
+	return 0;
+}
+
+static int gr_lerp(lua_State *L) {
+	struct lustate_data *sd = get_state_data(L);
+	const char *c1 = luaL_checkstring(L,1);
+	const char *c2 = luaL_checkstring(L,2);
+	lua_Number v = luaL_checknumber(L,3);	
+	int col = bm_lerp(bm_color_atoi(c1), bm_color_atoi(c2), v);
+	bm_set_color_i(sd->bmp, col);
+	
+	lua_pushinteger(L, col);
+	return 1;
+}
+
 static const luaL_Reg graphics_funcs[] = {
-  {"pixel",     gr_putpixel},
-  {"setcolor",  gr_setcolor},
+  {"setcolor",      gr_setcolor},
+  {"pixel",         gr_putpixel},
+  {"line",          gr_line},
+  {"rect",          gr_rect},
+  {"fillrect",      gr_fillrect},
+  {"circle",        gr_circle},
+  {"fillcircle",    gr_fillcircle},
+  {"ellipse",    	gr_ellipse},
+  {"roundrect",    	gr_roundrect},
+  {"fillroundrect", gr_fillroundrect},
+  {"curve",         gr_bezier3},
+  {"lerp",          gr_lerp},
   {0, 0}
 };
 
@@ -432,6 +546,9 @@ static int lus_init(struct game_state *s) {
     lua_setglobal(L, "CENTER");
 	lua_pushinteger(L, 2);
     lua_setglobal(L, "FOREGROUND");
+	
+	lua_pushinteger(L, fps);
+    lua_setglobal(L, "FPS");
 		
 	luaL_newlib(L, graphics_funcs);
 	lua_setglobal(L, "G");
