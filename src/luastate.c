@@ -599,6 +599,9 @@ static const luaL_Reg graphics_funcs[] = {
 static int in_kbhit(lua_State *L) {	
 	if(lua_gettop(L) > 0) {
 		const char *name = luaL_checkstring(L, 1);
+		/* Names of the keys are listed on
+			http://wiki.libsdl.org/SDL_Scancode
+		*/
 		lua_pushboolean(L, keys[SDL_GetScancodeFromName(name)]);
 	} else {
 		lua_pushboolean(L, kb_hit());
@@ -612,7 +615,7 @@ static int in_reset_keys(lua_State *L) {
 }
 
 static const luaL_Reg keyboard_funcs[] = {
-  {"hit",    in_kbhit},
+  {"down",    in_kbhit},
   {"reset",  in_reset_keys},
   {0, 0}
 };

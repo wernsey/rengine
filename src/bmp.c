@@ -1074,10 +1074,10 @@ int bm_font_index(const char *name) {
 	*c = '\0';
 	
 	while(font_names[i].s) {
-		i++;
 		if(!strcmp(font_names[i].s, buffer)) {
 			return font_names[i].i;
 		}
+		i++;
 	}
 	return BM_FONT_NORMAL;
 }

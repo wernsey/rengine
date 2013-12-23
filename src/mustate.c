@@ -42,7 +42,7 @@ static struct mu_par mus_cls(struct musl *m, int argc, struct mu_par argv[]) {
 	if(argc > 0) {
 		bm_set_color_s(bmp, mu_par_str(m, 0, argc, argv));
 	} else {
-		bm_set_color_s(bmp, md->state->style.bg);
+		bm_set_color_s(bmp, get_style(md->state, "background"));
 	}
 	
 	bm_clear(bmp);
@@ -76,7 +76,7 @@ static struct mu_par mus_color(struct musl *m, int argc, struct mu_par argv[]) {
 		const char *text = mu_par_str(m, 0, argc, argv);	
 		bm_set_color_s(bmp, text);
 	} else {
-		bm_set_color_s(bmp, md->state->style.fg);
+		bm_set_color_s(bmp, get_style(md->state, "foreground"));
 	}
 	
 	return rv;
@@ -95,7 +95,7 @@ static struct mu_par mus_font(struct musl *m, int argc, struct mu_par argv[]) {
 		const char *name = mu_par_str(m, 0, argc, argv);
 		font = bm_font_index(name);
 	} else {
-		font = md->state->style.font;
+		font = bm_font_index(get_style(md->state, "font"));
 	}
 	bm_std_font(bmp, font);
 	

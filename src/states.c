@@ -10,6 +10,7 @@
 
 #include "ini.h"
 #include "bmp.h"
+#include "hash.h"
 #include "states.h"
 #include "utils.h"
 #include "game.h"
@@ -34,123 +35,84 @@ static struct game_state *get_state(const char *name);
 
 /* Styles ********************************************/
 
+static void set_style(struct game_state *s, const char *name, const char *def) {
+	char *n = my_strlower(strdup(name)); /* For case-insensitivity */
+	const char *value = ini_get(game_ini, s->name, n, NULL);	
+	if(!value)
+		value = ini_get(game_ini, "styles", n, def);
+	ht_insert(s->styles, n, (char*)value);
+	free(n);
+}
+
+static void set_style_gt0(struct game_state *s, const char *name, const char *def) {
+	/* For styles that must be greater than 0 */
+	char *n = my_strlower(strdup(name));
+	const char *value = ini_get(game_ini, s->name, n, NULL);	
+	if(!value)
+		value = ini_get(game_ini, "styles", n, def);
+	if(atoi(value) < 0)
+		ht_insert(s->styles, n, "0");
+	else
+		ht_insert(s->styles, n, (char*)value);
+	free(n);
+}
+
+const char *get_style(struct game_state *s, const char *name) {
+	char *n = my_strlower(strdup(name));
+	char *v = ht_find(s->styles, n);
+	free(n);
+	return v;
+}
+
 static void apply_styles(struct game_state *s) {	
-	const char *font, *image;
+	set_style(s, "foreground", "white");
+	set_style(s, "background", "black");
 	
-	/* This could use a lot less code. See mustate.c
-		On the otherhand, mustate.c does some unnecessary lookups,
-		so there's that.
-	*/
-	s->style.bg = ini_get(game_ini, s->name, "background", NULL);	
-	if(!s->style.bg)
-		s->style.bg = ini_get(game_ini, "styles", "background", "black");
+	set_style_gt0(s, "margin", "1");
+	set_style_gt0(s, "padding", "1");
 	
-	s->style.fg = ini_get(game_ini, s->name, "foreground", NULL);
-	if(!s->style.fg)
-		s->style.fg = ini_get(game_ini, "styles", "foreground", "white");
+	set_style_gt0(s, "border", "0");
+	set_style_gt0(s, "border-radius", "0");	
+	set_style(s, "border-color", get_style(s, "foreground"));
 	
-	s->style.margin = atoi(ini_get(game_ini, s->name, "margin", "-1"));
-	if(s->style.margin < 0)
-		s->style.margin = atoi(ini_get(game_ini, "styles", "margin", "1"));
+	set_style_gt0(s, "button-padding", "5");
+	set_style_gt0(s, "button-border-radius", "1");
 	
-	if(s->style.margin < 0) s->style.margin = 0;
+	set_style(s, "font", "normal");
 	
-	s->style.padding = atoi(ini_get(game_ini, s->name, "padding", "-1"));
-	if(s->style.padding < 0)
-		s->style.padding = atoi(ini_get(game_ini, "styles", "padding", "1"));
-	
-	if(s->style.padding < 0) s->style.padding = 0;
-	
-	s->style.border = atoi(ini_get(game_ini, s->name, "border", "-1"));
-	if(s->style.border < 0)
-		s->style.border = atoi(ini_get(game_ini, "styles", "border", "0"));
-	
-	if(s->style.border < 0) s->style.border = 0;
-	
-	s->style.border_radius = atoi(ini_get(game_ini, s->name, "border-radius", "-1"));
-	if(s->style.border_radius < 0)
-		s->style.border_radius = atoi(ini_get(game_ini, "styles", "border-radius", "0"));
-	
-	if(s->style.border_radius < 0) s->style.border_radius = 0;
-	
-	s->style.border_color = ini_get(game_ini, s->name, "border-color", NULL);
-	if(!s->style.border_color) {
-		s->style.border_color = ini_get(game_ini, "styles", "border-color", s->style.fg);
-	}
-	
-	s->style.btn_padding = atoi(ini_get(game_ini, s->name, "button-padding", "-1"));
-	if(s->style.btn_padding < 0)
-		s->style.btn_padding = atoi(ini_get(game_ini, "styles", "button-padding", "5"));
-	
-	if(s->style.btn_padding < 1) s->style.btn_padding = 1;
-	
-	s->style.btn_border_radius = atoi(ini_get(game_ini, s->name, "button-border-radius", "-1"));
-	if(s->style.btn_border_radius < 0)
-		s->style.btn_border_radius = atoi(ini_get(game_ini, "styles", "button-border-radius", "1"));
-	
-	if(s->style.btn_border_radius < 1) s->style.btn_border_radius = 1;
-		
-	font = ini_get(game_ini, s->name, "font", NULL);
-	if(!font)
-		font = ini_get(game_ini, "styles", "font", "normal");
-	
-	if(!my_stricmp(font, "bold")) {
-		s->style.font = BM_FONT_BOLD;
-	} else if(!my_stricmp(font, "circuit")) {
-		s->style.font = BM_FONT_CIRCUIT;
-	} else if(!my_stricmp(font, "hand")) {
-		s->style.font = BM_FONT_HAND;
-	} else if(!my_stricmp(font, "small")) {
-		s->style.font = BM_FONT_SMALL;
-	} else if(!my_stricmp(font, "smallinv")) {
-		s->style.font = BM_FONT_SMALL_I;
-	} else if(!my_stricmp(font, "thick")) {
-		s->style.font = BM_FONT_THICK;
-	} else {
-		s->style.font = BM_FONT_NORMAL;
-	}
-	
-	image = ini_get(game_ini, s->name, "image", NULL);
-	if(image) {
-		s->style.bmp = re_get_bmp(image);
-		if(!s->style.bmp) {
-			rerror("Unable to load '%s'", image);
-		} else {		
-			s->style.image_align = ini_get(game_ini, s->name, "image-align", "top");
-			s->style.image_trans = ini_get(game_ini, s->name, "image-mask", NULL);
-			
-			s->style.image_margin = atoi(ini_get(game_ini, s->name, "image-margin", "0"));
-			if(s->style.image_margin < 0)
-				s->style.image_margin = 0;
-		}
-	} else {
-		s->style.bmp = NULL;
-	}
+	set_style(s, "image", NULL);
+	set_style(s, "image-align", "top");
+	set_style(s, "image-mask", NULL);
+	set_style_gt0(s, "image-margin", "0");
 }
 
 static void draw_border(struct game_state *s, struct bitmap *bmp) {
-	if(s->style.border > 0) {
-		bm_set_color_s(bmp, s->style.border_color);
-		if(s->style.border > 1) {
-			if(s->style.border_radius > 0) {
-				bm_fillroundrect(bmp, s->style.margin, s->style.margin, bmp->w - 1 - s->style.margin, bmp->h - 1 - s->style.margin, s->style.border_radius);
+	int b = atoi(get_style(s, "border"));
+	if(b > 0) {
+		int m = atoi(get_style(s, "margin"));
+		int r = atoi(get_style(s, "border-radius"));
+		
+		bm_set_color_s(bmp, get_style(s, "border-color"));
+		if(atoi(get_style(s, "border")) > 1) {
+			if(r > 0) {
+				bm_fillroundrect(bmp, m, m, bmp->w - 1 - m, bmp->h - 1 - m, r);
 			} else {
-				bm_fillrect(bmp, s->style.margin, s->style.margin, bmp->w - 1 - s->style.margin, bmp->h - 1 - s->style.margin);
+				bm_fillrect(bmp, m, m, bmp->w - 1 - m, bmp->h - 1 - m);
 			}			
-			bm_set_color_s(bmp, s->style.bg);
-			if(s->style.border_radius > 0) {
-				bm_fillroundrect(bmp, s->style.margin + s->style.border, s->style.margin + s->style.border, 
-					bmp->w - 1 - (s->style.margin + s->style.border), bmp->h - 1 - (s->style.margin + s->style.border), 
-					s->style.border_radius - (s->style.border >> 1));
+			bm_set_color_s(bmp, get_style(s, "background"));
+			if(r > 0) {
+				bm_fillroundrect(bmp, m + b, m + b, 
+					bmp->w - 1 - (m + b), bmp->h - 1 - (m + b), 
+					r - (b >> 1));
 			} else {
-				bm_fillrect(bmp, s->style.margin + s->style.border, s->style.margin + s->style.border, 
-					bmp->w - 1 - (s->style.margin + s->style.border), bmp->h - 1 - (s->style.margin + s->style.border));
+				bm_fillrect(bmp, m + b, m + b, 
+					bmp->w - 1 - (m + b), bmp->h - 1 - (m + b));
 			}
 		} else {
-			if(s->style.border_radius > 0) {
-				bm_roundrect(bmp, s->style.margin, s->style.margin, bmp->w - 1 - s->style.margin, bmp->h - 1 - s->style.margin, s->style.border_radius);
+			if(r > 0) {
+				bm_roundrect(bmp, m, m, bmp->w - 1 - m, bmp->h - 1 - m, r);
 			} else {
-				bm_rect(bmp, s->style.margin, s->style.margin, bmp->w - 1 - s->style.margin, bmp->h - 1 - s->style.margin);
+				bm_rect(bmp, m, m, bmp->w - 1 - m, bmp->h - 1 - m);
 			}
 		}
 	}
@@ -162,89 +124,107 @@ static void basic_state(struct game_state *s, struct bitmap *bmp) {
 	int tw, th;
 	int w, h;
 	int tx, ty;
+	
+	const char *img_name = ht_find(s->styles, "image");
+	struct bitmap *img = NULL;
 	int ix = 0, iy = 0;
 	
 	const char *text = ini_get(game_ini, s->name, "text", "?");
 	const char *halign = ini_get(game_ini, s->name, "halign", "center");
 	const char *valign = ini_get(game_ini, s->name, "valign", "center");
 	
-	bm_set_color_s(bmp, s->style.bg);
+	int m = atoi(get_style(s, "margin"));
+	int b = atoi(get_style(s, "border"));
+	int p = atoi(get_style(s, "padding"));
+	
+	bm_set_color_s(bmp, get_style(s, "background"));
 	bm_clear(bmp);
 	
 	draw_border(s, bmp);
 	
-	bm_std_font(bmp, s->style.font);
+	bm_std_font(bmp, bm_font_index(get_style(s, "font")));
 	
 	w = tw = bm_text_width(bmp, text);
 	h = th = bm_text_height(bmp, text);
 	
-	if(s->style.bmp) { 
-		if(!my_stricmp(s->style.image_align, "left") || !my_stricmp(s->style.image_align, "right")) {
-			w += s->style.bmp->w + (s->style.image_margin << 1);
-			h = MY_MAX(s->style.bmp->h + s->style.image_margin, th);
+	if(img_name) {
+		img = re_get_bmp(img_name);
+		if(!img) {
+			rerror("Unable to load '%s'", img_name);
 		} else {
-			h += s->style.bmp->h + (s->style.image_margin << 1);
-			w = MY_MAX(s->style.bmp->w + s->style.image_margin, tw);
+			const char *align = get_style(s, "image-align");
+			int margin = atoi(get_style(s, "image-margin"));
+			if(!my_stricmp(align, "left") || !my_stricmp(align, "right")) {
+				w += img->w + (margin << 1);
+				h = MY_MAX(img->h + margin, th);
+			} else {
+				h += img->h + (margin << 1);
+				w = MY_MAX(img->w + margin, tw);
+			}
 		}
 	}
 	
 	if(!my_stricmp(halign, "left")) {
-		tx = (s->style.margin + s->style.border + s->style.padding);
+		tx = (m + b + p);
 	} else if(!my_stricmp(halign, "right")) {
-		tx = bmp->w - 1 - w - (s->style.margin + s->style.border + s->style.padding);
+		tx = bmp->w - 1 - w - (m + b + p);
 	} else {		
 		tx = (bmp->w - w) >> 1;
 	}
 	
 	if(!my_stricmp(valign, "top")) {
-		ty = (s->style.margin + s->style.border + s->style.padding);
+		ty = (m + b + p);
 	} else if(!my_stricmp(valign, "bottom")) {
-		ty = bmp->h - 1 - h - (s->style.margin + s->style.border + s->style.padding);
+		ty = bmp->h - 1 - h - (m + b + p);
 	} else { 
 		ty = (bmp->h - h) >> 1;
 	}
 	
-	if(s->style.bmp) { 
-		if(!my_stricmp(s->style.image_align, "left")) {
+	if(img) { 
+		const char *align = get_style(s, "image-align");
+		int im = atoi(get_style(s, "image-margin"));
+		const char *mask = get_style(s, "image-mask");
+		
+		if(!my_stricmp(align, "left")) {
 			ix = tx;
-			tx += s->style.bmp->w + s->style.image_margin;
+			tx += img->w + im;
 			iy = ty;
-		} else if(!my_stricmp(s->style.image_align, "right")) {
-			ix = tx + tw + s->style.image_margin;
+		} else if(!my_stricmp(align, "right")) {
+			ix = tx + tw + im;
 			iy = ty;
-		} else if(!my_stricmp(s->style.image_align, "bottom")) {
-			iy = ty + th + s->style.image_margin;
+		} else if(!my_stricmp(align, "bottom")) {
+			iy = ty + th + im;
 			ix = tx;
 		} else {
-			/* "top" */
+			// "top" 
 			iy = ty;
-			ty += s->style.bmp->h + s->style.image_margin;
+			ty += img->h + im;
 			ix = tx;
 		}
 		
-		if(!my_stricmp(s->style.image_align, "left") || !my_stricmp(s->style.image_align, "right")) {
-			if(th > s->style.bmp->h) {
-				iy += (th - s->style.bmp->h) >> 1;
+		if(!my_stricmp(align, "left") || !my_stricmp(align, "right")) {
+			if(th > img->h) {
+				iy += (th - img->h) >> 1;
 			} else {
-				ty += (s->style.bmp->h - th) >> 1;
+				ty += (img->h - th) >> 1;
 			}
 		} else {
-			if(tw > s->style.bmp->w) {
-				ix += (tw - s->style.bmp->w) >> 1;
+			if(tw > img->w) {
+				ix += (tw - img->w) >> 1;
 			} else {
-				tx += (s->style.bmp->w - tw) >> 1;
+				tx += (img->w - tw) >> 1;
 			}
 		}
 	
-		if(s->style.image_trans) {
-			bm_set_color_s(s->style.bmp, s->style.image_trans);
-			bm_maskedblit(bmp, ix, iy, s->style.bmp, 0, 0, s->style.bmp->w, s->style.bmp->h);
+		if(mask) {
+			bm_set_color_s(img, mask);
+			bm_maskedblit(bmp, ix, iy, img, 0, 0, img->w, img->h);
 		} else {
-			bm_blit(bmp, ix, iy, s->style.bmp, 0, 0, s->style.bmp->w, s->style.bmp->h);
+			bm_blit(bmp, ix, iy, img, 0, 0, img->w, img->h);
 		}
 	}
 
-	bm_set_color_s(bmp, s->style.fg);	
+	bm_set_color_s(bmp, get_style(s, "foreground"));	
 	bm_puts(bmp, tx, ty, text);	
 }
 
@@ -270,7 +250,7 @@ static int static_update(struct game_state *s, struct bitmap *bmp) {
 		struct game_state *next;
 		
 		if(!nextstate) {
-			rlog("aaaaa State '%s' does not specify a next state. Terminating...", s->name);
+			rlog("State '%s' does not specify a next state. Terminating...", s->name);
 			change_state(NULL);
 		} else {
 			next = get_state(nextstate);
@@ -311,16 +291,17 @@ struct left_right {
 };
 
 static void draw_button(struct game_state *s, struct bitmap *bmp, int x, int y, int w, int h, int pad_left, int pad_top, const char *label, int highlight) {
-	bm_set_color_s(bmp, s->style.fg);
+	int br = atoi(get_style(s, "border-radius"));
+	bm_set_color_s(bmp, get_style(s, "foreground"));
 	if(highlight) {
-		if(s->style.btn_border_radius > 1) 
-			bm_fillroundrect(bmp, x, y, x + w, y + h, s->style.btn_border_radius);
+		if(br > 1) 
+			bm_fillroundrect(bmp, x, y, x + w, y + h, br);
 		else
 			bm_fillrect(bmp, x, y, x + w, y + h);
-		bm_set_color_s(bmp, s->style.bg);
+		bm_set_color_s(bmp, get_style(s, "background"));
 	} else {
-		if(s->style.btn_border_radius > 1) 
-			bm_roundrect(bmp, x, y, x + w, y + h, s->style.btn_border_radius);
+		if(br > 1) 
+			bm_roundrect(bmp, x, y, x + w, y + h, br);
 		else
 			bm_rect(bmp, x, y, x + w, y + h);
 	}
@@ -331,6 +312,11 @@ static int leftright_update(struct game_state *s, struct bitmap *bmp) {
 	int bw1, bh1, bw2, bh2, bw, bh;
 	int bx1, by1, bx2, by2;
 	int k;
+	
+	int m = atoi(get_style(s, "margin"));
+	int b = atoi(get_style(s, "border"));
+	int p = atoi(get_style(s, "padding"));
+	int bp = atoi(get_style(s, "button-padding"));
 
 	int clicked = 0;
 	
@@ -348,16 +334,16 @@ static int leftright_update(struct game_state *s, struct bitmap *bmp) {
 	bw2 = bm_text_width(bmp, right_label);
 	bh2 = bm_text_height(bmp, right_label);
 
-	bw = MY_MAX(bw1, bw2) + (s->style.btn_padding << 1);
-	bh = MY_MAX(bh1, bh2) + (s->style.btn_padding << 1);
+	bw = MY_MAX(bw1, bw2) + (bp << 1);
+	bh = MY_MAX(bh1, bh2) + (bp << 1);
 
 	/* Left button */
-	bx1 = (s->style.margin + s->style.border + s->style.padding);
-	by1 = bmp->h - 1 - bh - (s->style.margin + s->style.border + s->style.padding);	
+	bx1 = (m + b + p);
+	by1 = bmp->h - 1 - bh - (m + b + p);	
 
 	/* Right button */
-	bx2 = bmp->w - 1 - bw - (s->style.margin + s->style.border + s->style.padding);
-	by2 = bmp->h - 1 - bh - (s->style.margin + s->style.border + s->style.padding);
+	bx2 = bmp->w - 1 - bw - (m + b + p);
+	by2 = bmp->h - 1 - bh - (m + b + p);
 	
 	/* Cursor over  */
 	if(mouse_x >= bx1 && mouse_x <= bx1 + bw && mouse_y >= by1 && mouse_y <= by1 + bh) {
@@ -466,15 +452,21 @@ int change_state(struct game_state *next) {
 		}
 		if(game_states[state_top]->name) 
 			free(game_states[state_top]->name);
+		
+		if(game_states[state_top]->styles) {
+			ht_free(game_states[state_top]->styles, NULL);
+		}
+		
 		free(game_states[state_top]);
 	}	
 	game_states[state_top] = next;	
-	if(game_states[state_top]){
+	if(game_states[state_top]){		
+		game_states[state_top]->styles = ht_create(0);
+		apply_styles(game_states[state_top]);
 		if(game_states[state_top]->init && !game_states[state_top]->init(game_states[state_top])) {
 			rerror("Initialising new state");
 			return 0;
 		}
-		apply_styles(game_states[state_top]);
 	}
 	return 1;
 }

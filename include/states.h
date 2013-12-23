@@ -9,30 +9,10 @@ struct game_state {
 	int (*update)(struct game_state *s, struct bitmap *bmp);
 	int (*deinit)(struct game_state *s);
 	
-	/* Styles for GUI elements when drawing the state */
-	struct {
-		const char *fg;
-		const char *bg;
-		
-		int margin;
-		int padding;
-		
-		int btn_padding;
-		int btn_border_radius;
-		
-		int border;
-		int border_radius;
-		const char *border_color;
-		
-		enum bm_fonts font;
-		
-		struct bitmap *bmp;
-		const char *image_align;
-		const char *image_trans;
-		int image_margin;
-		
-	} style;
+	struct hash_tbl *styles;
 };
+
+const char *get_style(struct game_state *s, const char *name);
 
 /* There could be an array somewhere to push and pop states. */
 struct game_state *current_state();

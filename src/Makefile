@@ -99,7 +99,7 @@ resources.o: resources.c ../include/pak.h \
 states.o: states.c ../include/ini.h \
  ../include/bmp.h ../include/states.h ../include/utils.h \
  ../include/game.h ../include/particles.h ../include/resources.h \
- ../include/log.h
+ ../include/log.h ../include/hash.h
 tileset.o: tileset.c ../include/bmp.h ../include/tileset.h \
  ../include/lexer.h ../include/json.h ../include/utils.h \
  ../include/log.h
