@@ -21,6 +21,10 @@
 
 #define MAX_NESTED_STATES 20
 
+/*
+FIXME: Looking at this now, I don't know why this isn't
+a linked list, like the one in resources.c
+*/
 static struct game_state *game_states[MAX_NESTED_STATES];
 static int state_top = 0;
 
@@ -479,8 +483,9 @@ int push_state(struct game_state *next) {
 	if(state_top > MAX_NESTED_STATES - 1) {
 		rerror("Too many nested states");
 		return 0;
-	}
+	}	
 	state_top++;
+	re_push();
 	return change_state(next);
 }
 
@@ -492,6 +497,8 @@ int pop_state(struct game_state *next) {
 	}
 	r = change_state(NULL);
 	state_top--;
+	
+	re_pop();	
 	return r;
 }
 

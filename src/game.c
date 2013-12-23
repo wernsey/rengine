@@ -253,7 +253,7 @@ void usage(const char *name) {
 	fprintf(stderr, "where options:\n");
 	fprintf(stderr, " -p pakfile  : Load game from PAK file.\n");
 	fprintf(stderr, " -g inifile  : Use a game INI file instead of a pak file.\n");
-	fprintf(stderr, " -l rlogfile  : Use specific rlog file.\n");
+	fprintf(stderr, " -l logfile  : Use specific log file.\n");
 }
 
 int main(int argc, char *argv[]) {

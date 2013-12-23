@@ -2,6 +2,10 @@
 void re_initialize();
 void re_clean_up();
 
+void re_push();
+
+void re_pop();
+
 int rs_read_pak(const char *filename);
 
 struct ini_file *re_get_ini(const char *filename);
