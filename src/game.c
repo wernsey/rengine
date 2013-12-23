@@ -302,8 +302,8 @@ int main(int argc, char *argv[]) {
 	log_init(rlog_filename);
 	
 	/* Don't quite know how to use this in Windows yet.
-	SDL_rlogSetAllPriority(SDL_rlog_PRIORITY_WARN);
-	SDL_rlog("Testing rlog capability.");
+	SDL_LogSetAllPriority(SDL_rlog_PRIORITY_WARN);
+	SDL_Log("Testing Log capability.");
 	*/
 	
 	SDL_VERSION(&compiled);
@@ -339,7 +339,9 @@ int main(int argc, char *argv[]) {
 			if(fps <= 0)
 				fps = DEFAULT_FPS;
 			
-			/*filter = !my_stricmp(ini_get(game_ini, "screen", "filter", "nearest"), "linear")? GL_LINEAR: GL_NEAREST;*/
+			/* FIXME: You used to be able to configure this:
+			filter = !my_stricmp(ini_get(game_ini, "screen", "filter", "nearest"), "linear")? GL_LINEAR: GL_NEAREST;
+			*/
 				
 			virt_width = atoi(ini_get(game_ini, "virtual", "width", PARAM(VIRT_WIDTH)));
 			virt_height = atoi(ini_get(game_ini, "virtual", "height", PARAM(VIRT_HEIGHT)));

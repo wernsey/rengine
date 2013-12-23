@@ -550,7 +550,6 @@ struct game_state *get_mus_state(const char *name) {
 	struct game_state *state = malloc(sizeof *state);
 	if(!state)
 		return NULL;
-	state->name = name;
 	
 	state->init = mus_init;
 	state->update = mus_update;

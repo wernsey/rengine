@@ -1,7 +1,7 @@
 
 struct game_state {
 	
-	const char *name;
+	char *name;
 	
 	void *data;
 	

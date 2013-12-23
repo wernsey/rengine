@@ -265,15 +265,16 @@ static int static_update(struct game_state *s, struct bitmap *bmp) {
 		const char *nextstate = ini_get(game_ini, s->name, "nextstate", NULL);
 		struct game_state *next;
 		
-		if(!nextstate)
+		if(!nextstate) {
+			rlog("aaaaa State '%s' does not specify a next state. Terminating...", s->name);
 			change_state(NULL);
-		
-		next = get_state(nextstate);
-		if(!next) {
-			rerror("State '%s' does not exist.", nextstate);
+		} else {
+			next = get_state(nextstate);
+			if(!next) {
+				rerror("State '%s' does not exist.", nextstate);
+			}		
+			change_state(next);
 		}
-		
-		change_state(next);
 	}		
 	
 	return 1;
@@ -291,7 +292,6 @@ static struct game_state *get_static_state(const char *name) {
 	struct game_state *state = malloc(sizeof *state);
 	if(!state)
 		return NULL;
-	state->name = name;
 	
 	state->init = static_init;
 	state->update = static_update;
@@ -370,28 +370,30 @@ static int leftright_update(struct game_state *s, struct bitmap *bmp) {
 				const char *nextstate = ini_get(game_ini, s->name, "left-state", NULL);
 				struct game_state *next;
 				
-				if(!nextstate)
+				if(!nextstate) {
+					rlog("State '%s' does not specify a left state. Terminating...", s->name);
 					change_state(NULL);
-				
-				next = get_state(nextstate);
-				if(!next) {
-					rerror("State '%s' does not exist", nextstate);
+				} else {
+					next = get_state(nextstate);
+					if(!next) {
+						rerror("State '%s' does not exist", nextstate);
+					}					
+					change_state(next);
 				}
-				
-				change_state(next);
 			} else {
 				const char *nextstate = ini_get(game_ini, s->name, "right-state", NULL);
 				struct game_state *next;
 				
-				if(!nextstate)
+				if(!nextstate) {
+					rlog("State '%s' does not specify a right state. Terminating...", s->name);
 					change_state(NULL);
-				
-				next = get_state(nextstate);
-				if(!next) {
-					rerror("State '%s' does not exist", nextstate);
+				} else {
+					next = get_state(nextstate);
+					if(!next) {
+						rerror("State '%s' does not exist", nextstate);
+					}				
+					change_state(next);				
 				}
-				
-				change_state(next);				
 			}
 			return 1;
 		}
@@ -429,7 +431,6 @@ static struct game_state *get_leftright_state(const char *name) {
 	struct game_state *state = malloc(sizeof *state);
 	if(!state)
 		return NULL;
-	state->name = name;
 	
 	state->init = leftright_init;
 	state->update = leftright_update;
@@ -439,13 +440,6 @@ static struct game_state *get_leftright_state(const char *name) {
 }
 
 /* Functions *****************************************/
-
-/*
-#define MAX_NESTED_STATES 20
-
-static struct game_state *game_states[MAX_NESTED_STATES];
-static int state_top = 0;
-*/
 
 struct game_state *current_state() {
 	assert(state_top >= 0 && state_top < MAX_NESTED_STATES);
@@ -466,6 +460,8 @@ int change_state(struct game_state *next) {
 			rerror("Deinitialising old state");
 			return 0;
 		}
+		if(game_states[state_top]->name) 
+			free(game_states[state_top]->name);
 		free(game_states[state_top]);
 	}	
 	game_states[state_top] = next;	
@@ -536,6 +532,9 @@ static struct game_state *get_state(const char *name) {
 		rerror("Memory allocation error obtaining state %s", name);
 		quit = 1;
 	}
+	
+	next->name = strdup(name);
+	
 	return next;
 }
 

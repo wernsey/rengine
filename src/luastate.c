@@ -46,6 +46,9 @@ struct lustate_data {
 	int n_timeout;
 	
 	struct _update_function *update_fcn;
+	
+	int change_state;
+	char *next_state;
 };
 
 /* LUA FUNCTIONS *********************************************************************************/
@@ -172,6 +175,16 @@ static int l_createParticle(lua_State *L) {
 	int life = luaL_checkinteger(L, -2); 
 	int color = bm_color_atoi(luaL_checkstring(L, -1));	
 	add_particle(x, y, dx, dy, life, color);
+	return 0;
+}
+
+static int l_changeState(lua_State *L) {
+	const char *next_state = luaL_checkstring(L, -1);
+	struct lustate_data *sd = get_state_data(L);
+	
+	sd->next_state = strdup(next_state);
+	sd->change_state = 1;
+	
 	return 0;
 }
 
@@ -471,12 +484,12 @@ static int lus_init(struct game_state *s) {
 	lua_State *L = NULL;
 	struct lustate_data *sd;
 		
-	rlog("Initializing Map state '%s'", s->name);
+	rlog("Initializing Lua state '%s'", s->name);
 	
 	/* Load the Lua script */
 	script_file = ini_get(game_ini, s->name, "script", NULL);	
 	if(!script_file) {
-		rerror("Map state '%s' doesn't specify a script file.", s->name);
+		rerror("Lua state '%s' doesn't specify a script file.", s->name);
 		return 0;
 	}
 	script = re_get_script(script_file);
@@ -503,6 +516,9 @@ static int lus_init(struct game_state *s) {
 	sd->n_timeout = 0;
 	sd->map = NULL;
 	sd->bmp = NULL;
+		
+	sd->change_state = 0;
+	sd->next_state = NULL;
 	
 	/* Store the State Data in the interpreter */
 	lua_pushlightuserdata(L, sd);		
@@ -527,6 +543,8 @@ static int lus_init(struct game_state *s) {
 		rlog("Lua state %s does not specify a map file.", s->name);
 	}	
 	
+	rlog("Running script %s", script_file);
+	
 	/* Register some Lua variables. */
 	lua_pushcfunction(L, l_log);
     lua_setglobal(L, "log");
@@ -539,6 +557,9 @@ static int lus_init(struct game_state *s) {
 	
 	lua_pushcfunction(L, l_createParticle);
     lua_setglobal(L, "createParticle");
+	
+	lua_pushcfunction(L, l_changeState);
+    lua_setglobal(L, "changeState");
 	
 	lua_pushinteger(L, 0);
     lua_setglobal(L, "BACKGROUND");
@@ -627,9 +648,14 @@ static int lus_update(struct game_state *s, struct bitmap *bmp) {
 			map_render(sd->map, bmp, i, 0, 0);
 	}
 	
-	if(kb_hit()) { /* FIXME */
-		change_state(NULL);
-		return 0;
+	if(sd->change_state) {
+		if(!sd->next_state) {
+			rwarn("Lua script didn't specify a next state; terminating...");
+			change_state(NULL);
+		} else {	
+			rlog("Lua script changing state to %s", sd->next_state);
+			set_state(sd->next_state);
+		}
 	}
 	
 	return 1;
@@ -658,6 +684,9 @@ static int lus_deinit(struct game_state *s) {
 				free(fn);
 			}
 			
+			if(sd->next_state);
+				free(sd->next_state);
+			
 			free(sd);
 		}
 	}
@@ -673,7 +702,7 @@ struct game_state *get_lua_state(const char *name) {
 	struct game_state *state = malloc(sizeof *state);
 	if(!state)
 		return NULL;
-	state->name = name;
+	
 	state->data = NULL;
 	
 	state->init = lus_init;
