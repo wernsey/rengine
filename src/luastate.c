@@ -188,6 +188,61 @@ static int l_changeState(lua_State *L) {
 	return 0;
 }
 
+/* The Bitmap object *****************************************************************************/
+
+static int new_bmp_obj(lua_State *L) {
+	const char *filename = luaL_checkstring(L,1);
+	
+	struct bitmap **bp = lua_newuserdata(L, sizeof *bp);	
+	luaL_setmetatable(L, "BmpObj");
+	
+	*bp = re_get_bmp(filename);
+	if(!*bp) {
+		luaL_error(L, "Unable to load bitmap '%s'", filename);
+	}
+
+	return 1;
+}
+
+static int bmp_tostring(lua_State *L) {	
+	struct bitmap **bp = luaL_checkudata(L,1, "BmpObj");
+	struct bitmap *b = *bp;
+	lua_pushfstring(L, "BmpObj[%dx%d]", b->w, b->h);
+	return 1;
+}
+
+static int gc_bmp_obj(lua_State *L) {
+	/* No need to free the bitmap: It's in the resource cache. */
+	return 0;
+}
+
+static int bmp_set_mask(lua_State *L) {	
+	struct bitmap **bp = luaL_checkudata(L,1, "BmpObj");
+	const char *mask = luaL_checkstring(L, 2);
+	bm_set_color_s(*bp, mask);
+	return 0;
+}
+
+static void bmp_obj_meta(lua_State *L) {
+	/* Create the metatable for MyObj */
+	luaL_newmetatable(L, "BmpObj");
+	lua_pushvalue(L, -1);
+	lua_setfield(L, -2, "__index"); /* BmpObj.__index = BmpObj */
+	
+	/* Add methods */
+	lua_pushcfunction(L, bmp_set_mask);
+	lua_setfield(L, -2, "setMask");
+	
+	lua_pushcfunction(L, bmp_tostring);
+	lua_setfield(L, -2, "__tostring");	
+	lua_pushcfunction(L, gc_bmp_obj);
+	lua_setfield(L, -2, "__gc");	
+	
+	/* The global method Bmp() */
+	lua_pushcfunction(L, new_bmp_obj);
+	lua_setglobal(L, "Bmp");
+}
+
 /* The C(ell) object *****************************************************************************/
 
 typedef struct _cell_obj {
@@ -254,18 +309,7 @@ static int new_cell_obj(lua_State *L) {
 	return 1;
 }
 
-static int gc_cell_obj(lua_State *L) {
-	cell_obj **o = luaL_checkudata(L,1, "CellObj");
-	while(*o) {
-		cell_obj *t = *o;
-		*o = (*o)->next;		
-		free(t);
-	}
-	return 0;
-}
-
-static int cell_tostring(lua_State *L) {
-	
+static int cell_tostring(lua_State *L) {	
 	cell_obj **os = luaL_checkudata(L,1, "CellObj");
 	cell_obj *o = *os;
 	int count = 0;
@@ -275,6 +319,16 @@ static int cell_tostring(lua_State *L) {
 	}
 	lua_pushfstring(L, "CellObj[%d]", count);
 	return 1;
+}
+
+static int gc_cell_obj(lua_State *L) {
+	cell_obj **o = luaL_checkudata(L,1, "CellObj");
+	while(*o) {
+		cell_obj *t = *o;
+		*o = (*o)->next;		
+		free(t);
+	}
+	return 0;
 }
 
 static int cell_set(lua_State *L) {
@@ -459,6 +513,29 @@ static int gr_lerp(lua_State *L) {
 	return 1;
 }
 
+static int gr_blit(lua_State *L) {
+	struct lustate_data *sd = get_state_data(L);
+	struct bitmap **bp = luaL_checkudata(L, 1, "BmpObj");
+	
+	int dx = luaL_checkinteger(L, 2);
+	int dy = luaL_checkinteger(L, 3);
+	
+	int sx = 0, sy = 0, w = (*bp)->w, h = (*bp)->h;
+	
+	if(lua_gettop(L) >= 4)
+		sx = luaL_checkinteger(L, 4);
+	if(lua_gettop(L) >= 5)
+		sy = luaL_checkinteger(L, 5);
+	if(lua_gettop(L) >= 6)
+		w = luaL_checkinteger(L, 6);
+	if(lua_gettop(L) >= 7)
+		h = luaL_checkinteger(L, 7);
+	
+	bm_maskedblit(sd->bmp, dx, dy, *bp, sx, sy, w, h);
+	
+	return 0;
+}
+
 static const luaL_Reg graphics_funcs[] = {
   {"setcolor",      gr_setcolor},
   {"pixel",         gr_putpixel},
@@ -472,6 +549,7 @@ static const luaL_Reg graphics_funcs[] = {
   {"fillroundrect", gr_fillroundrect},
   {"curve",         gr_bezier3},
   {"lerp",          gr_lerp},
+  {"blit",          gr_blit},
   {0, 0}
 };
 
@@ -573,6 +651,8 @@ static int lus_init(struct game_state *s) {
 		
 	luaL_newlib(L, graphics_funcs);
 	lua_setglobal(L, "G");
+	
+	bmp_obj_meta(L);
 	
 	cell_obj_meta(L);
 	

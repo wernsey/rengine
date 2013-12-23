@@ -14,20 +14,7 @@ http://stackoverflow.com/q/1224708/115589
 It seems that the accepted solution is to not call `luaL_openlibs()`
 and rather copying and modifying linit.c according to your needs.
 
-You can now push and pop states, but this has some implications on the
-resource cache that : The graphics used in the popped state should be
-released, but not the state we're returning to's graphics. This implies
-that either
-
-1. the resource cache should also work on a stack that gets pushed
-and popped,
-
-2. the resource cache should be a part of `struct game_state`.
-
-I'm thinking that (2) might be the more elegant solution at the moment,
-but I should think on it a bit more.
-
-This scheme of pushing/popping states also has some implications on the
+The scheme of pushing/popping states also has some implications on the
 save game system. And on the sprite system I intend to add later.
 
 My Bitmap module should have a `#pragma pack()` at the
