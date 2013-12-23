@@ -396,6 +396,8 @@ static void cell_obj_meta(lua_State *L) {
 
 static int gr_setcolor(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
+	if(!sd->bmp)
+		luaL_error(L, "Call to graphics function outside of a screen update");
 	const char *c = luaL_checkstring(L,1);
 	bm_set_color_s(sd->bmp, c);
 	return 0;
@@ -403,6 +405,8 @@ static int gr_setcolor(lua_State *L) {
 
 static int gr_putpixel(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
+	if(!sd->bmp)
+		luaL_error(L, "Call to graphics function outside of a screen update");
 	int x = luaL_checkint(L,1);
 	int y = luaL_checkint(L,2);
 	bm_putpixel(sd->bmp, x, y);
@@ -411,6 +415,9 @@ static int gr_putpixel(lua_State *L) {
 
 static int gr_line(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
+	if(!sd->bmp)
+		luaL_error(L, "Call to graphics function outside of a screen update");
+	
 	int x0 = luaL_checkint(L,1);
 	int y0 = luaL_checkint(L,2);
 	int x1 = luaL_checkint(L,3);
@@ -421,6 +428,8 @@ static int gr_line(lua_State *L) {
 
 static int gr_rect(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
+	if(!sd->bmp)
+		luaL_error(L, "Call to graphics function outside of a screen update");
 	int x0 = luaL_checkint(L,1);
 	int y0 = luaL_checkint(L,2);
 	int x1 = luaL_checkint(L,3);
@@ -431,6 +440,8 @@ static int gr_rect(lua_State *L) {
 
 static int gr_fillrect(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
+	if(!sd->bmp)
+		luaL_error(L, "Call to graphics function outside of a screen update");
 	int x0 = luaL_checkint(L,1);
 	int y0 = luaL_checkint(L,2);
 	int x1 = luaL_checkint(L,3);
@@ -441,6 +452,8 @@ static int gr_fillrect(lua_State *L) {
 
 static int gr_circle(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
+	if(!sd->bmp)
+		luaL_error(L, "Call to graphics function outside of a screen update");
 	int x = luaL_checkint(L,1);
 	int y = luaL_checkint(L,2);
 	int r = luaL_checkint(L,3);
@@ -450,6 +463,8 @@ static int gr_circle(lua_State *L) {
 
 static int gr_fillcircle(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
+	if(!sd->bmp)
+		luaL_error(L, "Call to graphics function outside of a screen update");
 	int x = luaL_checkint(L,1);
 	int y = luaL_checkint(L,2);
 	int r = luaL_checkint(L,3);
@@ -459,6 +474,8 @@ static int gr_fillcircle(lua_State *L) {
 
 static int gr_ellipse(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
+	if(!sd->bmp)
+		luaL_error(L, "Call to graphics function outside of a screen update");
 	int x0 = luaL_checkint(L,1);
 	int y0 = luaL_checkint(L,2);
 	int x1 = luaL_checkint(L,3);
@@ -469,6 +486,8 @@ static int gr_ellipse(lua_State *L) {
 
 static int gr_roundrect(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
+	if(!sd->bmp)
+		luaL_error(L, "Call to graphics function outside of a screen update");
 	int x0 = luaL_checkint(L,1);
 	int y0 = luaL_checkint(L,2);
 	int x1 = luaL_checkint(L,3);
@@ -480,6 +499,8 @@ static int gr_roundrect(lua_State *L) {
 
 static int gr_fillroundrect(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
+	if(!sd->bmp)
+		luaL_error(L, "Call to graphics function outside of a screen update");
 	int x0 = luaL_checkint(L,1);
 	int y0 = luaL_checkint(L,2);
 	int x1 = luaL_checkint(L,3);
@@ -491,6 +512,8 @@ static int gr_fillroundrect(lua_State *L) {
 
 static int gr_bezier3(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
+	if(!sd->bmp)
+		luaL_error(L, "Call to graphics function outside of a screen update");
 	int x0 = luaL_checkint(L,1);
 	int y0 = luaL_checkint(L,2);
 	int x1 = luaL_checkint(L,3);
@@ -503,6 +526,8 @@ static int gr_bezier3(lua_State *L) {
 
 static int gr_lerp(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
+	if(!sd->bmp)
+		luaL_error(L, "Call to graphics function outside of a screen update");
 	const char *c1 = luaL_checkstring(L,1);
 	const char *c2 = luaL_checkstring(L,2);
 	lua_Number v = luaL_checknumber(L,3);	
@@ -513,8 +538,23 @@ static int gr_lerp(lua_State *L) {
 	return 1;
 }
 
+static int gr_print(lua_State *L) {
+	struct lustate_data *sd = get_state_data(L);
+	if(!sd->bmp)
+		luaL_error(L, "Call to graphics function outside of a screen update");
+	int x = luaL_checkinteger(L, 1);
+	int y = luaL_checkinteger(L, 2);
+	const char *s = luaL_checkstring(L, 3);
+	
+	bm_puts(sd->bmp, x, y, s);
+	
+	return 0;
+}
+
 static int gr_blit(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
+	if(!sd->bmp)
+		luaL_error(L, "Call to graphics function outside of a screen update");
 	struct bitmap **bp = luaL_checkudata(L, 1, "BmpObj");
 	
 	int dx = luaL_checkinteger(L, 2);
@@ -537,19 +577,68 @@ static int gr_blit(lua_State *L) {
 }
 
 static const luaL_Reg graphics_funcs[] = {
-  {"setcolor",      gr_setcolor},
+  {"setColor",      gr_setcolor},
   {"pixel",         gr_putpixel},
   {"line",          gr_line},
   {"rect",          gr_rect},
-  {"fillrect",      gr_fillrect},
+  {"fillRect",      gr_fillrect},
   {"circle",        gr_circle},
-  {"fillcircle",    gr_fillcircle},
+  {"fillCircle",    gr_fillcircle},
   {"ellipse",    	gr_ellipse},
-  {"roundrect",    	gr_roundrect},
-  {"fillroundrect", gr_fillroundrect},
+  {"roundRect",    	gr_roundrect},
+  {"fillRoundRect", gr_fillroundrect},
   {"curve",         gr_bezier3},
   {"lerp",          gr_lerp},
+  {"print",         gr_print},
   {"blit",          gr_blit},
+  {0, 0}
+};
+
+/* Input Functions *******************************************************************************/
+
+static int in_kbhit(lua_State *L) {	
+	if(lua_gettop(L) > 0) {
+		const char *name = luaL_checkstring(L, 1);
+		lua_pushboolean(L, keys[SDL_GetScancodeFromName(name)]);
+	} else {
+		lua_pushboolean(L, kb_hit());
+	}	
+	return 1;
+}
+
+static int in_reset_keys(lua_State *L) {	
+	reset_keys();
+	return 0;
+}
+
+static const luaL_Reg keyboard_funcs[] = {
+  {"hit",    in_kbhit},
+  {"reset",  in_reset_keys},
+  {0, 0}
+};
+
+static int in_mousepos(lua_State *L) {	
+	lua_pushinteger(L, mouse_x);
+	lua_pushinteger(L, mouse_y);
+	return 2;
+}
+
+static int in_mousedown(lua_State *L) {	
+	int btn = luaL_checkinteger(L, 1);
+	lua_pushboolean(L, mouse_btns & SDL_BUTTON(btn));
+	return 1;
+}
+
+static int in_mouseclick(lua_State *L) {	
+	int btn = luaL_checkinteger(L, 1);
+	lua_pushboolean(L, mouse_clck & SDL_BUTTON(btn));
+	return 1;
+}
+
+static const luaL_Reg mouse_funcs[] = {
+  {"position",  in_mousepos},
+  {"down",  in_mousedown},
+  {"click",  in_mouseclick},
   {0, 0}
 };
 
@@ -621,9 +710,7 @@ static int lus_init(struct game_state *s) {
 		rlog("Lua state %s does not specify a map file.", s->name);
 	}	
 	
-	rlog("Running script %s", script_file);
-	
-	/* Register some Lua variables. */
+	/* These functions have global scope in Lua */
 	lua_pushcfunction(L, l_log);
     lua_setglobal(L, "log");
 	
@@ -639,24 +726,41 @@ static int lus_init(struct game_state *s) {
 	lua_pushcfunction(L, l_changeState);
     lua_setglobal(L, "changeState");
 	
+	/* Register some Lua variables. */	
 	lua_pushinteger(L, 0);
     lua_setglobal(L, "BACKGROUND");
 	lua_pushinteger(L, 1);
     lua_setglobal(L, "CENTER");
 	lua_pushinteger(L, 2);
-    lua_setglobal(L, "FOREGROUND");
-	
+    lua_setglobal(L, "FOREGROUND");	
 	lua_pushinteger(L, fps);
-    lua_setglobal(L, "FPS");
-		
+    lua_setglobal(L, "FPS");	
+
+#define SET_TABLE_INT_VAL(k, v) lua_pushstring(L, k); lua_pushinteger(L, v); lua_rawset(L, -3);
+	
+	/* The graphics object G gives you access to all the 2D drawing functions */
 	luaL_newlib(L, graphics_funcs);
 	lua_setglobal(L, "G");
 	
+	/* The input object Input gives you access to the keyboard and mouse. */
+	luaL_newlib(L, keyboard_funcs);
+	lua_setglobal(L, "Keyboard");
+	
+	luaL_newlib(L, mouse_funcs);
+	SET_TABLE_INT_VAL("LEFT", 1);
+	SET_TABLE_INT_VAL("MIDDLE", 2);
+	SET_TABLE_INT_VAL("RIGHT", 3);
+	lua_setglobal(L, "Mouse");
+	
+	/* The Bitmap object is constructed through the Bmp() function that loads 
+		a bitmap through the resources module that can be drawn with G.blit() */
 	bmp_obj_meta(L);
 	
+	/* There is a function C('selector') that returns a CellObj object that
+		gives you access to the cells on the map. */
 	cell_obj_meta(L);
 	
-	/* Load the Lua script, and execute it. */
+	/* Load the Lua script itself, and execute it. */
 	if(luaL_loadstring(L, script)) {		
 		rerror("Unable to load script %s (state %s).", script_file, s->name);
 		sublog("lua", "%s", lua_tostring(L, -1));
@@ -665,6 +769,7 @@ static int lus_init(struct game_state *s) {
 	}
 	free(script);
 	
+	rlog("Running script %s", script_file);	
 	if(lua_pcall(L, 0, 0, 0)) {
 		rerror("Unable to execute script %s (state %s).", script_file, s->name);
 		sublog("lua", "%s", lua_tostring(L, -1));

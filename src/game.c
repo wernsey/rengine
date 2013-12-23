@@ -208,14 +208,15 @@ void advanceFrame() {
 			keys[index] = 0;
 						
 		}  else if(event.type == SDL_MOUSEBUTTONDOWN) {
-			// REMOVE ME: Dummy code to draw random stuff on the screen /
+			/* We don't need these anymore.
 			if(event.button.button == SDL_BUTTON_LEFT) {
 				int i;
 				for(i = 0; i < 20; i++) {
 					add_particle(mouse_x, mouse_y, (float)(rand()%8 - 3)/2, (float)(rand()%8 - 3)/2, rand()%33 + 10, bm_lerp(0xFFFFFF, 0x00FF00, (double)rand()/RAND_MAX));					
 				}
 			} else if(event.button.button == SDL_BUTTON_RIGHT) {
-			}			
+			}
+			*/			
 		} else if(event.type == SDL_WINDOWEVENT) {
 			switch(event.window.event) {
 			case SDL_WINDOWEVENT_RESIZED:
