@@ -35,6 +35,9 @@ struct _update_function {
 };
 
 struct lustate_data {
+	
+	struct game_state *state;
+	
 	struct bitmap *bmp;
 	struct map *map;	
 
@@ -72,6 +75,13 @@ static int l_log(lua_State *L) {
 		sublog("Lua", "%s", s);
 	}
 	return 0;
+}
+
+static int l_getstyle(lua_State *L) {
+	struct lustate_data *sd = get_state_data(L);
+	const char * s = luaL_checkstring(L,1);
+	lua_pushstring(L, get_style(sd->state, s));
+	return 1;
 }
 
 static int l_set_timeout(lua_State *L) {
@@ -394,12 +404,36 @@ static void cell_obj_meta(lua_State *L) {
 
 /* Graphics object G *****************************************************************************/
 
+/* 
+The "Call to graphics function outside of a screen update" error happens because
+sd->bmp is not yet set when the script is first executed in the state's initialisation
+function (lus_init()).
+*/
 static int gr_setcolor(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
 	if(!sd->bmp)
+		luaL_error(L, "Call to graphics function outside of a screen update");	
+	if(lua_gettop(L) > 0) {
+		const char *c = luaL_checkstring(L,1);
+		bm_set_color_s(sd->bmp, c);
+	} else {
+		bm_set_color_s(sd->bmp, get_style(sd->state, "forEGrouND"));
+	}
+	return 0;
+}
+
+static int gr_setfont(lua_State *L) {
+	struct lustate_data *sd = get_state_data(L);
+	if(!sd->bmp)
 		luaL_error(L, "Call to graphics function outside of a screen update");
-	const char *c = luaL_checkstring(L,1);
-	bm_set_color_s(sd->bmp, c);
+	enum bm_fonts font;	
+	if(lua_gettop(L) > 0) {
+		const char *name = luaL_checkstring(L,1);
+		font = bm_font_index(name);
+	} else {
+		font = bm_font_index(get_style(sd->state, "font"));
+	}
+	bm_std_font(sd->bmp, font);	
 	return 0;
 }
 
@@ -578,6 +612,7 @@ static int gr_blit(lua_State *L) {
 
 static const luaL_Reg graphics_funcs[] = {
   {"setColor",      gr_setcolor},
+  {"setFont",       gr_setfont},
   {"pixel",         gr_putpixel},
   {"line",          gr_line},
   {"rect",          gr_rect},
@@ -682,6 +717,7 @@ static int lus_init(struct game_state *s) {
 	if(!sd)
 		return 0;
 	
+	sd->state = s;	
 	sd->update_fcn = NULL;	
 	sd->n_timeout = 0;
 	sd->map = NULL;
@@ -728,6 +764,9 @@ static int lus_init(struct game_state *s) {
 	
 	lua_pushcfunction(L, l_changeState);
     lua_setglobal(L, "changeState");
+	
+	lua_pushcfunction(L, l_getstyle);
+    lua_setglobal(L, "getStyle");	
 	
 	/* Register some Lua variables. */	
 	lua_pushinteger(L, 0);
