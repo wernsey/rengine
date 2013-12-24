@@ -585,6 +585,18 @@ static int gr_print(lua_State *L) {
 	return 0;
 }
 
+static int gr_textdims(lua_State *L) {
+	struct lustate_data *sd = get_state_data(L);
+	if(!sd->bmp)
+		luaL_error(L, "Call to graphics function outside of a screen update");
+	const char *s = luaL_checkstring(L, 1);
+	
+	lua_pushinteger(L, bm_text_width(sd->bmp, s));
+	lua_pushinteger(L, bm_text_height(sd->bmp, s));
+	
+	return 2;
+}
+
 static int gr_blit(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
 	if(!sd->bmp)
@@ -625,6 +637,7 @@ static const luaL_Reg graphics_funcs[] = {
   {"curve",         gr_bezier3},
   {"lerp",          gr_lerp},
   {"print",         gr_print},
+  {"textDims",      gr_textdims},
   {"blit",          gr_blit},
   {0, 0}
 };
