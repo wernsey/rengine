@@ -69,6 +69,27 @@ static struct lustate_data *get_state_data(lua_State *L) {
 	return sd;
 }
 
+static int l_createParticle(lua_State *L) {
+	float x = luaL_checknumber(L, -6);
+	float y = luaL_checknumber(L, -5);
+	float dx = luaL_checknumber(L, -4);
+	float dy = luaL_checknumber(L, -3);
+	int life = luaL_checkinteger(L, -2); 
+	int color = bm_color_atoi(luaL_checkstring(L, -1));	
+	add_particle(x, y, dx, dy, life, color);
+	return 0;
+}
+
+static int l_changeState(lua_State *L) {
+	const char *next_state = luaL_checkstring(L, -1);
+	struct lustate_data *sd = get_state_data(L);
+	
+	sd->next_state = strdup(next_state);
+	sd->change_state = 1;
+	
+	return 0;
+}
+
 static int l_log(lua_State *L) {
 	const char * s = lua_tolstring(L, 1, NULL);
 	if(s) {
@@ -149,8 +170,6 @@ static void process_timeouts(lua_State *L) {
 	}
 }
 
-/* ***********************************************************************************************/
-
 static int l_onUpdate(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
 
@@ -177,26 +196,15 @@ static int l_onUpdate(lua_State *L) {
 	return 1;
 }
 
-static int l_createParticle(lua_State *L) {
-	float x = luaL_checknumber(L, -6);
-	float y = luaL_checknumber(L, -5);
-	float dx = luaL_checknumber(L, -4);
-	float dy = luaL_checknumber(L, -3);
-	int life = luaL_checkinteger(L, -2); 
-	int color = bm_color_atoi(luaL_checkstring(L, -1));	
-	add_particle(x, y, dx, dy, life, color);
-	return 0;
-}
-
-static int l_changeState(lua_State *L) {
-	const char *next_state = luaL_checkstring(L, -1);
-	struct lustate_data *sd = get_state_data(L);
-	
-	sd->next_state = strdup(next_state);
-	sd->change_state = 1;
-	
-	return 0;
-}
+static const luaL_Reg game_funcs[] = {
+  {"changeState",     l_changeState},
+  {"createParticle",  l_createParticle},
+  {"log",      		  l_log},
+  {"getStyle",        l_getstyle},
+  {"setTimeout",      l_set_timeout},
+  {"onUpdate",        l_onUpdate},
+  {0, 0}
+};
 
 /* The Bitmap object *****************************************************************************/
 
@@ -695,6 +703,8 @@ static const luaL_Reg mouse_funcs[] = {
 
 /* STATE FUNCTIONS *******************************************************************************/
 
+#define SET_TABLE_INT_VAL(k, v) lua_pushstring(L, k); lua_pushinteger(L, v); lua_rawset(L, -3);
+
 static int lus_init(struct game_state *s) {
 	
 	const char *map_file, *script_file;
@@ -760,38 +770,15 @@ static int lus_init(struct game_state *s) {
 		free(map_text);
 	} else {
 		rlog("Lua state %s does not specify a map file.", s->name);
-	}	
+	}
 	
-	/* These functions have global scope in Lua */
-	lua_pushcfunction(L, l_log);
-    lua_setglobal(L, "log");
-	
-	lua_pushcfunction(L, l_set_timeout);
-    lua_setglobal(L, "setTimeout");
-	
-	lua_pushcfunction(L, l_onUpdate);
-    lua_setglobal(L, "onUpdate");
-	
-	lua_pushcfunction(L, l_createParticle);
-    lua_setglobal(L, "createParticle");
-	
-	lua_pushcfunction(L, l_changeState);
-    lua_setglobal(L, "changeState");
-	
-	lua_pushcfunction(L, l_getstyle);
-    lua_setglobal(L, "getStyle");	
-	
+	luaL_newlib(L, game_funcs);
 	/* Register some Lua variables. */	
-	lua_pushinteger(L, 0);
-    lua_setglobal(L, "BACKGROUND");
-	lua_pushinteger(L, 1);
-    lua_setglobal(L, "CENTER");
-	lua_pushinteger(L, 2);
-    lua_setglobal(L, "FOREGROUND");	
-	lua_pushinteger(L, fps);
-    lua_setglobal(L, "FPS");	
-
-#define SET_TABLE_INT_VAL(k, v) lua_pushstring(L, k); lua_pushinteger(L, v); lua_rawset(L, -3);
+	SET_TABLE_INT_VAL("BACKGROUND", 0);
+	SET_TABLE_INT_VAL("CENTER", 1);
+	SET_TABLE_INT_VAL("FOREGROUND", 2);
+	SET_TABLE_INT_VAL("FPS", fps);
+	lua_setglobal(L, "Game");
 	
 	/* The graphics object G gives you access to all the 2D drawing functions */
 	luaL_newlib(L, graphics_funcs);
@@ -857,10 +844,9 @@ static int lus_update(struct game_state *s, struct bitmap *bmp) {
 	
 	sd->bmp = bmp;
 	
-	lua_pushinteger(L, bmp->w);
-    lua_setglobal(L, "SCREEN_WIDTH");
-	lua_pushinteger(L, bmp->h);
-    lua_setglobal(L, "SCREEN_HEIGHT");
+	lua_getglobal (L, "Game");
+	SET_TABLE_INT_VAL("SCREEN_WIDTH", bmp->w);
+	SET_TABLE_INT_VAL("SCREEN_HEIGHT", bmp->h);
 	
 	/* TODO: Maybe background colour metadata in the map file? */
 	bm_set_color_s(bmp, "black");
