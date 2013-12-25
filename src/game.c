@@ -18,6 +18,7 @@
 #include "states.h"
 #include "resources.h"
 #include "log.h"
+#include "gamedb.h"
 
 /* Some Defaults *************************************************/
 
@@ -300,21 +301,23 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	
-	log_init(rlog_filename);
-	
+	log_init(rlog_filename);	
+	if(!gdb_new()) {
+		rerror("Unable to create Game Database");
+		return 1;
+	}
+	re_initialize();
+	states_initialize();
+
 	/* Don't quite know how to use this in Windows yet.
 	SDL_LogSetAllPriority(SDL_rlog_PRIORITY_WARN);
 	SDL_Log("Testing Log capability.");
-	*/
-	
+	*/	
 	SDL_VERSION(&compiled);
 	SDL_GetVersion(&linked);
 	rlog("SDL version %d.%d.%d (compile)", compiled.major, compiled.minor, compiled.patch);
 	rlog("SDL version %d.%d.%d (link)", linked.major, linked.minor, linked.patch);
-	
-	re_initialize();
-	states_initialize();
-	
+
 	if(!demo) {
 		if(pak_filename) {
 			rlog("Loading game PAK file: %s", pak_filename);	
@@ -340,7 +343,7 @@ int main(int argc, char *argv[]) {
 			if(fps <= 0)
 				fps = DEFAULT_FPS;
 			
-			/* FIXME: You used to be able to configure this:
+			/* FIXME: In the SDL 1.2 version of Rengine, you used to be able to configure this:
 			filter = !my_stricmp(ini_get(game_ini, "screen", "filter", "nearest"), "linear")? GL_LINEAR: GL_NEAREST;
 			*/
 				
@@ -425,6 +428,10 @@ start_demo:
 	ini_free(game_ini);
 	
 	re_clean_up();
+	
+	gdb_save("dump.db"); /* For testing the game database fuunctionality. Remove later. */
+	
+	gdb_close();
 	
 	rlog("Engine shut down.");
 	
