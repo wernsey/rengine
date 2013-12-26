@@ -16,21 +16,25 @@ else
 	endif
 endif
 
-CFLAGS += `sdl2-config --cflags` -I /usr/local/include -I ../include -I ..
+INCLUDE_PATH = -I /usr/local/include -I ../include -I ..
+
+CFLAGS += `sdl2-config --cflags` $(INCLUDE_PATH)
 LFLAGS += -llua -lSDL2_mixer
 
 # Different executables, and -lopengl32 is required for Windows
 ifeq ($(OS),Windows_NT)
 GAME_BIN = ../bin/game.exe
+PAKR_BIN = ../bin/pakr.exe
 LFLAGS += `sdl2-config --libs` -lopengl32
 RES = rengine.res
 else
 GAME_BIN = ../bin/game
+PAKR_BIN = ../bin/pakr
 LFLAGS += `sdl2-config --libs` -lGL
 RES = 
 endif
 
-EXECUTABLES = $(GAME_BIN)
+EXECUTABLES = $(GAME_BIN) $(PAKR_BIN)
 
 SOURCES= bmp.c game.c ini.c utils.c pak.c particles.c \
 	states.c demo.c resources.c musl.c mustate.c hash.c \
@@ -59,7 +63,7 @@ $(GAME_BIN): $(OBJECTS) $(RES) ../bin
 	
 ../bin:
 	mkdir $@
-
+	
 .c.o:
 	$(CC) -c $(CFLAGS) $< -o $@
 
@@ -107,6 +111,12 @@ tileset.o: tileset.c ../include/bmp.h ../include/tileset.h \
 utils.o: utils.c
 gamedb.o: gamedb.c ../include/gamedb.h ../include/ini.h
 
+$(PAKR_BIN) : pakr.o pak.o
+	$(CC) -o $@ $^
+	
+pakr.o : pakr.c ../include/pak.h
+	$(CC) -c $(INCLUDE_PATH) $< -o $@
+	
 rengine.res : ../rengine.rc
 	windres $^ -O coff -o $@
 
