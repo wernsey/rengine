@@ -3,11 +3,11 @@
  *# Musl is an interpreter for a BASIC-like language. It was added to Rengine to make certain 
  *# high-level operations simpler than their [[Lua|Lua State]] equivalents would be.
  *# 
- *2 Links:
- *# Some resources to help you get started:
+ *# Resources:
+ *{
  ** Musl's home is also on GitHub: https://github.com/wernsey/musl
  ** You can find Documentation of Musl's syntax and built-in functions on [the Musl wiki](https://github.com/wernsey/musl/wiki)
- *#
+ *}
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,8 +44,8 @@ struct mu_data {
 */
 
 /*@ CLS([color]) 
- *# Clears the screen.
- *# If the color
+ *# Clears the screen to a specific [[color|Colors]].
+ *# If the color is not specified, it defaults to the "background" [[style]].
  */
 static struct mu_par mus_cls(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
@@ -77,8 +77,9 @@ static struct mu_par mus_show(struct musl *m, int argc, struct mu_par argv[]) {
 	return rv;
 }
 
-/*@ COLOR(["#rrggbb"]) 
- *# If no color is specified, the "foreground" parameter in the game config is used.
+/*@ COLOR([color]) 
+ *# Sets the [[color|Colors]] used for drawing primitives.
+ *# If no color is specified, the "foreground" [[style]] in the game config is used.
  */
 static struct mu_par mus_color(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
@@ -96,7 +97,7 @@ static struct mu_par mus_color(struct musl *m, int argc, struct mu_par argv[]) {
 }
 
 /*@ FONT("font") 
- *# Sets the font used for drawing.
+ *# Sets the [[font|Fonts]] used for printing text with the `PRINT()` function.
  */
 static struct mu_par mus_font(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv;
@@ -373,7 +374,7 @@ static struct mu_par mus_loadbmp(struct musl *m, int argc, struct mu_par argv[])
 	return rv;
 }
 
-/*@ DRAW([file])
+/*@ DRAW(file)
  *# Draws a bitmap to the screen.\n
  *# This function centers the bitmap on the screen, and is intended for 
  *# things like backgrounds.
@@ -398,7 +399,7 @@ static struct mu_par mus_draw(struct musl *m, int argc, struct mu_par argv[]) {
 }
 
 /*@ SETMASK(file, color)
- *# Sets the mask color of the bitmap for subsequent calls to {{BLIT()}}
+ *# Sets the mask [[color|Colors]] of the bitmap for subsequent calls to {{BLIT()}}
  */
 static struct mu_par mus_setmask(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
@@ -415,7 +416,7 @@ static struct mu_par mus_setmask(struct musl *m, int argc, struct mu_par argv[])
 
 /*@ BLIT(file, dx, dy, sx, sy, w, h)
  *# Blits a bitmap identified by {{file}} to the screen at {{dx,dy}}.\n
- *# The color previously set through the {{SETMASK()}} function is used
+ *# The [[color|Colors]] previously set through the {{SETMASK()}} function is used
  *# as a mask when performing the blit.
  */
 static struct mu_par mus_blit(struct musl *m, int argc, struct mu_par argv[]) {

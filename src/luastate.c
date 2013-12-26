@@ -519,7 +519,7 @@ function (lus_init()).
 */
 
 /*@ G.setColor(color)
- *# Sets the color used to draw the graphics primitives.
+ *# Sets the [[color|Colors]] used to draw the graphics primitives.
  */
 static int gr_setcolor(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
@@ -899,8 +899,8 @@ static const luaL_Reg mouse_funcs[] = {
 
 /* STATE FUNCTIONS */
 
-#define GLOBAL_FUNCTION(name, fun)	lua_pushcfunction(L, fun);	lua_setglobal(L, name);
-#define SET_TABLE_INT_VAL(k, v) lua_pushstring(L, k); lua_pushinteger(L, v); lua_rawset(L, -3);
+#define GLOBAL_FUNCTION(name, fun)	lua_pushcfunction(L, fun); lua_setglobal(L, name);
+#define SET_TABLE_INT_VAL(k, v)     lua_pushstring(L, k); lua_pushinteger(L, v); lua_rawset(L, -3);
 
 static int lus_init(struct game_state *s) {
 	

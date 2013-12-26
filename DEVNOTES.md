@@ -81,7 +81,7 @@ level, and want to see how your changes affect the level.
 
 # Other Tools
 
-## pakker
+## Pakr
 
 **Pakr** should also be scriptable. I forsee that manually adding files
 to PAKs will become unwieldy as the projects grow, so having a script to
