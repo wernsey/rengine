@@ -26,6 +26,15 @@
 
 #define MAX_TIMEOUTS 20
 
+/*
+These are the Lua scripts in the ../scripts/ directory.
+The script files are converted to C code strings using the Bace utility.
+These strings are then executed through the Lua interpreter to provide
+a variety of built in Lua code.
+*/
+extern const char base_lua[];
+extern size_t base_lua_len;
+
 /* Don't tamper with this variable from your Lua scripts. */
 #define STATE_DATA_VAR	"___state_data"
 
@@ -777,11 +786,11 @@ static int lus_init(struct game_state *s) {
 	SET_TABLE_INT_VAL("BACKGROUND", 0);
 	SET_TABLE_INT_VAL("CENTER", 1);
 	SET_TABLE_INT_VAL("FOREGROUND", 2);
-	SET_TABLE_INT_VAL("FPS", fps);
 	lua_setglobal(L, "Game");
 	
 	/* The graphics object G gives you access to all the 2D drawing functions */
 	luaL_newlib(L, graphics_funcs);
+	SET_TABLE_INT_VAL("FPS", fps);
 	lua_setglobal(L, "G");
 	
 	/* The input object Input gives you access to the keyboard and mouse. */
@@ -801,6 +810,13 @@ static int lus_init(struct game_state *s) {
 	/* There is a function C('selector') that returns a CellObj object that
 		gives you access to the cells on the map. */
 	cell_obj_meta(L);
+	
+	if(luaL_dostring(L, base_lua)) {
+		rerror("Unable load base library.");
+		sublog("lua", "%s", lua_tostring(L, -1));
+		free(script);				
+		return 0;
+	}
 	
 	/* Load the Lua script itself, and execute it. */
 	if(luaL_loadstring(L, script)) {		
@@ -844,7 +860,7 @@ static int lus_update(struct game_state *s, struct bitmap *bmp) {
 	
 	sd->bmp = bmp;
 	
-	lua_getglobal (L, "Game");
+	lua_getglobal (L, "G");
 	SET_TABLE_INT_VAL("SCREEN_WIDTH", bmp->w);
 	SET_TABLE_INT_VAL("SCREEN_HEIGHT", bmp->h);
 	
@@ -897,7 +913,7 @@ static int lus_deinit(struct game_state *s) {
 	lua_getglobal(L, STATE_DATA_VAR);
 	if(!lua_isnil(L,-1)) {
 		if(!lua_islightuserdata(L, -1)) {
-			rerror("Variable %s got tampered with (map_deinit)", STATE_DATA_VAR);
+			rerror("Variable %s got tampered with (lus_deinit)", STATE_DATA_VAR);
 		} else {
 			struct _update_function *fn;
 			

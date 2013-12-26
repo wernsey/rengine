@@ -11,7 +11,7 @@ else
 	LFLAGS = -pg
 	else
 	# Release mode: Optimized and stripped of debugging info
-	CFLAGS = -Wall -Os -DNDEBUG
+	CFLAGS = -Wall -O2 -DNDEBUG
 	LFLAGS = -s 
 	endif
 endif
@@ -25,11 +25,13 @@ LFLAGS += -llua -lSDL2_mixer
 ifeq ($(OS),Windows_NT)
 GAME_BIN = ../bin/game.exe
 PAKR_BIN = ../bin/pakr.exe
+BACE_BIN = ../bin/bace.exe
 LFLAGS += `sdl2-config --libs` -lopengl32
 RES = rengine.res
 else
 GAME_BIN = ../bin/game
 PAKR_BIN = ../bin/pakr
+BACE_BIN = ../bin/bace
 LFLAGS += `sdl2-config --libs` -lGL
 RES = 
 endif
@@ -39,7 +41,7 @@ EXECUTABLES = $(GAME_BIN) $(PAKR_BIN)
 SOURCES= bmp.c game.c ini.c utils.c pak.c particles.c \
 	states.c demo.c resources.c musl.c mustate.c hash.c \
 	lexer.c tileset.c map.c json.c luastate.c log.c \
-	gamedb.c
+	gamedb.c base.x.c
 
 FONTS = fonts/bold.xbm fonts/circuit.xbm fonts/hand.xbm fonts/normal.xbm \
 		fonts/small.xbm fonts/smallinv.xbm fonts/thick.xbm
@@ -111,22 +113,38 @@ tileset.o: tileset.c ../include/bmp.h ../include/tileset.h \
 utils.o: utils.c
 gamedb.o: gamedb.c ../include/gamedb.h ../include/ini.h
 
+# Utilities ###################################
+
 $(PAKR_BIN) : pakr.o pak.o
 	$(CC) -o $@ $^
 	
 pakr.o : pakr.c ../include/pak.h
 	$(CC) -c $(INCLUDE_PATH) $< -o $@
+
+$(BACE_BIN) : bace.o
+	$(CC) -o $@ $^
+	
+bace.o : bace.c
+	$(CC) -c $< -o $@
+	
+# Resources ###################################
 	
 rengine.res : ../rengine.rc
 	windres $^ -O coff -o $@
 
 rengine.rc : ../rengine.ico
 
+# Generated Sources ###########################
+
+base.x.c : ../scripts/base.lua $(BACE_BIN)
+	$(BACE_BIN) -n base_lua -z -o $@ $< 
+
 ###############################################
 
 .PHONY : clean
 
 clean:
-	-rm -rf $(EXECUTABLES)
+	-rm -rf $(EXECUTABLES) $(BACE_BIN)
 	-rm -rf *.o rengine.res
+	-rm -rf *.x.c *.x.h
 	-rm -rf *~ gmon.out

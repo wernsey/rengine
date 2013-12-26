@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
 	FILE *infile = NULL;
 	size_t len = 0, sublen, i;
 	FILE *outfile = stdout;
-	char *var_name = NULL, *c;
+	char *infile_name = NULL, *var_name = NULL, *c;
 	char buffer[BUFFER_SIZE];
 	int opt, append_z = 0;
 	while((opt = getopt(argc, argv, "o:n:zv?")) != -1) {
@@ -60,9 +60,10 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
-	infile = fopen(argv[optind], "rb");
+	infile_name = argv[optind];
+	infile = fopen(infile_name, "rb");
 	if(!infile) {
-		fprintf(stderr, "error: unable to open %s for input\n", argv[optind]);
+		fprintf(stderr, "error: unable to open %s for input\n", infile_name);
 		return 1;
 	}
 	
@@ -73,7 +74,10 @@ int main(int argc, char *argv[]) {
 		if(!isalnum(*c))
 			*c = '_';
 	}
-	
+	fprintf(outfile, "/*\nAuto-generated from %s using the Bace utility.\n", infile_name);
+	fprintf(outfile, "Do not modify; Your modifications will be overwritten by the build process.\n\n");	
+	fprintf(outfile, "extern const char %s[];\nextern size_t %s_len;\n*/\n\n", var_name, var_name);	
+	fprintf(outfile, "#include <stdio.h>\n");
 	fprintf(outfile, "const char %s[] = {", var_name);
 	while(!feof(infile)) {
 		sublen = fread(buffer, 1, BUFFER_SIZE, infile);
