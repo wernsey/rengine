@@ -14,7 +14,7 @@ http://stackoverflow.com/q/1224708/115589
 It seems that the accepted solution is to not call `luaL_openlibs()`
 and rather copying and modifying linit.c according to your needs.
 
-The scheme of pushing/popping states also has some implications on the
+The scheme of pushing/popping states has some implications on the
 save game system. And on the sprite system I intend to add later.
 
 My Bitmap module should have a `#pragma pack()` at the
@@ -36,12 +36,10 @@ http://wiki.libsdl.org/SDL_RWops?highlight=%28\bCategoryStruct\b%29|%28CategoryI
 The bmp.c can do with an `bm_arc(bmp, start_angle, end_angle, radius)`
 function.
 
-bmp.c is also still missing a `bm_fillellipse()` function.
+bmp.c is also still missing a `bm_fillellipse()` function. it is not
+high on my list of priorities.
 
-~~Descision whether to stick with scancodes or switch to keycodes? Or
-make it configurable?~~
-
-Scratch this whole idea: I should have a way to map physical input
+I should have a way to map physical input
 (like key pressed, mouse moved or screen swiped) to an abstracted input
 (like move left, jump, open door). This will help if I ever get around
 to porting it to devices without keyboards and mouses.
@@ -85,15 +83,12 @@ level, and want to see how your changes affect the level.
 
 ## pakker
 
-I should bundle my **pakker** program (that creates the PAK files)'s
-code with Rengine's.
-
-**Pakker** should also be scriptable. I forsee that manually adding files
+**Pakr** should also be scriptable. I forsee that manually adding files
 to PAKs will become unwieldy as the projects grow, so having a script to
 create PAK files could help. At the moment I think Musl with the pak API.
 
 # P.S.
 
-I Keep this file nicely formatted with this command:
+I keep this file (and README.md) nicely formatted with this command:
 
 `fmt DEVNOTES.md > DEVNOTES.md~; mv DEVNOTES.md~ DEVNOTES.md`
