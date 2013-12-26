@@ -1,7 +1,14 @@
-# Excuse this script if it looks strange. 
-# I have a script that generates HTML from a special markup in my code comments,
-# and this script is modified from that to generate GitHub-flavoured Markdown.
-# Some of the code in here may look useless, but I've tried to keep it backwards compatible.
+# Generates Markdown from comments in source code for the wiki on GitHub
+#
+# To use the script, invoke it like so:
+#   > awk -f mddoc.awk src/luastate.c > output.md
+# and then paste the contents of output.md in GitHub's wiki editor.
+
+# Excuse this script if it looks strange:
+# This script is modified from an older script that I used to generate HTML 
+# from code to generate GitHub-flavoured Markdown.
+# Some of the code in here may look useless, but I've tried to keep it 
+# backwards compatible with my previous script.
 
 BEGIN { 
 }
@@ -11,7 +18,7 @@ BEGIN {
 /\*1/ { if(!comment) next; s = substr($0, index($0, "*1") + 2); print "# " filter(s); next;}
 /\*2/ { if(!comment) next; s = substr($0, index($0, "*2") + 2); print "## " filter(s); next;}
 /\*3/ { if(!comment) next; s = substr($0, index($0, "*3") + 2); print "### " filter(s); next;}
-/\*@/ { if(!comment) next; s = substr($0, index($0, "*@") + 2); print "### " filter(s); next;}
+/\*@/ { if(!comment) next; s = substr($0, index($0, "*@") + 2); print "#### " filter(s); next;}
 /\*#[ \t\r]*$/ { if(!comment) next; if(!pre) print "\n\n"; next;}
 /\*#/ { if(!comment) next; s = substr($0, index($0, "*#") + 2); print filter(s);}
 /\*&/ { if(!comment) next; s = substr($0, index($0, "*&") + 2); print "`" filter(s) "`"; next;}

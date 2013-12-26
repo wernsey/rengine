@@ -87,8 +87,20 @@ level, and want to see how your changes affect the level.
 to PAKs will become unwieldy as the projects grow, so having a script to
 create PAK files could help. At the moment I think Musl with the pak API.
 
-# P.S.
+# Documentation
 
 I keep this file (and README.md) nicely formatted with this command:
+```
+fmt DEVNOTES.md > DEVNOTES.md~; mv DEVNOTES.md~ DEVNOTES.md
+```
 
-`fmt DEVNOTES.md > DEVNOTES.md~; mv DEVNOTES.md~ DEVNOTES.md`
+## Wiki documentation 
+
+I use the script `mddoc.awk` to generate Markdown for 
+[Rengine's wiki](https://github.com/wernsey/rengine/wiki) on GitHub.
+
+To use the script, invoke it like so:
+```
+> awk -f mddoc.awk src/luastate.c > output.md
+```
+and then paste the contents of `output.md` in GitHub's wiki editor.

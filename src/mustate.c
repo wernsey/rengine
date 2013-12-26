@@ -1,3 +1,14 @@
+/*
+ *# {*Musl*}, the {/Marginally Useful Scripting Language/} or {/My UnStructured Language/}
+ *# Musl is an interpreter for a BASIC-like language. It was added to Rengine to make certain 
+ *# high-level operations simpler than their [[Lua|Lua State]] equivalents would be.
+ *# 
+ *2 Links:
+ *# Some resources to help you get started:
+ ** Musl's home is also on GitHub: https://github.com/wernsey/musl
+ ** You can find Documentation of Musl's syntax and built-in functions on [the Musl wiki](https://github.com/wernsey/musl/wiki)
+ *#
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -18,7 +29,7 @@
 #include "particles.h"
 #include "log.h"
 
-/* Structures ********************************************************************************/
+/* Structures */
 
 struct mu_data {
 	struct musl *mu;
@@ -28,7 +39,9 @@ struct mu_data {
 	struct game_state *state;
 };
 	
-/* Musl Functions ****************************************************************************/
+/*2 Musl Functions 
+ *# Rengine makes these functions available to Musl scripts:
+*/
 
 /*@ CLS([color]) 
  *# Clears the screen.
@@ -400,9 +413,10 @@ static struct mu_par mus_setmask(struct musl *m, int argc, struct mu_par argv[])
 	return rv;
 }
 
-/*@ BLIT([file], dx, dy, sx, sy, w, h)
+/*@ BLIT(file, dx, dy, sx, sy, w, h)
  *# Blits a bitmap identified by {{file}} to the screen at {{dx,dy}}.\n
- *# The color previously set th
+ *# The color previously set through the {{SETMASK()}} function is used
+ *# as a mask when performing the blit.
  */
 static struct mu_par mus_blit(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
@@ -428,7 +442,7 @@ static struct mu_par mus_blit(struct musl *m, int argc, struct mu_par argv[]) {
 	return rv;
 }
 
-/* State Functions ***************************************************************************/
+/* State Functions */
 
 static int mus_init(struct game_state *s) {
 	struct mu_data *md = malloc(sizeof *md);
