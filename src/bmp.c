@@ -666,6 +666,11 @@ static const struct color_map_entry {
 int bm_color_atoi(const char *text) {
 	const struct color_map_entry *cm = color_map;
 	int col = 0;
+	
+	/* TODO:
+	 * We can optimize this lookup to O(log(n)) by sorting the
+	 * color_map array and doing a binary search.
+	*/
 	while(cm->name) {
 		/* Poor man's stricmp(): */
 		const char *n = cm->name;
@@ -680,12 +685,69 @@ int bm_color_atoi(const char *text) {
 		}
 		cm++;
 	}
-	if(text[0] == '#') text++;
 	
-	/* TODO: I'd ought to support CSS like notation, like
-		rgb(x,y,z) as well as the 3-digit format
-		(eg. #0fb, which is the same as #00FFBB)
-	*/
+	if(text[0] == '#') 
+		text++;
+	else if(text[0] == '0' && tolower(text[1]) == 'x') 
+		text += 2;
+	else if(tolower(text[0]) == 'r' && tolower(text[1]) == 'g' && tolower(text[2]) == 'b') {
+		/* Special case where color is given like RGB(r,g,b) */
+		int v;
+		text += 3;
+		if(text[0] != '(') return 0;
+		text++;
+		
+		v = 0;
+		while(isdigit(text[0])) {
+			v = v * 10 + (text[0] - '0');
+			text++;
+		}
+		if(text[0] != ',') return 0;
+		text++;
+		col = (col << 8) + v;
+		
+		v = 0;
+		while(isdigit(text[0])) {
+			v = v * 10 + (text[0] - '0');
+			text++;
+		}
+		if(text[0] != ',') return 0;
+		text++;
+		col = (col << 8) + v;
+		
+		v = 0;
+		while(isdigit(text[0])) {
+			v = v * 10 + (text[0] - '0');
+			text++;
+		}
+		if(text[0] != ')') return 0;
+		text++;
+		col = (col << 8) + v;
+		
+		return col;
+	} else if(tolower(text[0]) == 'h' && tolower(text[1]) == 's' && tolower(text[2]) == 'l') {
+		/* Not supported yet.
+		http://en.wikipedia.org/wiki/HSL_color_space 
+		*/
+		return 0;
+	}
+	
+	if(strlen(text) == 3) {
+		/* Special case of #RGB that should be treated as #RRGGBB */
+		while(text[0]) {
+			int c = tolower(text[0]);
+			if(c >= 'a' && c <= 'f') {
+				col = (col << 4) + (c - 'a' + 10); 
+				col = (col << 4) + (c - 'a' + 10); 
+			} else {
+				col = (col << 4) + (c - '0');
+				col = (col << 4) + (c - '0');
+			}		
+			text++;
+		}
+		return col;
+	}
+	
 	while(isxdigit(text[0])) {
 		int c = tolower(text[0]);
 		if(c >= 'a' && c <= 'f') {

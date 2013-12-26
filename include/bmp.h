@@ -108,13 +108,20 @@ void bm_set_color(struct bitmap *bm, int r, int g, int b);
  *# Sets the colour of the pen to a colour represented by text.
  *# The text can be in the HTML format, like #RRGGBB or one of
  *# a variety of colour names, eg.: "white", "black", "red".
+ *# See {{bm_color_atoi()}} for more details on the format of
+ *# the string.
  */
 void bm_set_color_s(struct bitmap *bm, const char *text);
 
 /*@ int bm_color_atoi(const char *text)
  *# Converts a text string like "#FF00FF" or "white" to
  *# an integer of the form 0xFF00FF.
- *# (It is used internally by {{bm_set_color_s()}})
+ *# The shorthand #RGB format is also supported
+ *# (eg. #0fb, which is the same as #00FFBB)
+ *# Additionally, it also supports the syntax "RGB(x,y,z)".
+ *# The list of supported colors are based on the wikipedia's
+ *# list of HTML and X11 Web colors:
+ *# http://en.wikipedia.org/wiki/Web_colors
  */
 int bm_color_atoi(const char *text);
 
