@@ -78,26 +78,7 @@ static struct lustate_data *get_state_data(lua_State *L) {
 	return sd;
 }
 
-static int l_createParticle(lua_State *L) {
-	float x = luaL_checknumber(L, -6);
-	float y = luaL_checknumber(L, -5);
-	float dx = luaL_checknumber(L, -4);
-	float dy = luaL_checknumber(L, -3);
-	int life = luaL_checkinteger(L, -2); 
-	int color = bm_color_atoi(luaL_checkstring(L, -1));	
-	add_particle(x, y, dx, dy, life, color);
-	return 0;
-}
-
-static int l_changeState(lua_State *L) {
-	const char *next_state = luaL_checkstring(L, -1);
-	struct lustate_data *sd = get_state_data(L);
-	
-	sd->next_state = strdup(next_state);
-	sd->change_state = 1;
-	
-	return 0;
-}
+/* Global functions ******************************************************************************/
 
 static int l_log(lua_State *L) {
 	const char * s = lua_tolstring(L, 1, NULL);
@@ -105,13 +86,6 @@ static int l_log(lua_State *L) {
 		sublog("Lua", "%s", s);
 	}
 	return 0;
-}
-
-static int l_getstyle(lua_State *L) {
-	struct lustate_data *sd = get_state_data(L);
-	const char * s = luaL_checkstring(L,1);
-	lua_pushstring(L, get_style(sd->state, s));
-	return 1;
 }
 
 static int l_set_timeout(lua_State *L) {
@@ -205,13 +179,40 @@ static int l_onUpdate(lua_State *L) {
 	return 1;
 }
 
+/* Functions in the Game scope *******************************************************/
+
+static int l_createParticle(lua_State *L) {
+	float x = luaL_checknumber(L, -6);
+	float y = luaL_checknumber(L, -5);
+	float dx = luaL_checknumber(L, -4);
+	float dy = luaL_checknumber(L, -3);
+	int life = luaL_checkinteger(L, -2); 
+	int color = bm_color_atoi(luaL_checkstring(L, -1));	
+	add_particle(x, y, dx, dy, life, color);
+	return 0;
+}
+
+static int l_changeState(lua_State *L) {
+	const char *next_state = luaL_checkstring(L, -1);
+	struct lustate_data *sd = get_state_data(L);
+	
+	sd->next_state = strdup(next_state);
+	sd->change_state = 1;
+	
+	return 0;
+}
+
+static int l_getstyle(lua_State *L) {
+	struct lustate_data *sd = get_state_data(L);
+	const char * s = luaL_checkstring(L,1);
+	lua_pushstring(L, get_style(sd->state, s));
+	return 1;
+}
+
 static const luaL_Reg game_funcs[] = {
   {"changeState",     l_changeState},
-  {"createParticle",  l_createParticle},
-  {"log",      		  l_log},
   {"getStyle",        l_getstyle},
-  {"setTimeout",      l_set_timeout},
-  {"onUpdate",        l_onUpdate},
+  {"createParticle",  l_createParticle},
   {0, 0}
 };
 
@@ -227,7 +228,6 @@ static int new_bmp_obj(lua_State *L) {
 	if(!*bp) {
 		luaL_error(L, "Unable to load bitmap '%s'", filename);
 	}
-
 	return 1;
 }
 
@@ -712,6 +712,7 @@ static const luaL_Reg mouse_funcs[] = {
 
 /* STATE FUNCTIONS *******************************************************************************/
 
+#define GLOBAL_FUNCTION(name, fun)	lua_pushcfunction(L, fun);	lua_setglobal(L, name);
 #define SET_TABLE_INT_VAL(k, v) lua_pushstring(L, k); lua_pushinteger(L, v); lua_rawset(L, -3);
 
 static int lus_init(struct game_state *s) {
@@ -780,6 +781,10 @@ static int lus_init(struct game_state *s) {
 	} else {
 		rlog("Lua state %s does not specify a map file.", s->name);
 	}
+	
+	GLOBAL_FUNCTION("log", l_log);
+	GLOBAL_FUNCTION("setTimeout", l_set_timeout);
+	GLOBAL_FUNCTION("onUpdate", l_onUpdate);
 	
 	luaL_newlib(L, game_funcs);
 	/* Register some Lua variables. */	
