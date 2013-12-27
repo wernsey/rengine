@@ -33,10 +33,13 @@ from PAK files later.
 The SDL_RWops API is here:
 http://wiki.libsdl.org/SDL_RWops?highlight=%28\bCategoryStruct\b%29|%28CategoryIO%29
 
-The bmp.c can do with an `bm_arc(bmp, start_angle, end_angle, radius)`
+The `bm_fill()` function in `bmp.c` doesn't take the clipping rectangle
+into account. I'm not quite sure how to handle it.
+
+The `bmp.c` can do with an `bm_arc(bmp, start_angle, end_angle, radius)`
 function.
 
-bmp.c is also still missing a `bm_fillellipse()` function. it is not
+`bmp.c` is also still missing a `bm_fillellipse()` function. it is not
 high on my list of priorities.
 
 I should have a way to map physical input

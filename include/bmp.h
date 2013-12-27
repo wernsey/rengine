@@ -43,6 +43,15 @@ struct bitmap {
 	
 	/* The width of eac character in the font */
 	int font_spacing;
+	
+	/* Clipping Rectangle 
+	 * (x0,y0) is inclusive.
+	 * (x1,y1) is exclusive.
+	 */
+	struct {
+		int x0, y0;
+		int x1, y1;
+	} clip;
 };
 
 /*@ struct bitmap *bm_create(int w, int h)
@@ -78,6 +87,17 @@ int bm_save(struct bitmap *b, const char *fname);
  */
 /* THIS FUNCTION IS NOT PROPERLY TESTED YET */
 struct bitmap *bm_copy(struct bitmap *b);
+
+/*@ void bm_clip(struct bitmap *b, int x0, int y0, int x1, int y1)
+ *# Sets the clipping rectangle on the bitmap from {{x0,y0}} (inclusive)
+ *# to {{x1,y1}} exclusive.
+ */
+void bm_clip(struct bitmap *b, int x0, int y0, int x1, int y1);
+
+/*@ void bm_unclip(struct bitmap *b)
+ *# Resets the bitmap {{b}}'s clipping rectangle.
+ */
+void bm_unclip(struct bitmap *b);
 
 /*@ unsigned char bm_getr(struct bitmap *b, int x, int y)
  *# Sets a pixel at x,y in the bitmap b to the specified R,G,B color
@@ -271,6 +291,7 @@ void bm_bezier3(struct bitmap *b, int x0, int y0, int x1, int y1, int x2, int y2
  *# Floodfills from <x,y> using the pen colour.\n
  *# The colour of the pixel at <x,y> is used as the source colour.
  *# The colour of the pen is used as the target colour.
+ *N The function does not take the clipping into account.
  */
 void bm_fill(struct bitmap *b, int x, int y);
 

@@ -77,6 +77,11 @@ struct bitmap *bm_create(int w, int h) {
 	
 	b->w = w;
 	b->h = h;
+	
+	b->clip.x0 = 0;
+	b->clip.y0 = 0;
+	b->clip.x1 = w;
+	b->clip.y1 = h;
 		
 	b->data = malloc(BM_BLOB_SIZE(b));
 	memset(b->data, 0x00, BM_BLOB_SIZE(b));
@@ -269,6 +274,12 @@ int bm_save(struct bitmap *b, const char *fname) {
 struct bitmap *bm_copy(struct bitmap *b) {
 	struct bitmap *out = bm_create(b->w, b->h);
 	memcpy(out->data, b->data, BM_BLOB_SIZE(b));
+	
+	out->r = b->r; out->g = b->g; out->b = b->b;
+	out->font = b->font;
+	out->font_spacing = b->font_spacing;
+	memcpy(&out->clip, &b->clip, sizeof b->clip);
+	
 	return out;
 }
 
@@ -312,36 +323,67 @@ struct bitmap *bm_fromXbm(int w, int h, unsigned char *data) {
 	return bmp;
 }
 
+void bm_clip(struct bitmap *b, int x0, int y0, int x1, int y1) {
+	if(x0 > x1) {
+		int t = x1;
+		x1 = x0;
+		x0 = t;
+	}
+	if(y0 > y1) {
+		int t = y1;
+		y1 = y0;
+		y0 = t;
+	}
+	if(x0 < 0) x0 = 0;
+	if(x1 > b->w) x1 = b->w;
+	if(y0 < 0) y0 = 0;
+	if(y1 > b->h) y1 = b->h;
+	
+	b->clip.x0 = x0;
+	b->clip.y0 = y0;
+	b->clip.x1 = x1;
+	b->clip.y1 = y1;
+}
+
+void bm_unclip(struct bitmap *b) {
+	b->clip.x0 = 0;
+	b->clip.y0 = 0;
+	b->clip.x1 = b->w;
+	b->clip.y1 = b->h;
+}
+
 void bm_blit(struct bitmap *dst, int dx, int dy, struct bitmap *src, int sx, int sy, int w, int h) {
 	int x,y, i, j;
 
-	if(dx < 0) {
-		sx += -dx;
-		w -= -dx;
-		dx = 0;
+	if(dx < dst->clip.x0) {
+		int delta = dst->clip.x0 - dx;
+		sx += delta;
+		w -= delta;
+		dx = dst->clip.x0;
 	}
 	
-	if(dx + w > dst->w) {
-		int delta = dx + w - dst->w;
+	if(dx + w > dst->clip.x1) {
+		int delta = dx + w - dst->clip.x1;
 		w -= delta;
 	}
 
-	if(dy < 0) {
-		sy += -dy;
-		h -= -dy;
-		dy = 0;
+	if(dy < dst->clip.y0) {
+		int delta = dst->clip.y0 - dy;
+		sy += delta;
+		h -= delta;
+		dy = dst->clip.y0;
 	}
 	
-	if(dy + h > dst->h) {
-		int delta = dy + h - dst->h;
+	if(dy + h > dst->clip.y1) {
+		int delta = dy + h - dst->clip.y1;
 		h -= delta;
 	}
 	
 	if(w <= 0 || h <= 0)
 		return;
-	if(dx >= dst->w || dx + w < 0)
+	if(dx >= dst->clip.x1 || dx + w < dst->clip.x0)
 		return;
-	if(dy >= dst->h || dy + h < 0)
+	if(dy >= dst->clip.y1 || dy + h < dst->clip.y0)
 		return;
 	
 	if(sx + w > src->w) {
@@ -354,8 +396,8 @@ void bm_blit(struct bitmap *dst, int dx, int dy, struct bitmap *src, int sx, int
 		h -= delta;
 	}
 	
-	assert(dx >= 0 && dx + w <= dst->w);
-	assert(dy >= 0 && dy + h <= dst->h);	
+	assert(dx >= 0 && dx + w <= dst->clip.x1);
+	assert(dy >= 0 && dy + h <= dst->clip.y1);	
 	assert(sx >= 0 && sx + w <= src->w);
 	assert(sy >= 0 && sy + h <= src->h);
 	
@@ -376,33 +418,35 @@ void bm_blit(struct bitmap *dst, int dx, int dy, struct bitmap *src, int sx, int
 void bm_maskedblit(struct bitmap *dst, int dx, int dy, struct bitmap *src, int sx, int sy, int w, int h) {
 	int x,y, i, j;
 
-	if(dx < 0) {
-		sx += -dx;
-		w -= -dx;
-		dx = 0;
+	if(dx < dst->clip.x0) {
+		int delta = dst->clip.x0 - dx;
+		sx += delta;
+		w -= delta;
+		dx = dst->clip.x0;
 	}
 	
-	if(dx + w > dst->w) {
-		int delta = dx + w - dst->w;
+	if(dx + w > dst->clip.x1) {
+		int delta = dx + w - dst->clip.x1;
 		w -= delta;
 	}
 
-	if(dy < 0) {
-		sy += -dy;
-		h -= -dy;
-		dy = 0;
+	if(dy < dst->clip.y0) {
+		int delta = dst->clip.y0 - dy;
+		sy += delta;
+		h -= delta;
+		dy = dst->clip.y0;
 	}
 	
-	if(dy + h > dst->h) {
-		int delta = dy + h - dst->h;
+	if(dy + h > dst->clip.y1) {
+		int delta = dy + h - dst->clip.y1;
 		h -= delta;
 	}
 	
 	if(w <= 0 || h <= 0)
 		return;
-	if(dx >= dst->w || dx + w < 0)
+	if(dx >= dst->clip.x1 || dx + w < dst->clip.x0)
 		return;
-	if(dy >= dst->h || dy + h < 0)
+	if(dy >= dst->clip.y1 || dy + h < dst->clip.y0)
 		return;
 	
 	if(sx + w > src->w) {
@@ -415,8 +459,8 @@ void bm_maskedblit(struct bitmap *dst, int dx, int dy, struct bitmap *src, int s
 		h -= delta;
 	}
 	
-	assert(dx >= 0 && dx + w <= dst->w);
-	assert(dy >= 0 && dy + h <= dst->h);	
+	assert(dx >= 0 && dx + w <= dst->clip.x1);
+	assert(dy >= 0 && dy + h <= dst->clip.y1);	
 	assert(sx >= 0 && sx + w <= src->w);
 	assert(sy >= 0 && sy + h <= src->h);
 	
@@ -439,8 +483,10 @@ void bm_smooth(struct bitmap *b) {
 	struct bitmap *tmp = bm_create(b->w, b->h);
 	unsigned char *t = b->data;
 	int x, y;
+	assert(b->clip.y0 < b->clip.y1);
+	assert(b->clip.x0 < b->clip.x1);
 	for(y = 0; y < b->h; y++)
-		for(x = 0; x < b->w; x++) {
+		for(x = 0; x < b->w; x++) {			
 			int p, q, c = 0, R = 0, G = 0, B = 0;
 			for(p = x-1; p < x+1; p++)
 				for(q = y-1; q < y+1; q++) {
@@ -813,7 +859,7 @@ void bm_clear(struct bitmap *b) {
 }
 
 void bm_putpixel(struct bitmap *b, int x, int y) {
-	if(x < 0 || x >= b->w || y < 0 || y >= b->h) 
+	if(x < b->clip.x0 || x >= b->clip.x1 || y < b->clip.y0 || y >= b->clip.y1) 
 		return;
 	BM_SET(b, x, y, b->r, b->g, b->b);
 }
@@ -840,7 +886,7 @@ void bm_line(struct bitmap *b, int x0, int y0, int x1, int y1) {
 	
 	for(;;) {
 		/* Clipping can probably be more effective... */
-		if(x0 >= 0 && x0 < b->w && y0 >= 0 && y0 < b->h) 
+		if(x0 >= b->clip.x0 && x0 < b->clip.x1 && y0 >= b->clip.y0 && y0 < b->clip.y1) 
 			BM_SET(b, x0, y0, b->r, b->g, b->b);
 			
 		if(x0 == x1 && y0 == y1) break;
@@ -877,8 +923,8 @@ void bm_fillrect(struct bitmap *b, int x0, int y0, int x1, int y1) {
 		y0 = y1;
 		y1 = y;
 	}
-	for(y = MAX(y0, 0); y <= MIN(y1, b->h); y++) {		
-		for(x = MAX(x0, 0); x <= MIN(x1, b->w); x++) {
+	for(y = MAX(y0, b->clip.y0); y < MIN(y1 + 1, b->clip.y1); y++) {		
+		for(x = MAX(x0, b->clip.x0); x < MIN(x1 + 1, b->clip.x1); x++) {
 			assert(y >= 0 && y < b->h && x >= 0 && x < b->w);
 			BM_SET(b, x, y, b->r, b->g, b->b);
 		}
@@ -894,22 +940,22 @@ void bm_circle(struct bitmap *b, int x0, int y0, int r) {
 		
 		/* Lower Right */
 		xp = x0 - x; yp = y0 + y;
-		if(xp >= 0 && xp < b->w && yp >= 0 && yp < b->h)
+		if(xp >= b->clip.x0 && xp < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
 			BM_SET(b, xp, yp, b->r, b->g, b->b);
 		
 		/* Lower Left */
 		xp = x0 - y; yp = y0 - x;
-		if(xp >= 0 && xp < b->w && yp >= 0 && yp < b->h)
+		if(xp >= b->clip.x0 && xp < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
 			BM_SET(b, xp, yp, b->r, b->g, b->b);
 		
 		/* Upper Left */
 		xp = x0 + x; yp = y0 - y;
-		if(xp >= 0 && xp < b->w && yp >= 0 && yp < b->h)
+		if(xp >= b->clip.x0 && xp < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
 			BM_SET(b, xp, yp, b->r, b->g, b->b);
 		
 		/* Upper Right */
 		xp = x0 + y; yp = y0 + x;
-		if(xp >= 0 && xp < b->w && yp >= 0 && yp < b->h)
+		if(xp >= b->clip.x0 && xp < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
 			BM_SET(b, xp, yp, b->r, b->g, b->b);
 				
 		r = err;
@@ -933,10 +979,10 @@ void bm_fillcircle(struct bitmap *b, int x0, int y0, int r) {
 		for(i = x0 + x; i <= x0 - x; i++) {
 			/* Maybe the clipping can be more effective... */
 			int yp = y0 + y;
-			if(i >= 0 && i < b->w && yp >= 0 && yp < b->h)
+			if(i >= b->clip.x0 && i < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
 				BM_SET(b, i, yp, b->r, b->g, b->b);
 			yp = y0 - y;
-			if(i >= 0 && i < b->w && yp >= 0 && yp < b->h)
+			if(i >= b->clip.x0 && i < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
 				BM_SET(b, i, yp, b->r, b->g, b->b);			
 		}		
 		
@@ -966,16 +1012,16 @@ void bm_ellipse(struct bitmap *b, int x0, int y0, int x1, int y1) {
 	b1 = 8 * b0 * b0;
 	
 	do {
-		if(x1 >= 0 && x1 < b->w && y0 >= 0 && y0 < b->h)
+		if(x1 >= b->clip.x0 && x1 < b->clip.x1 && y0 >= b->clip.y0 && y0 < b->clip.y1)
 			BM_SET(b, x1, y0, b->r, b->g, b->b);	
 		
-		if(x0 >= 0 && x0 < b->w && y0 >= 0 && y0 < b->h)
+		if(x0 >= b->clip.x0 && x0 < b->clip.x1 && y0 >= b->clip.y0 && y0 < b->clip.y1)
 			BM_SET(b, x0, y0, b->r, b->g, b->b);	
 		
-		if(x0 >= 0 && x0 < b->w && y1 >= 0 && y1 < b->h)
+		if(x0 >= b->clip.x0 && x0 < b->clip.x1 && y1 >= b->clip.y0 && y1 < b->clip.y1)
 			BM_SET(b, x0, y1, b->r, b->g, b->b);	
 		
-		if(x1 >= 0 && x1 < b->w && y1 >= 0 && y1 < b->h)
+		if(x1 >= b->clip.x0 && x1 < b->clip.x1 && y1 >= b->clip.y0 && y1 < b->clip.y1)
 			BM_SET(b, x1, y1, b->r, b->g, b->b);	
 		
 		e2 = 2 * err;
@@ -988,17 +1034,17 @@ void bm_ellipse(struct bitmap *b, int x0, int y0, int x1, int y1) {
 	} while(x0 <= x1);
 	
 	while(y0 - y1 < b0) {
-		if(x0 - 1 >= 0 && x0 - 1 < b->w && y0 >= 0 && y0 < b->h)
+		if(x0 - 1 >= b->clip.x0 && x0 - 1 < b->clip.x1 && y0 >= b->clip.y0 && y0 < b->clip.y1)
 			BM_SET(b, x0 - 1, y0, b->r, b->g, b->b);
 		
-		if(x1 + 1 >= 0 && x1 + 1 < b->w && y0 >= 0 && y0 < b->h)
+		if(x1 + 1 >= b->clip.x0 && x1 + 1 < b->clip.x1 && y0 >= b->clip.y0 && y0 < b->clip.y1)
 			BM_SET(b, x1 + 1, y0, b->r, b->g, b->b);
 		y0++;
 		
-		if(x0 - 1 >= 0 && x0 - 1 < b->w && y0 >= 0 && y0 < b->h)
+		if(x0 - 1 >= b->clip.x0 && x0 - 1 < b->clip.x1 && y0 >= b->clip.y0 && y0 < b->clip.y1)
 			BM_SET(b, x0 - 1, y1, b->r, b->g, b->b);
 		
-		if(x1 + 1 >= 0 && x1 + 1 < b->w && y0 >= 0 && y0 < b->h)
+		if(x1 + 1 >= b->clip.x0 && x1 + 1 < b->clip.x1 && y0 >= b->clip.y0 && y0 < b->clip.y1)
 			BM_SET(b, x1 + 1, y1, b->r, b->g, b->b);	
 		y1--;
 	}
@@ -1020,22 +1066,22 @@ void bm_roundrect(struct bitmap *b, int x0, int y0, int x1, int y1, int r) {
 		
 		/* Lower Right */
 		xp = x1 - x - rad; yp = y1 + y - rad;
-		if(xp >= 0 && xp < b->w && yp >= 0 && yp < b->h)
+		if(xp >= b->clip.x0 && xp < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
 			BM_SET(b, xp, yp, b->r, b->g, b->b);
 		
 		/* Lower Left */
 		xp = x0 - y + rad; yp = y1 - x - rad;
-		if(xp >= 0 && xp < b->w && yp >= 0 && yp < b->h)
+		if(xp >= b->clip.x0 && xp < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
 			BM_SET(b, xp, yp, b->r, b->g, b->b);
 		
 		/* Upper Left */
 		xp = x0 + x + rad; yp = y0 - y + rad;
-		if(xp >= 0 && xp < b->w && yp >= 0 && yp < b->h)
+		if(xp >= b->clip.x0 && xp < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
 			BM_SET(b, xp, yp, b->r, b->g, b->b);
 		
 		/* Upper Right */
 		xp = x1 + y - rad; yp = y0 + x + rad;
-		if(xp >= 0 && xp < b->w && yp >= 0 && yp < b->h)
+		if(xp >= b->clip.x0 && xp < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
 			BM_SET(b, xp, yp, b->r, b->g, b->b);
 		
 		r = err;
@@ -1062,10 +1108,10 @@ void bm_fillroundrect(struct bitmap *b, int x0, int y0, int x1, int y1, int r) {
 		xq = x1 - x - rad;
 		for(i = xp; i <= xq; i++) {
 			yp = y1 + y - rad;
-			if(i >= 0 && i < b->w && yp >= 0 && yp < b->h)
+			if(i >= b->clip.x0 && i < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
 				BM_SET(b, i, yp, b->r, b->g, b->b);
 			yp = y0 - y + rad;
-			if(i >= 0 && i < b->w && yp >= 0 && yp < b->h)
+			if(i >= b->clip.x0 && i < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
 				BM_SET(b, i, yp, b->r, b->g, b->b);
 		}
 		
@@ -1080,8 +1126,8 @@ void bm_fillroundrect(struct bitmap *b, int x0, int y0, int x1, int y1, int r) {
 		}
 	} while(x < 0);
 	
-	for(y = MAX(y0 + rad + 1, 0); y < MIN(y1 - rad, b->h); y++) {
-		for(x = MAX(x0, 0); x <= MIN(x1, b->w - 1); x++) {
+	for(y = MAX(y0 + rad + 1, b->clip.y0); y < MIN(y1 - rad, b->clip.y1); y++) {
+		for(x = MAX(x0, b->clip.x0); x <= MIN(x1,b->clip.x1 - 1); x++) {
 			assert(x >= 0 && x < b->w && y >= 0 && y < b->h);
 			BM_SET(b, x, y, b->r, b->g, b->b);
 		}			
@@ -1112,6 +1158,9 @@ void bm_bezier3(struct bitmap *b, int x0, int y0, int x1, int y1, int x2, int y2
 }
 
 void bm_fill(struct bitmap *b, int x, int y) {
+	/* TODO: The function does not take the clipping into account. 
+	 * I'm not really sure how to handle it, to be honest.
+	 */	
 	struct node {int x; int y;} 
 		*queue,
 		n = {x, y};
@@ -1287,11 +1336,11 @@ void bm_putc(struct bitmap *b, int x, int y, char c) {
 	fcol = c >> 3;
 	frow = c & 0x7;
 	byte = frow * FONT_WIDTH + fcol;
-	for(j = 0; j < 8 && y + j < b->h; j++) {
-		if(y + j >= 0) {
+	for(j = 0; j < 8 && y + j < b->clip.y1; j++) {
+		if(y + j >= b->clip.y0) {
 			char bits = b->font[byte];
-			for(i = 0; i < 8 && x + i < b->w; i++) {
-				if(x + i >= 0 && !(bits & (1 << i))) {
+			for(i = 0; i < 8 && x + i < b->clip.x1; i++) {
+				if(x + i >= b->clip.x0 && !(bits & (1 << i))) {
 					BM_SET(b, x + i, y + j, b->r, b->g, b->b);
 				}
 			}
@@ -1331,9 +1380,9 @@ void bm_puts(struct bitmap *b, int x, int y, const char *text) {
 void bm_printf(struct bitmap *b, int x, int y, const char *fmt, ...) {
 	char buffer[256];
 	va_list arg;
-	va_start (arg, fmt);
-  	vsnprintf (buffer, sizeof buffer, fmt, arg);
-  	va_end (arg);
+	va_start(arg, fmt);
+  	vsnprintf(buffer, sizeof buffer, fmt, arg);
+  	va_end(arg);
 	bm_puts(b, x, y, buffer);
 }
 
@@ -1345,12 +1394,12 @@ void bm_putcs(struct bitmap *b, int x, int y, int s, char c) {
 	fcol = c >> 3;
 	frow = c & 0x7;
 	
-	for(j = 0; j < (8 << s) && y + j < b->h; j++) {
+	for(j = 0; j < (8 << s) && y + j < b->clip.y1; j++) {
 		byte = frow * FONT_WIDTH + fcol + (j >> s) * (FONT_WIDTH >> 3);		
-		if(y + j >= 0) {
+		if(y + j >= b->clip.y0) {
 			char bits = b->font[byte];
-			for(i = 0; i < (8 << s) && x + i < b->w; i++) {
-				if(x + i >= 0 && !(bits & (1 << (i >> s)))) {
+			for(i = 0; i < (8 << s) && x + i < b->clip.x1; i++) {
+				if(x + i >= b->clip.x0 && !(bits & (1 << (i >> s)))) {
 					BM_SET(b, x + i, y + j, b->r, b->g, b->b);
 				}
 			}
@@ -1389,9 +1438,9 @@ void bm_putss(struct bitmap *b, int x, int y, int s, const char *text) {
 void bm_printfs(struct bitmap *b, int x, int y, int s, const char *fmt, ...) {
 	char buffer[256];
 	va_list arg;
-	va_start (arg, fmt);
-  	vsnprintf (buffer, sizeof buffer, fmt, arg);
-  	va_end (arg);
+	va_start(arg, fmt);
+  	vsnprintf(buffer, sizeof buffer, fmt, arg);
+  	va_end(arg);
 	if(s > 0)
 		bm_putss(b, x, y, s, buffer);
 	else
