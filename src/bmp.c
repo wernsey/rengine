@@ -494,260 +494,232 @@ void bm_set_color(struct bitmap *bm, int r, int g, int b) {
 }
 
 /* Lookup table for bm_color_atoi() 
- * Keep the name in uppercase to keep bm_color_atoi() 
- * case insensitive.
  * This list is based on the HTML and X11 colors on the
  * Wikipedia's list of web colors
  * http://en.wikipedia.org/wiki/Web_colors
+ * Keep the list sorted because a binary search is used.
+ * Keep the name in uppercase to keep bm_color_atoi() case insensitive.
  */
 static const struct color_map_entry {
 	const char *name;
 	int color;
 } color_map[] = {
-	{"WHITE", 0xFFFFFF},
-	{"SILVER", 0xC0C0C0},
-	{"GRAY", 0x808080},
-	{"BLACK", 0x000000},
-	{"RED", 0xFF0000},
-	{"MAROON", 0x800000},
-	{"YELLOW", 0xFFFF00},
-	{"OLIVE", 0x808000},
-	{"LIME", 0x00FF00},
-	{"GREEN", 0x008000},
+	{"ALICEBLUE", 0xF0F8FF},
+	{"ANTIQUEWHITE", 0xFAEBD7},
 	{"AQUA", 0x00FFFF},
-	{"TEAL", 0x008080},
-	{"BLUE", 0x0000FF},
-	{"NAVY", 0x000080},
-	{"FUCHSIA", 0xFF00FF},
-	{"PURPLE", 0x800080},
-	{"PINK", 0xFFC0CB},
-	{"LIGHTPINK", 0xFFB6C1},
-	{"HOTPINK", 0xFF69B4},
-	{"DEEPPINK", 0xFF1493},
-	{"PALEVIOLETRED", 0xDB7093},
-	{"MEDIUMVIOLETRED", 0xC71585},
-	{"LIGHTSALMON", 0xFFA07A},
-	{"SALMON", 0xFA8072},
-	{"DARKSALMON", 0xE9967A},
-	{"LIGHTCORAL", 0xF08080},
-	{"INDIANRED", 0xCD5C5C},
-	{"CRIMSON", 0xDC143C},
-	{"FIREBRICK", 0xB22222},
-	{"DARKRED", 0x8B0000},
-	{"RED", 0xFF0000},
-	{"ORANGERED", 0xFF4500},
-	{"TOMATO", 0xFF6347},
-	{"CORAL", 0xFF7F50},
-	{"DARKORANGE", 0xFF8C00},
-	{"ORANGE", 0xFFA500},
-	{"GOLD", 0xFFD700},
-	{"YELLOW", 0xFFFF00},
-	{"LIGHTYELLOW", 0xFFFFE0},
-	{"LEMONCHIFFON", 0xFFFACD},
-	{"LIGHTGOLDENRODYELLOW", 0xFAFAD2},
-	{"PAPAYAWHIP", 0xFFEFD5},
-	{"MOCCASIN", 0xFFE4B5},
-	{"PEACHPUFF", 0xFFDAB9},
-	{"PALEGOLDENROD", 0xEEE8AA},
-	{"KHAKI", 0xF0E68C},
-	{"DARKKHAKI", 0xBDB76B},
-	{"CORNSILK", 0xFFF8DC},
-	{"BLANCHEDALMOND", 0xFFEBCD},
-	{"BISQUE", 0xFFE4C4},
-	{"NAVAJOWHITE", 0xFFDEAD},
-	{"WHEAT", 0xF5DEB3},
-	{"BURLYWOOD", 0xDEB887},
-	{"TAN", 0xD2B48C},
-	{"ROSYBROWN", 0xBC8F8F},
-	{"SANDYBROWN", 0xF4A460},
-	{"GOLDENROD", 0xDAA520},
-	{"DARKGOLDENROD", 0xB8860B},
-	{"PERU", 0xCD853F},
-	{"CHOCOLATE", 0xD2691E},
-	{"SADDLEBROWN", 0x8B4513},
-	{"SIENNA", 0xA0522D},
-	{"BROWN", 0xA52A2A},
-	{"MAROON", 0x800000},
-	{"DARKOLIVEGREEN", 0x556B2F},
-	{"OLIVE", 0x808000},
-	{"OLIVEDRAB", 0x6B8E23},
-	{"YELLOWGREEN", 0x9ACD32},
-	{"LIMEGREEN", 0x32CD32},
-	{"LIME", 0x00FF00},
-	{"LAWNGREEN", 0x7CFC00},
-	{"CHARTREUSE", 0x7FFF00},
-	{"GREENYELLOW", 0xADFF2F},
-	{"SPRINGGREEN", 0x00FF7F},
-	{"MEDIUMSPRINGGREEN", 0x00FA9A},
-	{"LIGHTGREEN", 0x90EE90},
-	{"PALEGREEN", 0x98FB98},
-	{"DARKSEAGREEN", 0x8FBC8F},
-	{"MEDIUMSEAGREEN", 0x3CB371},
-	{"SEAGREEN", 0x2E8B57},
-	{"FORESTGREEN", 0x228B22},
-	{"GREEN", 0x008000},
-	{"DARKGREEN", 0x006400},
-	{"MEDIUMAQUAMARINE", 0x66CDAA},
-	{"AQUA", 0x00FFFF},
-	{"CYAN", 0x00FFFF},
-	{"LIGHTCYAN", 0xE0FFFF},
-	{"PALETURQUOISE", 0xAFEEEE},
 	{"AQUAMARINE", 0x7FFFD4},
-	{"TURQUOISE", 0x40E0D0},
-	{"MEDIUMTURQUOISE", 0x48D1CC},
-	{"DARKTURQUOISE", 0x00CED1},
-	{"LIGHTSEAGREEN", 0x20B2AA},
-	{"CADETBLUE", 0x5F9EA0},
-	{"DARKCYAN", 0x008B8B},
-	{"TEAL", 0x008080},
-	{"LIGHTSTEELBLUE", 0xB0C4DE},
-	{"POWDERBLUE", 0xB0E0E6},
-	{"LIGHTBLUE", 0xADD8E6},
-	{"SKYBLUE", 0x87CEEB},
-	{"LIGHTSKYBLUE", 0x87CEFA},
-	{"DEEPSKYBLUE", 0x00BFFF},
-	{"DODGERBLUE", 0x1E90FF},
-	{"CORNFLOWERBLUE", 0x6495ED},
-	{"STEELBLUE", 0x4682B4},
-	{"ROYALBLUE", 0x4169E1},
+	{"AZURE", 0xF0FFFF},
+	{"BEIGE", 0xF5F5DC},
+	{"BISQUE", 0xFFE4C4},
+	{"BLACK", 0x000000},
+	{"BLANCHEDALMOND", 0xFFEBCD},
 	{"BLUE", 0x0000FF},
-	{"MEDIUMBLUE", 0x0000CD},
+	{"BLUEVIOLET", 0x8A2BE2},
+	{"BROWN", 0xA52A2A},
+	{"BURLYWOOD", 0xDEB887},
+	{"CADETBLUE", 0x5F9EA0},
+	{"CHARTREUSE", 0x7FFF00},
+	{"CHOCOLATE", 0xD2691E},
+	{"CORAL", 0xFF7F50},
+	{"CORNFLOWERBLUE", 0x6495ED},
+	{"CORNSILK", 0xFFF8DC},
+	{"CRIMSON", 0xDC143C},
+	{"CYAN", 0x00FFFF},
 	{"DARKBLUE", 0x00008B},
-	{"NAVY", 0x000080},
-	{"MIDNIGHTBLUE", 0x191970},
-	{"LAVENDER", 0xE6E6FA},
-	{"THISTLE", 0xD8BFD8},
-	{"PLUM", 0xDDA0DD},
-	{"VIOLET", 0xEE82EE},
-	{"ORCHID", 0xDA70D6},
+	{"DARKCYAN", 0x008B8B},
+	{"DARKGOLDENROD", 0xB8860B},
+	{"DARKGRAY", 0xA9A9A9},
+	{"DARKGREEN", 0x006400},
+	{"DARKKHAKI", 0xBDB76B},
+	{"DARKMAGENTA", 0x8B008B},
+	{"DARKOLIVEGREEN", 0x556B2F},
+	{"DARKORANGE", 0xFF8C00},
+	{"DARKORCHID", 0x9932CC},
+	{"DARKRED", 0x8B0000},
+	{"DARKSALMON", 0xE9967A},
+	{"DARKSEAGREEN", 0x8FBC8F},
+	{"DARKSLATEBLUE", 0x483D8B},
+	{"DARKSLATEGRAY", 0x2F4F4F},
+	{"DARKTURQUOISE", 0x00CED1},
+	{"DARKVIOLET", 0x9400D3},
+	{"DEEPPINK", 0xFF1493},
+	{"DEEPSKYBLUE", 0x00BFFF},
+	{"DIMGRAY", 0x696969},
+	{"DODGERBLUE", 0x1E90FF},
+	{"FIREBRICK", 0xB22222},
+	{"FLORALWHITE", 0xFFFAF0},
+	{"FORESTGREEN", 0x228B22},
 	{"FUCHSIA", 0xFF00FF},
+	{"GAINSBORO", 0xDCDCDC},
+	{"GHOSTWHITE", 0xF8F8FF},
+	{"GOLD", 0xFFD700},
+	{"GOLDENROD", 0xDAA520},
+	{"GRAY", 0x808080},
+	{"GREEN", 0x008000},
+	{"GREENYELLOW", 0xADFF2F},
+	{"HONEYDEW", 0xF0FFF0},
+	{"HOTPINK", 0xFF69B4},
+	{"INDIANRED", 0xCD5C5C},
+	{"INDIGO", 0x4B0082},
+	{"IVORY", 0xFFFFF0},
+	{"KHAKI", 0xF0E68C},
+	{"LAVENDER", 0xE6E6FA},
+	{"LAVENDERBLUSH", 0xFFF0F5},
+	{"LAWNGREEN", 0x7CFC00},
+	{"LEMONCHIFFON", 0xFFFACD},
+	{"LIGHTBLUE", 0xADD8E6},
+	{"LIGHTCORAL", 0xF08080},
+	{"LIGHTCYAN", 0xE0FFFF},
+	{"LIGHTGOLDENRODYELLOW", 0xFAFAD2},
+	{"LIGHTGRAY", 0xD3D3D3},
+	{"LIGHTGREEN", 0x90EE90},
+	{"LIGHTPINK", 0xFFB6C1},
+	{"LIGHTSALMON", 0xFFA07A},
+	{"LIGHTSEAGREEN", 0x20B2AA},
+	{"LIGHTSKYBLUE", 0x87CEFA},
+	{"LIGHTSLATEGRAY", 0x778899},
+	{"LIGHTSTEELBLUE", 0xB0C4DE},
+	{"LIGHTYELLOW", 0xFFFFE0},
+	{"LIME", 0x00FF00},
+	{"LIMEGREEN", 0x32CD32},
+	{"LINEN", 0xFAF0E6},
 	{"MAGENTA", 0xFF00FF},
+	{"MAROON", 0x800000},
+	{"MEDIUMAQUAMARINE", 0x66CDAA},
+	{"MEDIUMBLUE", 0x0000CD},
 	{"MEDIUMORCHID", 0xBA55D3},
 	{"MEDIUMPURPLE", 0x9370DB},
-	{"BLUEVIOLET", 0x8A2BE2},
-	{"DARKVIOLET", 0x9400D3},
-	{"DARKORCHID", 0x9932CC},
-	{"DARKMAGENTA", 0x8B008B},
-	{"PURPLE", 0x800080},
-	{"INDIGO", 0x4B0082},
-	{"DARKSLATEBLUE", 0x483D8B},
-	{"SLATEBLUE", 0x6A5ACD},
+	{"MEDIUMSEAGREEN", 0x3CB371},
 	{"MEDIUMSLATEBLUE", 0x7B68EE},
-	{"WHITE", 0xFFFFFF},
-	{"SNOW", 0xFFFAFA},
-	{"HONEYDEW", 0xF0FFF0},
+	{"MEDIUMSPRINGGREEN", 0x00FA9A},
+	{"MEDIUMTURQUOISE", 0x48D1CC},
+	{"MEDIUMVIOLETRED", 0xC71585},
+	{"MIDNIGHTBLUE", 0x191970},
 	{"MINTCREAM", 0xF5FFFA},
-	{"AZURE", 0xF0FFFF},
-	{"ALICEBLUE", 0xF0F8FF},
-	{"GHOSTWHITE", 0xF8F8FF},
-	{"WHITESMOKE", 0xF5F5F5},
-	{"SEASHELL", 0xFFF5EE},
-	{"BEIGE", 0xF5F5DC},
-	{"OLDLACE", 0xFDF5E6},
-	{"FLORALWHITE", 0xFFFAF0},
-	{"IVORY", 0xFFFFF0},
-	{"ANTIQUEWHITE", 0xFAEBD7},
-	{"LINEN", 0xFAF0E6},
-	{"LAVENDERBLUSH", 0xFFF0F5},
 	{"MISTYROSE", 0xFFE4E1},
-	{"GAINSBORO", 0xDCDCDC},
-	{"LIGHTGRAY", 0xD3D3D3},
+	{"MOCCASIN", 0xFFE4B5},
+	{"NAVAJOWHITE", 0xFFDEAD},
+	{"NAVY", 0x000080},
+	{"OLDLACE", 0xFDF5E6},
+	{"OLIVE", 0x808000},
+	{"OLIVEDRAB", 0x6B8E23},
+	{"ORANGE", 0xFFA500},
+	{"ORANGERED", 0xFF4500},
+	{"ORCHID", 0xDA70D6},
+	{"PALEGOLDENROD", 0xEEE8AA},
+	{"PALEGREEN", 0x98FB98},
+	{"PALETURQUOISE", 0xAFEEEE},
+	{"PALEVIOLETRED", 0xDB7093},
+	{"PAPAYAWHIP", 0xFFEFD5},
+	{"PEACHPUFF", 0xFFDAB9},
+	{"PERU", 0xCD853F},
+	{"PINK", 0xFFC0CB},
+	{"PLUM", 0xDDA0DD},
+	{"POWDERBLUE", 0xB0E0E6},
+	{"PURPLE", 0x800080},
+	{"RED", 0xFF0000},
+	{"ROSYBROWN", 0xBC8F8F},
+	{"ROYALBLUE", 0x4169E1},
+	{"SADDLEBROWN", 0x8B4513},
+	{"SALMON", 0xFA8072},
+	{"SANDYBROWN", 0xF4A460},
+	{"SEAGREEN", 0x2E8B57},
+	{"SEASHELL", 0xFFF5EE},
+	{"SIENNA", 0xA0522D},
 	{"SILVER", 0xC0C0C0},
-	{"DARKGRAY", 0xA9A9A9},
-	{"GRAY", 0x808080},
-	{"DIMGRAY", 0x696969},
-	{"LIGHTSLATEGRAY", 0x778899},
+	{"SKYBLUE", 0x87CEEB},
+	{"SLATEBLUE", 0x6A5ACD},
 	{"SLATEGRAY", 0x708090},
-	{"DARKSLATEGRAY", 0x2F4F4F},
-	{"BLACK", 0x000000},
+	{"SNOW", 0xFFFAFA},
+	{"SPRINGGREEN", 0x00FF7F},
+	{"STEELBLUE", 0x4682B4},
+	{"TAN", 0xD2B48C},
+	{"TEAL", 0x008080},
+	{"THISTLE", 0xD8BFD8},
+	{"TOMATO", 0xFF6347},
+	{"TURQUOISE", 0x40E0D0},
+	{"VIOLET", 0xEE82EE},
+	{"WHEAT", 0xF5DEB3},
+	{"WHITE", 0xFFFFFF},
+	{"WHITESMOKE", 0xF5F5F5},
+	{"YELLOW", 0xFFFF00},
+	{"YELLOWGREEN", 0x9ACD32},
 	{NULL, 0}
 };
 
-int bm_color_atoi(const char *text) {
-	const struct color_map_entry *cm = color_map;
+int bm_color_atoi(const char *text) {	
 	int col = 0;
 	
-	/* TODO:
-	 * We can optimize this lookup to O(log(n)) by sorting the
-	 * color_map array and doing a binary search.
-	*/
-	while(cm->name) {
-		/* Poor man's stricmp(): */
-		const char *n = cm->name;
-		const char *t = text;
-		while(n[0] && n[0] == toupper(t[0])) {
-			n++;
-			t++;
-		}
-		
-		if(n[0] == '\0' && t[0] == '\0') {			
-			return cm->color;
-		}
-		cm++;
-	}
-	
-	if(text[0] == '#') 
+	while(isspace(text[0]))
 		text++;
-	else if(text[0] == '0' && tolower(text[1]) == 'x') 
-		text += 2;
-	else if(tolower(text[0]) == 'r' && tolower(text[1]) == 'g' && tolower(text[2]) == 'b') {
-		/* Special case where color is given like RGB(r,g,b) */
-		int v;
+	
+	if(tolower(text[0]) == 'r' && tolower(text[1]) == 'g' && tolower(text[2]) == 'b') {
+		/* Color is given like RGB(r,g,b) */
+		int v,i;
 		text += 3;
 		if(text[0] != '(') return 0;
 		text++;
 		
-		v = 0;
-		while(isdigit(text[0])) {
-			v = v * 10 + (text[0] - '0');
+		for(i = 0; i < 3; i++) {
+			v = 0;
+			while(isspace(text[0]))
+				text++;
+			while(isdigit(text[0])) {
+				v = v * 10 + (text[0] - '0');
+				text++;
+			}
+			while(isspace(text[0]))
+				text++;
+			if(text[0] != ",,)"[i]) return 0;
 			text++;
-		}
-		if(text[0] != ',') return 0;
-		text++;
-		col = (col << 8) + v;
-		
-		v = 0;
-		while(isdigit(text[0])) {
-			v = v * 10 + (text[0] - '0');
-			text++;
-		}
-		if(text[0] != ',') return 0;
-		text++;
-		col = (col << 8) + v;
-		
-		v = 0;
-		while(isdigit(text[0])) {
-			v = v * 10 + (text[0] - '0');
-			text++;
-		}
-		if(text[0] != ')') return 0;
-		text++;
-		col = (col << 8) + v;
-		
+			col = (col << 8) + v;
+		}		
 		return col;
+	} else if(isalpha(text[0])) {
+		const char *q;
+		char buffer[32], *p;
+		for(q = text, p = buffer; *q && p - buffer < sizeof buffer - 1; q++, p++) {
+			*p = toupper(*q);
+		}
+		*p = 0;
+		
+		int min = 0, max = ((sizeof color_map)/(sizeof color_map[0])) - 1;
+		while(min <= max) {
+			int i = (max + min) >> 1;
+			int r = strcmp(buffer, color_map[i].name);
+			if(r == 0) 
+				return color_map[i].color;
+			else if(r < 0) { 
+				max = i - 1;
+			} else {
+				min = i + 1;
+			}
+		}
+		return 0;		
+	} else if(text[0] == '#') {
+		text++;		
+		if(strlen(text) == 3) {
+			/* Special case of #RGB that should be treated as #RRGGBB */
+			while(text[0]) {
+				int c = tolower(text[0]);
+				if(c >= 'a' && c <= 'f') {
+					col = (col << 4) + (c - 'a' + 10); 
+					col = (col << 4) + (c - 'a' + 10); 
+				} else {
+					col = (col << 4) + (c - '0');
+					col = (col << 4) + (c - '0');
+				}		
+				text++;
+			}
+			return col;
+		}
+	} else if(text[0] == '0' && tolower(text[1]) == 'x') {
+		text += 2;
 	} else if(tolower(text[0]) == 'h' && tolower(text[1]) == 's' && tolower(text[2]) == 'l') {
-		/* Not supported yet.
-		http://en.wikipedia.org/wiki/HSL_color_space 
-		*/
+		/* Not supported yet. http://en.wikipedia.org/wiki/HSL_color_space */
 		return 0;
 	}
-	
-	if(strlen(text) == 3) {
-		/* Special case of #RGB that should be treated as #RRGGBB */
-		while(text[0]) {
-			int c = tolower(text[0]);
-			if(c >= 'a' && c <= 'f') {
-				col = (col << 4) + (c - 'a' + 10); 
-				col = (col << 4) + (c - 'a' + 10); 
-			} else {
-				col = (col << 4) + (c - '0');
-				col = (col << 4) + (c - '0');
-			}		
-			text++;
-		}
-		return col;
-	}
-	
+		
 	while(isxdigit(text[0])) {
 		int c = tolower(text[0]);
 		if(c >= 'a' && c <= 'f') {
