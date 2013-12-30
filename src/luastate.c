@@ -20,8 +20,10 @@
 
 #ifdef WIN32
 #include <SDL.h>
+#include <SDL_mixer.h>
 #else
 #include <SDL/SDL.h>
+#include <SDL/SDL_mixer.h>
 #endif
 
 #include "bmp.h"
@@ -534,6 +536,31 @@ static int gr_setcolor(lua_State *L) {
 	return 0;
 }
 
+/*@ G.clip(x0,y0, x1,y1)
+ *# Sets the clipping rectangle when drawing primitives.
+ */
+static int gr_clip(lua_State *L) {
+	struct lustate_data *sd = get_state_data(L);
+	if(!sd->bmp)
+		luaL_error(L, "Call to graphics function outside of a screen update");	
+	int x0 = luaL_checkinteger(L,1);
+	int y0 = luaL_checkinteger(L,2);
+	int x1 = luaL_checkinteger(L,3);
+	int y1 = luaL_checkinteger(L,4);
+	bm_clip(sd->bmp, x0, y0, x1, y1);
+	return 0;
+}
+
+/*@ G.unclip()
+ *# Resets the clipping rectangle when drawing primitives.
+ */
+static int gr_unclip(lua_State *L) {
+	struct lustate_data *sd = get_state_data(L);
+	if(!sd->bmp)
+		luaL_error(L, "Call to graphics function outside of a screen update");
+	bm_unclip(sd->bmp);
+	return 0;
+}
 /*@ G.pixel(x,y)
  *# Plots a pixel at {{x,y}} on the screen.
  */
@@ -794,6 +821,8 @@ static int gr_blit(lua_State *L) {
 
 static const luaL_Reg graphics_funcs[] = {
   {"setColor",      gr_setcolor},
+  {"clip", 			gr_clip},
+  {"unclip", 		gr_unclip},
   {"pixel",         gr_putpixel},
   {"line",          gr_line},
   {"rect",          gr_rect},
@@ -896,6 +925,81 @@ static const luaL_Reg mouse_funcs[] = {
   {"click",  in_mouseclick},
   {0, 0}
 };
+
+/*1 SndObj
+ *# The sound object that encapsulates a sound (WAV) file in the engine.
+ */
+
+/*@ Wav(filename)
+ *# Loads the WAV file specified by {{filename}} from the
+ *# [[Resources|Resource Management]] and returns it
+ *# encapsulated within a `SndObj` instance.
+ */
+static int new_wav_obj(lua_State *L) {
+	const char *filename = luaL_checkstring(L,1);
+	
+	struct Mix_Chunk **cp = lua_newuserdata(L, sizeof *cp);	
+	luaL_setmetatable(L, "SndObj");
+	
+	*cp = re_get_wav(filename);
+	if(!*cp) {
+		luaL_error(L, "Unable to load WAV file '%s'", filename);
+	}
+	return 1;
+}
+
+/*@ SndObj:__tostring()
+ *# Returns a string representation of the `SndObj` instance.
+ */
+static int wav_tostring(lua_State *L) {	
+	struct Mix_Chunk **cp = luaL_checkudata(L,1, "SndObj");
+	struct Mix_Chunk *c = *cp;
+	lua_pushfstring(L, "SndObj");
+	return 1;
+}
+
+/*@ SndObj:__gc()
+ *# Garbage collects the `SndObj` instance.
+ */
+static int gc_wav_obj(lua_State *L) {
+	/* No need to free the bitmap: It's in the resource cache. */
+	return 0;
+}
+
+/*@ SndObj:play()
+ *# Plays the sound.
+ */
+static int wav_play(lua_State *L) {	
+	struct Mix_Chunk **cp = luaL_checkudata(L,1, "SndObj");
+	struct Mix_Chunk *c = *cp;
+	int ch = Mix_PlayChannel(-1, c, 0);
+	if(ch < 0) {
+		luaL_error(L, "SndObj:play(): %s", Mix_GetError());
+	}
+	lua_pushinteger(L, ch);
+	return 1;
+}
+
+static void wav_obj_meta(lua_State *L) {
+	/* Create the metatable for MyObj */
+	luaL_newmetatable(L, "SndObj");
+	lua_pushvalue(L, -1);
+	lua_setfield(L, -2, "__index"); /* BmpObj.__index = BmpObj */
+		
+	/* Add methods */
+	lua_pushcfunction(L, wav_play);
+	lua_setfield(L, -2, "play");
+	
+	lua_pushcfunction(L, wav_tostring);
+	lua_setfield(L, -2, "__tostring");	
+	lua_pushcfunction(L, gc_wav_obj);
+	lua_setfield(L, -2, "__gc");	
+	
+	/* The global method Wav() */
+	lua_pushcfunction(L, new_wav_obj);
+	lua_setglobal(L, "Wav");
+}
+
 
 /* STATE FUNCTIONS */
 
@@ -1000,6 +1104,8 @@ static int lus_init(struct game_state *s) {
 	/* The Bitmap object is constructed through the Bmp() function that loads 
 		a bitmap through the resources module that can be drawn with G.blit() */
 	bmp_obj_meta(L);
+	
+	wav_obj_meta(L);
 	
 	/* There is a function C('selector') that returns a CellObj object that
 		gives you access to the cells on the map. */

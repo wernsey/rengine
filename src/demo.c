@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <SDL_mixer.h>
+
 #include "bmp.h"
 #include "states.h"
 #include "game.h"

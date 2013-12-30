@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#include <SDL.h>
+#include <SDL_mixer.h>
+
 #include "pak.h"
 #include "bmp.h"
 #include "ini.h"
@@ -19,6 +22,7 @@ static const char *pak_file_name = "";
 struct resource_cache {
 	
 	struct hash_tbl *bmp_cache;
+	struct hash_tbl *wav_cache;
 	
 	/* I expect as development continues, other 
 	things will be cached as well */
@@ -29,18 +33,26 @@ struct resource_cache {
 static struct resource_cache *re_cache_create() {
 	struct resource_cache *rc = malloc(sizeof *rc);
 	rc->bmp_cache = ht_create(128);
+	rc->wav_cache = ht_create(128);
 	rc->parent = NULL;
 	return rc;
 }
 
 static void bmp_cache_cleanup(const char *key, void *vb) {
-	struct bitmap *bmp = (struct bitmap *)vb;
+	struct bitmap *bmp = vb;
 	rlog("Freeing '%s'", key);
 	bm_free(bmp);
 }
 
+static void wav_cache_cleanup(const char *key, void *vb) {
+	Mix_Chunk *sound = vb;
+	rlog("Freeing '%s'", key);
+	Mix_FreeChunk(sound);
+}
+
 static void re_cache_destroy(struct resource_cache *rc) {
 	ht_free(rc->bmp_cache, bmp_cache_cleanup);
+	ht_free(rc->wav_cache, wav_cache_cleanup);
 	free(rc);
 }
 
@@ -109,6 +121,18 @@ struct ini_file *re_get_ini(const char *filename) {
 	return ini;
 }
 
+static SDL_RWops *re_get_RWops(const char *filename) {
+	if(game_pak) {
+		FILE *f = pak_get_file(game_pak, filename);
+		if(!f) {
+			rerror("Unable to locate %s in %s", filename, pak_file_name);
+			return NULL;
+		}		
+		return SDL_RWFromFP(f, SDL_FALSE);
+	} 
+	return SDL_RWFromFile(filename, "rb");
+}
+
 struct bitmap *re_get_bmp(const char *filename) {
 	struct bitmap *bmp;
 	
@@ -142,10 +166,38 @@ struct bitmap *re_get_bmp(const char *filename) {
 	}
 	
 	/* Insert it to the cache on the top of the stack. */
-	rlog("Cached bitmap '%s'", filename);
 	ht_insert(re_cache->bmp_cache, filename, bmp);
+	rlog("Cached bitmap '%s'", filename);
 	
 	return bmp;
+}
+
+Mix_Chunk *re_get_wav(const char *filename) {
+	Mix_Chunk *chunk = NULL;
+	
+	struct resource_cache *rc = re_cache;	
+	while(rc) {
+		chunk = ht_find(rc->wav_cache, filename);
+		if(chunk) {
+			return chunk;
+		}
+		rc = rc->parent;
+	}
+	
+	SDL_RWops * ops = re_get_RWops(filename);
+	if(!ops) {
+		/*  */
+		return NULL;
+	}	
+	chunk = Mix_LoadWAV_RW(ops, 1);
+	if(!chunk) {
+		return NULL;
+	}
+	
+	ht_insert(re_cache->wav_cache, filename, chunk);
+	rlog("Cached WAV '%s'", filename);
+	
+	return chunk;
 }
 
 char *re_get_script(const char *filename) {

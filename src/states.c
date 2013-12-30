@@ -4,8 +4,10 @@
 
 #ifdef WIN32
 #include <SDL.h>
+#include <SDL_mixer.h>
 #else
 #include <SDL/SDL.h>
+#include <SDL_mixer.h>
 #endif
 
 #include "ini.h"

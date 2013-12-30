@@ -41,7 +41,7 @@ EXECUTABLES = $(GAME_BIN) $(PAKR_BIN)
 SOURCES= bmp.c game.c ini.c utils.c pak.c particles.c \
 	states.c demo.c resources.c musl.c mustate.c hash.c \
 	lexer.c tileset.c map.c json.c luastate.c log.c \
-	gamedb.c base.x.c
+	gamedb.c sound.c base.x.c
 
 FONTS = fonts/bold.xbm fonts/circuit.xbm fonts/hand.xbm fonts/normal.xbm \
 		fonts/small.xbm fonts/smallinv.xbm fonts/thick.xbm
@@ -78,7 +78,7 @@ demo.o: demo.c ../include/bmp.h ../include/states.h \
 game.o: game.c ../include/bmp.h \
  ../include/ini.h ../include/game.h ../include/particles.h \
  ../include/utils.h ../include/states.h ../include/resources.h \
- ../include/log.h ../include/gamedb.h
+ ../include/log.h ../include/gamedb.h ../include/sound.h
 hash.o: hash.c ../include/hash.h
 ini.o: ini.c ../include/ini.h \
  ../include/utils.h
@@ -112,6 +112,7 @@ tileset.o: tileset.c ../include/bmp.h ../include/tileset.h \
  ../include/log.h
 utils.o: utils.c
 gamedb.o: gamedb.c ../include/gamedb.h ../include/ini.h
+sound.o: sound.c ../include/resources.h ../include/log.h
 
 # Utilities ###################################
 

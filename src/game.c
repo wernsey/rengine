@@ -6,8 +6,10 @@
 
 #ifdef WIN32
 #include <SDL2/SDL.h>
+#include <SDL_mixer.h>
 #else
 #include <SDL2/SDL.h>
+#include <SDL_mixer.h>
 #endif
 
 #include "bmp.h"
@@ -19,6 +21,7 @@
 #include "resources.h"
 #include "log.h"
 #include "gamedb.h"
+#include "sound.h"
 
 /* Some Defaults *************************************************/
 
@@ -308,6 +311,10 @@ int main(int argc, char *argv[]) {
 	}
 	re_initialize();
 	states_initialize();
+	if(!snd_init()) {
+		rerror("Terminating because of adio problem.");
+		return 1;
+	}
 
 	/* Don't quite know how to use this in Windows yet.
 	SDL_LogSetAllPriority(SDL_rlog_PRIORITY_WARN);
@@ -432,7 +439,7 @@ start_demo:
 	gdb_save("dump.db"); /* For testing the game database fuunctionality. Remove later. */
 	
 	gdb_close();
-	
+	snd_deinit();
 	rlog("Engine shut down.");
 	
 	log_deinit();
