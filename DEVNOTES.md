@@ -48,31 +48,6 @@ high on my list of priorities.
 
 ## Resources
 
-I should change the `-g` command line parameter so that it executes a specific
-directory, instead of a specific INI file. That way, you could have a directory 
-tree like so:
-```
-mygame/
-mygame/game.ini
-mygame/scripts/*.lua
-mygame/graphics/*.bmp
-mygame/sound/*.wav
-...
-```
-
-You would run Rengine with `-g mygame` and Rengine will do a `chdir()` to `mygame/`
-at startup so that all paths within the config and scripts is specified relative to
-`mygame/`
-
-In this setup, the INI file is _always_ named `game.ini`, and will be loaded 
-automatically when the engine starts.
-
-This also simplifies a problem with managing the resources for a game during 
-development: Develop your game, placing all the resources in a directory tree as 
-described above, and then PAK the whole directory tree up. I need a modification
-to **Pakr** to recursively walk through the directory tree and package all files
-it encounters.
-
 Also wrt the PAK file module, the ZIP file format turns out to be
 not that different, so I should look into it more closely.
 
@@ -119,16 +94,47 @@ level, and want to see how your changes affect the level.
 
 ## Pakr
 
-~~**Pakr** should be scriptable. I forsee that manually adding files
-to PAKs will become unwieldy as the projects grow, so having a script to
-create PAK files could help. At the moment I think Musl with the pak API.~~ 
-This is not necessary if we have the ability to Pak a whole directory 
-tree; _See the **Resouces** section above._
+Pakr is a small utility to create id Software style 
+[PAK files](http://en.wikipedia.org/wiki/PAK_%28file_format%29).
 
-If Pakr gets an option to recursively walk directory trees, there should also
-be an option to ignore hidden directories (directories with names like `.git/`)
-so that game content can also be placed under version control, yet still be easy
-enough to create PAK files from.
+Rengine has functionality to read all its resources from PAK files,
+and this is the intended mechanism for redistributing Rengine-based games.
+
+```
+Usage: $ ./pakr [options] pakfile [files...]
+where options:
+ -d dir      : Create/Overwrite pakfile from directory dir.
+ -c          : Create/Overwrite pakfile from files.
+ -x          : Extract pakfile into current directory.
+ -a          : Append files to pakfile.
+ -u          : dUmps the contents of a file.
+ -t          : Dumps the contents of a text file.
+ -o file     : Set the output file for -u and -t.
+ -h          : Include hidden files when using the -d option.
+ -v          : Verbose mode. Each -v increase verbosity.
+
+If no options are specified, the file is just listed.
+If the -o option is not used, files are written to stdout.
+The extract option doesn't attempt to preserve the directory structure.
+```
+
+More information on the file format can be found here:
+http://debian.fmi.uni-sofia.bg/~sergei/cgsr/docs/pak.txt
+
+## Bace
+
+Bace (pronounced "bake") is used in the Rengine build process to 
+convert Lua scripts into C code so that they can be _baked_ into the
+final executable.
+
+```
+Usage: $ ./bace [options] infile
+where options:
+ -o file     : Set the output file (default: stdout)
+ -n name     : Name of the created variable.
+ -z          : Append a '\0' to to the end of the generated array.
+ -v          : Verbose mode. Each -v increase verbosity.
+ ```
 
 # Documentation
 

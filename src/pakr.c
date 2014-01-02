@@ -1,24 +1,35 @@
 /*
 Utility program to create .PAK files.
+
+NOTE: On Windows, I use MinGW which provides
+	some POSIX functionality, such as unistd.h and
+	so on. It also allows one to use '/' as the path
+	separator, which is the way I prefer it.
 */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-/* for getopt() and path functions*/
 #include <unistd.h> 
+#include <dirent.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include "pak.h"
+
+int inc_hidden = 0; /* Include hidden files in PAK. Default no */
 
 void usage(const char *name) {
 	fprintf(stderr, "Usage: %s [options] pakfile [files...]\n", name);
 	fprintf(stderr, "where options:\n");
-	fprintf(stderr, " -c          : Create/Overwrite pakfile from files\n");
-	fprintf(stderr, " -x          : Extract pakfile (where?)\n");
-	fprintf(stderr, " -a          : Append files to pakfile\n");
-	fprintf(stderr, " -d          : Dumps the content of a file.\n");
-	fprintf(stderr, " -t          : Dumps the content of a text file.\n");
-	fprintf(stderr, " -o file     : Set the output file for -d and -t\n");
+	fprintf(stderr, " -d dir      : Create/Overwrite pakfile from directory dir.\n");
+	fprintf(stderr, " -c          : Create/Overwrite pakfile from files.\n");
+	fprintf(stderr, " -x          : Extract pakfile into current directory.\n");
+	fprintf(stderr, " -a          : Append files to pakfile.\n");
+	fprintf(stderr, " -u          : dUmps the contents of a file.\n");
+	fprintf(stderr, " -t          : Dumps the contents of a text file.\n");
+	fprintf(stderr, " -o file     : Set the output file for -u and -t.\n");
+	fprintf(stderr, " -h          : Include hidden files when using the -d option.");
 	fprintf(stderr, " -v          : Verbose mode. Each -v increase verbosity.\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "If no options are specified, the file is just listed.\n");
@@ -26,14 +37,55 @@ void usage(const char *name) {
 	fprintf(stderr, "The extract option doesn't attempt to preserve the directory structure.\n");
 }
 
+void pak_dir(DIR *dir, const char *base, struct pak_file *pak) {		
+	struct dirent *dp = NULL;
+	while((dp = readdir(dir)) != NULL) {
+		struct stat statbuf;
+		if(!strcmp(dp->d_name, ".") || !strcmp(dp->d_name, ".."))
+			continue;
+		
+		if(!inc_hidden && dp->d_name[0] == '.')
+			continue;
+		
+		char path[512];
+		if(base)
+			snprintf(path, sizeof path, "%s/%s", base, dp->d_name);
+		else
+			strncpy(path, dp->d_name, sizeof path);
+		
+		if(stat(path, &statbuf)) {
+			fprintf(stderr, "Unable to stat %s: %s\n", path, strerror(errno));
+			continue;
+		}
+		
+		if(S_ISDIR(statbuf.st_mode)) {			
+			DIR *newdir;
+			newdir = opendir(path);
+			if(newdir) {
+				pak_dir(newdir, path, pak);
+			} else {
+				fprintf(stderr, "error: Unable to read directory %s: %s\n", path, strerror(errno));
+			}
+		} else {					
+			printf(" - %s\n", path);
+			if(!pak_append_file(pak, path)) {
+				fprintf(stderr, "error: Unable to write %s to PAK file\n", path);
+				break;
+			}
+		}
+	}
+}
+
 int main(int argc, char *argv[]) {
 	
 	int opt;
 	const char *pakfile;
+	const char *dir_name;
 	FILE *outfile = stdout;
 	
 	enum {
 		CREATE,
+		DIR_CREATE,
 		APPEND,
 		XTRACT,
 		DUMP,
@@ -41,10 +93,14 @@ int main(int argc, char *argv[]) {
 		LIST
 	} mode = LIST;
 	
-	while((opt = getopt(argc, argv, "caxdto:v?")) != -1) {
+	while((opt = getopt(argc, argv, "d:caxuto:v?")) != -1) {
 		switch(opt) {
 			case 'c' : {
 				mode = CREATE;
+			} break;
+			case 'd' : {
+				mode = DIR_CREATE;
+				dir_name = optarg;
 			} break;
 			case 'a' : {
 				mode = APPEND;
@@ -52,7 +108,7 @@ int main(int argc, char *argv[]) {
 			case 'x' : {
 				mode = XTRACT;				
 			} break;
-			case 'd' : {
+			case 'u' : {
 				mode = DUMP;
 			} break;
 			case 't' : {
@@ -64,6 +120,9 @@ int main(int argc, char *argv[]) {
 					fprintf(stderr, "error: unable to open %s for output\n", optarg);
 					return 1;
 				}
+			} break;
+			case 'h': {
+				inc_hidden = 1;
 			} break;
 			case 'v' : {
 				pak_verbose++;
@@ -104,6 +163,21 @@ int main(int argc, char *argv[]) {
 			}
 			pak_close(p);
 		}break;
+		case DIR_CREATE : {
+			struct pak_file *p;
+			DIR *dir;
+			
+			printf("Creating %s:\n", pakfile);
+			p = pak_create(pakfile);
+			
+			if(!chdir(dir_name)) {
+				dir = opendir(".");
+				pak_dir(dir, NULL, p);
+			} else {				
+				fprintf(stderr, "error: Unable to read directory %s: %s\n", dir_name, strerror(errno));
+			}			
+			pak_close(p);			
+		} break;
 		case APPEND : {
 			if(optind >= argc) {
 				fprintf(stderr, "error: no files to append.\n");
