@@ -8,7 +8,9 @@ means limited to the CPU and memory constraints of the computers of yore.
 
 Rengine also includes a 2D level editor for editing maps.
 
-The home of Rengine is at https://github.com/wernsey/rengine
+* The home of Rengine is at https://github.com/wernsey/rengine
+* Documentation can be found on the [Rengine wiki](https://github.com/wernsey/rengine/wiki)
+	page on GitHub.
 
 # Technical
 

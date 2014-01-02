@@ -3,6 +3,8 @@ and TODOs in here.
 
 # Engine
 
+## Lua
+
 We should consider disabling some _unsafe_ Lua built in functions such as
 `dofile()`, `load()` and `loadfile()`, etc.
 
@@ -14,8 +16,19 @@ http://stackoverflow.com/q/1224708/115589
 It seems that the accepted solution is to not call `luaL_openlibs()`
 and rather copying and modifying linit.c according to your needs.
 
+## SDL
+
+I still have to put audio into the engine. At the moment I have SDL_mixer
+2.0.0 built, but without any support for additional file formats.
+
+Docs says `SDL_UpdateTexture()` be slow. Do something different.
+
+## Game
+
 The scheme of pushing/popping states has some implications on the
 save game system. And on the sprite system I intend to add later.
+
+## Graphics
 
 My Bitmap module should have a `#pragma pack()` at the
 structure declaration. The PAK file module should have
@@ -23,15 +36,6 @@ it too. See the bottom of this section on the wikipedia:
 http://en.wikipedia.org/wiki/Data_structure_alignment in the section
 "Typical alignment of C structs on x86" (Seems it is not a big GCC issue,
 rather a MSVC thing)
-
-Speaking of the PAK file module, the ZIP file format turns out to be
-not that different, so I should look into it more closely.
-
-Also, the new SDL_RWops may save you a lot of time getting resources
-from PAK files later.
-
-The SDL_RWops API is here:
-http://wiki.libsdl.org/SDL_RWops?highlight=%28\bCategoryStruct\b%29|%28CategoryIO%29
 
 The `bm_fill()` function in `bmp.c` doesn't take the clipping rectangle
 into account. I'm not quite sure how to handle it.
@@ -42,12 +46,44 @@ function.
 `bmp.c` is also still missing a `bm_fillellipse()` function. it is not
 high on my list of priorities.
 
+## Resources
+
+I should change the `-g` command line parameter so that it executes a specific
+directory, instead of a specific INI file. That way, you could have a directory 
+tree like so:
+```
+mygame/
+mygame/game.ini
+mygame/scripts/*.lua
+mygame/graphics/*.bmp
+mygame/sound/*.wav
+...
+```
+
+You would run Rengine with `-g mygame` and Rengine will do a `chdir()` to `mygame/`
+at startup so that all paths within the config and scripts is specified relative to
+`mygame/`
+
+In this setup, the INI file is _always_ named `game.ini`, and will be loaded 
+automatically when the engine starts.
+
+This also simplifies a problem with managing the resources for a game during 
+development: Develop your game, placing all the resources in a directory tree as 
+described above, and then PAK the whole directory tree up. I need a modification
+to **Pakr** to recursively walk through the directory tree and package all files
+it encounters.
+
+Also wrt the PAK file module, the ZIP file format turns out to be
+not that different, so I should look into it more closely.
+
+## Input
+
 I should have a way to map physical input
 (like key pressed, mouse moved or screen swiped) to an abstracted input
 (like move left, jump, open door). This will help if I ever get around
 to porting it to devices without keyboards and mouses.
 
-Docs says `SDL_UpdateTexture()` be slow. Do something different.
+## Musl
 
 I don't like the fact that you have to `strdup()` the string you
 return to Musl in the case of an external Musl function returning a
@@ -59,12 +95,9 @@ The current way of doing it has its pros, so I should think about it
 first before committing to a course of action. The best place to think
 about it is where I actually use the API (which at the moment is Rengine)
 
-I still have to put audio into the engine. At the moment I have SDL_mixer
-2.0.0 built, but without any support for additional file formats.
+# Editor
 
-# Editor:
-
-FIXME: Save on exit prompt.
+FIXME: _"Save on exit"_ prompt.
 
 Changing the Working Directory affects the tilesets, so you should rather
 set the working directory when you start a new project. I should simply
@@ -86,9 +119,16 @@ level, and want to see how your changes affect the level.
 
 ## Pakr
 
-**Pakr** should also be scriptable. I forsee that manually adding files
+~~**Pakr** should be scriptable. I forsee that manually adding files
 to PAKs will become unwieldy as the projects grow, so having a script to
-create PAK files could help. At the moment I think Musl with the pak API.
+create PAK files could help. At the moment I think Musl with the pak API.~~ 
+This is not necessary if we have the ability to Pak a whole directory 
+tree; _See the **Resouces** section above._
+
+If Pakr gets an option to recursively walk directory trees, there should also
+be an option to ignore hidden directories (directories with names like `.git/`)
+so that game content can also be placed under version control, yet still be easy
+enough to create PAK files from.
 
 # Documentation
 
@@ -97,7 +137,7 @@ I keep this file (and README.md) nicely formatted with this command:
 fmt DEVNOTES.md > DEVNOTES.md~; mv DEVNOTES.md~ DEVNOTES.md
 ```
 
-## Wiki documentation 
+## Wiki Documentation 
 
 I use the script `mddoc.awk` to generate Markdown for 
 [Rengine's wiki](https://github.com/wernsey/rengine/wiki) on GitHub.
