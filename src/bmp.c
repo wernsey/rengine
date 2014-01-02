@@ -741,7 +741,7 @@ int bm_color_atoi(const char *text) {
 				min = i + 1;
 			}
 		}
-		return 0;		
+		/* Drop through: You may be dealing with a colour like 'a6664c' */
 	} else if(text[0] == '#') {
 		text++;		
 		if(strlen(text) == 3) {
@@ -762,7 +762,9 @@ int bm_color_atoi(const char *text) {
 	} else if(text[0] == '0' && tolower(text[1]) == 'x') {
 		text += 2;
 	} else if(tolower(text[0]) == 'h' && tolower(text[1]) == 's' && tolower(text[2]) == 'l') {
-		/* Not supported yet. http://en.wikipedia.org/wiki/HSL_color_space */
+		/* Not supported yet.
+		http://en.wikipedia.org/wiki/HSL_color_space 
+		*/
 		return 0;
 	}
 		
