@@ -3,6 +3,7 @@
 #include <assert.h>
 
 #include <unistd.h>  /* may not be portable, works with MinGW on Windows */
+#include <errno.h>
 
 #ifdef WIN32
 #include <SDL2/SDL.h>
@@ -35,6 +36,8 @@
 #define DEFAULT_FPS 33
 
 #define DEFAULT_APP_TITLE "Rengine"
+
+#define GAME_INI		"game.ini"
 
 #define PARAM(x) (#x)
 
@@ -70,6 +73,8 @@ int mouse_x = 0, mouse_y = 0;
 int mouse_btns = 0, mouse_clck = 0;
 
 char keys[SDL_NUM_SCANCODES];
+
+char initial_dir[256];
 
 /* Functions *************************************************/
 
@@ -268,10 +273,9 @@ int main(int argc, char *argv[]) {
 	
 	const char *appTitle = DEFAULT_APP_TITLE;
 	
+	const char *game_dir = NULL;
 	const char *pak_filename = "game.pak"; 
-	
-	const char *game_filename = "game.ini";
-	
+		
 	const char *rlog_filename = "logfile.txt";
 	
 	const char *startstate;
@@ -288,7 +292,7 @@ int main(int argc, char *argv[]) {
 				pak_filename = optarg;
 			} break;
 			case 'g' : {
-				game_filename = optarg;
+				game_dir = optarg;
 				pak_filename = NULL;
 			} break;
 			case 'l': {
@@ -305,6 +309,14 @@ int main(int argc, char *argv[]) {
 	}
 	
 	log_init(rlog_filename);	
+	
+	
+	if(!getcwd(initial_dir, sizeof initial_dir)) {
+		rerror("error in getcwd(): %s", strerror(errno));
+		return 1;
+	}
+	rlog("Running engine from %s", initial_dir);
+	
 	if(!gdb_new()) {
 		rerror("Unable to create Game Database");
 		return 1;
@@ -312,7 +324,7 @@ int main(int argc, char *argv[]) {
 	re_initialize();
 	states_initialize();
 	if(!snd_init()) {
-		rerror("Terminating because of adio problem.");
+		rerror("Terminating because of audio problem.");
 		return 1;
 	}
 
@@ -333,10 +345,14 @@ int main(int argc, char *argv[]) {
 				goto start_demo;
 			}
 		} else {
-			rlog("Not using a pak file. Using %s instead.", game_filename);
+			rlog("Not using a PAK file. Using '%s' instead.", game_dir);
+			if(chdir(game_dir)) {
+				rerror("Unable to change to '%s': %s", game_dir, strerror(errno));				
+				return 1;
+			}
 		}		
 		
-		game_ini = re_get_ini(game_filename);
+		game_ini = re_get_ini(GAME_INI);
 		if(game_ini) {	
 			appTitle = ini_get(game_ini, "init", "appTitle", "Rengine");
 			
@@ -364,7 +380,7 @@ int main(int argc, char *argv[]) {
 					quit = 1;
 				}
 			} else {
-				rerror("No initial state in %s", game_filename);
+				rerror("No initial state in %s", GAME_INI);
 				quit = 1;
 			}
 		} else {
@@ -436,6 +452,7 @@ start_demo:
 	
 	re_clean_up();
 	
+	chdir(initial_dir); /* We're fairly confident it has to exist. */
 	gdb_save("dump.db"); /* For testing the game database fuunctionality. Remove later. */
 	
 	gdb_close();
