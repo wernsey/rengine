@@ -262,7 +262,8 @@ void usage(const char *name) {
 	fprintf(stderr, "Usage: %s [options]\n", name);
 	fprintf(stderr, "where options:\n");
 	fprintf(stderr, " -p pakfile  : Load game from PAK file.\n");
-	fprintf(stderr, " -g inifile  : Use a game INI file instead of a pak file.\n");
+	fprintf(stderr, " -g dir      : Use a directory containing a game.ini\n");
+	fprintf(stderr, "               file instead of a pak file.\n");
 	fprintf(stderr, " -l logfile  : Use specific log file.\n");
 }
 
@@ -309,7 +310,6 @@ int main(int argc, char *argv[]) {
 	}
 	
 	log_init(rlog_filename);	
-	
 	
 	if(!getcwd(initial_dir, sizeof initial_dir)) {
 		rerror("error in getcwd(): %s", strerror(errno));
@@ -384,14 +384,14 @@ int main(int argc, char *argv[]) {
 				quit = 1;
 			}
 		} else {
-			rerror("No game INI");
-			quit = 1;
+			rerror("Unable to load %s", GAME_INI);
+			return 1;
 		}
 	} else {
 start_demo:
 		rlog("Starting demo mode");
 		if(!change_state(get_demo_state("demo")))
-			quit = 1;
+			return 1;
 	}
 	
 	rlog("Initialising...");
