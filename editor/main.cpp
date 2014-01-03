@@ -149,9 +149,33 @@ void chdir_cb(Fl_Menu_* w, void*) {
 	}
 }
 
-void quit_cb(Fl_Menu_* w, void*) {
-	// FIXME: Changed? Save before exit (yes/no)	
-	exit(0);
+// http://stackoverflow.com/questions/8131510/fltk-closing-window
+void main_window_callback(Fl_Widget *w, void *p) {
+	if (Fl::event()==FL_SHORTCUT && Fl::event_key()==FL_Escape) 
+		return;
+	
+	int result = 0;
+
+	// FIXME: Only prompt if the file is modified.
+	result = fl_choice("Do you want to save before quitting?", 
+                           "Don't Save",  // 0
+                           "Save",        // 1
+                           "Cancel"       // 2
+                           );
+    if (result == 0) {  
+		// Close without saving
+        main_window->hide();
+    } else if (result == 1) {  
+		// Save and close       
+		save_cb(NULL, p);	
+        main_window->hide();
+    } else if (result == 2) {
+		// Cancel
+    }
+}
+
+void quit_cb(Fl_Menu_* w, void *p) {
+	main_window->do_callback(w, p);
 }
 
 /*****************************************************************************************
@@ -414,6 +438,8 @@ int main(int argc, char *argv[]) {
 	canvas->setSelectCallback(map_select_cb);
 	canvas->setTileCanvas(tiles);	
 	canvas->setLayer(0);
+	
+	main_window->callback(main_window_callback);
 	
 	main_window->show(argc, argv);
 	
