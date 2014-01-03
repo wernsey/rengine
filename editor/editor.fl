@@ -104,8 +104,13 @@ Function {make_window()} {open
     }
     Fl_Check_Button {} {
       label {Show Barriers}
-      callback mapDrawBarrier_cb selected
+      callback mapDrawBarrier_cb
       xywh {65 395 110 25} down_box DOWN_BOX
+    }
+    Fl_Check_Button {} {
+      label {Show Markers}
+      callback mapDrawMarkers_cb selected
+      xywh {190 395 130 25} down_box DOWN_BOX
     }
     Fl_Input mapClass {
       label Class

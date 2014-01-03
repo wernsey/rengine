@@ -26,7 +26,6 @@ int TileCanvas::handle(int event) {
 					selCol = mx/_map->tiles.tw;
 					selRow = my/_map->tiles.th;
 					
-					
 					if(select_callback)
 						select_callback(this);
 					
@@ -38,6 +37,7 @@ int TileCanvas::handle(int event) {
 				}
 			}break;
 		case FL_FOCUS : return 1;
+		case FL_UNFOCUS : return 1;
 	}
 	return Fl_Widget::handle(event);
 }
@@ -49,7 +49,7 @@ void TileCanvas::paint() {
 		blit(0, 0, tiles->bm, 0, 0, tiles->bm->w, tiles->bm->h);
 		
 		if(_drawBarriers) {
-			pen("green");
+			pen("lime");
 			for(int n = 0; n < tiles->nmeta; n++) {
 				struct tile_meta *m = &tiles->meta[n];
 				if(m->flags & TS_FLAG_BARRIER) {				

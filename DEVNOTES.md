@@ -95,7 +95,8 @@ level, and want to see how your changes affect the level.
 ## Pakr
 
 Pakr is a small utility to create id Software style 
-[PAK files](http://en.wikipedia.org/wiki/PAK_%28file_format%29).
+[PAK files](http://en.wikipedia.org/wiki/PAK_%28file_format%29), such as 
+those found in Quake.
 
 Rengine has functionality to read all its resources from PAK files,
 and this is the intended mechanism for redistributing Rengine-based games.

@@ -36,8 +36,8 @@ void new_btn_ok_cb(Fl_Button* w, void*) {
 	g_tilewidth = MAX((new_tile_width->value()), 1);
 	g_tileheight = MAX((new_tile_height->value()), 1);
 		
+	canvas->zoom(1.0);
 	canvas->newMap(g_mapheight, g_mapwidth, g_tilewidth, g_tileheight, 3);
-	canvas->redraw();
 	canvas->parent()->redraw();
 	
 	tileset_file = NULL;
@@ -45,6 +45,9 @@ void new_btn_ok_cb(Fl_Button* w, void*) {
 	tiles->setMap(canvas->getMap());
 	tiles->setTileset(NULL);
 	tiles->redraw();
+	
+	if(map_file) free(map_file);
+	map_file = NULL;
 	
 	new_map_dlg->hide();
 }
@@ -66,20 +69,35 @@ void new_cb(Fl_Menu_* w, void*) {
 }
 
 void open_cb(Fl_Menu_* w, void*) {
-	char * filename = fl_file_chooser("Choose Map", "Map files (*.map)", "", 1);
-	if(!filename)
+	char * relpath = fl_file_chooser("Choose Map", "Map files (*.map)", "", 1);
+	if(!relpath)
 		return;
 	
-	struct map * m = map_load(filename);
+	const char *file = fl_filename_name(relpath);
+	char *dir_end = strrchr(relpath, '/');
+	if(dir_end) {
+		char buffer[FL_PATH_MAX];
+		strncpy(buffer, relpath, dir_end - relpath);
+		buffer[dir_end - relpath] = '\0';
+		rlog("Changing working directory to %s", buffer);
+		chdir(buffer);
+	}
+	
+	rlog("Opening map file %s (relative path: %s)", file, relpath);
+	
+	struct map * m = map_load(file);
 	if(!m) {
-		fl_alert("Unable to open map %s", filename);
+		fl_alert("Unable to open map %s", relpath);
 		return;
 	}
 	
-	map_file = filename;
+	if(map_file) free(map_file);
+	map_file = strdup(file);
 	canvas->setMap(m);
+	tileSetSelect->clear();
 	tiles->setMap(canvas->getMap());
 	tiles->setTileset(NULL);
+	tiles->redraw();
 	
 	tileSetSelect->clear();
 	tile_collection *tc = &canvas->getMap()->tiles;
@@ -107,8 +125,9 @@ void saveas_cb(Fl_Menu_* w, void*) {
 		return;
 	char * filename = fl_file_chooser("Choose Filename For Map", "Map files (*.map)", "", 1);	
 	if(filename != NULL) {
-		if(map_save(m, filename)) {			
-			map_file = filename;
+		if(map_save(m, filename)) {		
+			if(map_file) free(map_file);
+			map_file = strdup(filename);
 		} else {
 			fl_alert("Unable to save map to %s", filename);
 		}
@@ -117,10 +136,12 @@ void saveas_cb(Fl_Menu_* w, void*) {
 
 void chdir_cb(Fl_Menu_* w, void*) {	
 	// FIXME: Do we change directories with a map being edited?
+	// You need to take the "New Map" option into account as well.
 	char cwd[128];	
 	getcwd(cwd, sizeof cwd);	
 	const char *dir = fl_dir_chooser("Choose Working Directory", cwd, 0);
 	if(dir) {
+		rlog("Changing working directory to %s", dir);
 		char buffer[128];
 		snprintf(buffer, sizeof buffer, "Editor - %s", dir);
 		main_window->label(buffer);
@@ -207,7 +228,12 @@ void mapClass_cb(Fl_Input *in, void*) {
 	struct map_cell * c = map_get_cell(m, x, y);
 	if(c->clas)
 		free(c->clas);
-	c->clas = strdup(mapClass->value());
+	if(strlen(mapClass->value()) == 0)
+		c->clas = NULL;
+	else
+		c->clas = strdup(mapClass->value());
+	if(canvas->drawBarriers())
+		canvas->redraw();
 }
 
 void mapId_cb(Fl_Input *in, void*) {
@@ -217,7 +243,12 @@ void mapId_cb(Fl_Input *in, void*) {
 	struct map_cell * c = map_get_cell(m, x, y);
 	if(c->id)
 		free(c->id);
-	c->id = strdup(mapId->value());
+	if(strlen(mapId->value()) == 0)
+		c->id = NULL;
+	else
+		c->id = strdup(mapId->value());
+	if(canvas->drawBarriers())
+		canvas->redraw();
 }
 
 void mapBarrier_cb(Fl_Check_Button*, void*) {
@@ -261,6 +292,11 @@ void mapDrawBarrier_cb(Fl_Check_Button *b, void*) {
 	canvas->redraw();
 }
 
+void mapDrawMarkers_cb(Fl_Check_Button *b, void*) {
+	canvas->drawMarkers(b->value() == 1);		
+	canvas->redraw();
+}
+
 /*****************************************************************************************
  * TILE SET WIDGETS *********************************************************************/
 
@@ -280,10 +316,11 @@ void tileset_cb(Fl_Browser*w, void*p) {
 }
 
 void tile_select_cb(TileCanvas *tileCanvas) {
+	rlog("TileCanvas selected");
 	tileset *ts = tileCanvas->getTileset();	
 	if(!ts) return;
 	tile_collection *tc = &canvas->getMap()->tiles;
-	tile_meta *meta = ts_has_meta(tc, ts, canvas->row(), canvas->col());
+	tile_meta *meta = ts_has_meta(tc, ts, tileCanvas->row(), tileCanvas->col());
 	if(meta) {
 		tilesClass->value(meta->clas);
 		tileIsBarrier->value(meta->flags & TS_FLAG_BARRIER);
@@ -314,7 +351,10 @@ void tileClass_cb(Fl_Input*in, void*p) {
 	} 
 	
 	free(meta->clas);
-	meta->clas = strdup(in->value());
+	if(strlen(in->value()) > 0)
+		meta->clas = strdup(in->value());
+	else
+		meta->clas = NULL;
 }
 
 void tileBarrier_cb(Fl_Check_Button*w, void*p) {

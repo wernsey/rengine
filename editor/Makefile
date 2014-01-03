@@ -60,7 +60,8 @@ BMCanvas.o: BMCanvas.cpp BMCanvas.h ../include/bmp.h
 	g++ -c $(CPPFLAGS) $< -o $@
 
 LevelCanvas.o: LevelCanvas.cpp LevelCanvas.h TileCanvas.h \
-				../include/bmp.h ../include/tileset.h ../include/map.h ../include/utils.h
+				../include/bmp.h ../include/tileset.h ../include/map.h \
+				../include/utils.h ../include/log.h
 	g++ -c $(CPPFLAGS) $< -o $@
 	
 TileCanvas.o: TileCanvas.cpp TileCanvas.h ../include/bmp.h ../include/tileset.h

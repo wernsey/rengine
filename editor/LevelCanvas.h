@@ -39,6 +39,8 @@ public:
 	
 	bool drawBarriers() { return _drawBarriers;}
 	void drawBarriers(bool d) { _drawBarriers = d;}
+	bool drawMarkers() { return _drawMarkers;}
+	void drawMarkers(bool d) { _drawMarkers = d;}	
 	
 private:
 	map *_map;
@@ -54,6 +56,7 @@ private:
 	int layer;
 
 	bool _drawBarriers;
+	bool _drawMarkers;
 
 	level_select_callback select_callback;
 };

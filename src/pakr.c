@@ -29,7 +29,7 @@ void usage(const char *name) {
 	fprintf(stderr, " -u          : dUmps the contents of a file.\n");
 	fprintf(stderr, " -t          : Dumps the contents of a text file.\n");
 	fprintf(stderr, " -o file     : Set the output file for -u and -t.\n");
-	fprintf(stderr, " -h          : Include hidden files when using the -d option.");
+	fprintf(stderr, " -h          : Include hidden files when using the -d option.\n");
 	fprintf(stderr, " -v          : Verbose mode. Each -v increase verbosity.\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "If no options are specified, the file is just listed.\n");
