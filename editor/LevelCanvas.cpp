@@ -83,7 +83,7 @@ int LevelCanvas::handle(int event) {
 					int x1 = MY_MIN(dragStartX, col), y1 = MY_MIN(dragStartY, row), 
 						x2 = MY_MAX(dragStartX, col), y2 = MY_MAX(dragStartY, row);
 					
-					int x, y;
+					int x = 0, y;
 					for(y = y1; y <= y2; y++) {
 						for(x = x1; x <= x2; x++) {						
 							int ptsi, pti;

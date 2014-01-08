@@ -68,7 +68,8 @@ TileCanvas.o: TileCanvas.cpp TileCanvas.h ../include/bmp.h ../include/tileset.h
 	g++ -c $(CPPFLAGS) $< -o $@
 	
 main.o: main.cpp LevelCanvas.h BMCanvas.h \
-		TileCanvas.h TileCanvas.h editor.h ../include/bmp.h ../include/tileset.h ../include/map.h
+		TileCanvas.h TileCanvas.h editor.h ../include/bmp.h \
+		../include/tileset.h ../include/map.h
 	g++ -c $(CPPFLAGS) $< -o $@
 	
 bmp.o: ../src/bmp.c ../include/bmp.h ../fonts/bold.xbm \

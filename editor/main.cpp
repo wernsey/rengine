@@ -69,30 +69,37 @@ void new_cb(Fl_Menu_* w, void*) {
 }
 
 void open_cb(Fl_Menu_* w, void*) {
-	char * relpath = fl_file_chooser("Choose Map", "Map files (*.map)", "", 1);
-	if(!relpath)
+	char * filepath = fl_file_chooser("Choose Map", "Map files (*.map)", "", 1);
+	if(!filepath)
 		return;
 	
-	const char *file = fl_filename_name(relpath);
-	char *dir_end = strrchr(relpath, '/');
+	const char *file = fl_filename_name(filepath);
+	char *dir_end = strrchr(filepath, '/');
 	if(dir_end) {
 		char buffer[FL_PATH_MAX];
-		strncpy(buffer, relpath, dir_end - relpath);
-		buffer[dir_end - relpath] = '\0';
+		strncpy(buffer, filepath, dir_end - filepath);
+		buffer[dir_end - filepath] = '\0';
 		rlog("Changing working directory to %s", buffer);
 		chdir(buffer);
 	}
 	
-	rlog("Opening map file %s (relative path: %s)", file, relpath);
+	rlog("Opening map file %s (relative path: %s)", file, filepath);
 	
-	struct map * m = map_load(file);
+	struct map * m = map_load(file, 1);
 	if(!m) {
-		fl_alert("Unable to open map %s", relpath);
+		fl_alert("Unable to open map %s", filepath);
 		return;
 	}
 	
+	char path[128];
+	if(!getcwd(path, sizeof path)) {
+		rerror("getcwd: %s\n", strerror(errno));
+	} else
+		rlog("Working directory is now '%s'", path);
+	
 	if(map_file) free(map_file);
 	map_file = strdup(file);
+	
 	canvas->setMap(m);
 	tileSetSelect->clear();
 	tiles->setMap(canvas->getMap());
@@ -113,9 +120,9 @@ void save_cb(Fl_Menu_* w, void*p) {
 		rlog("Not saving map, as none is defined yet.");
 		return;
 	}
-	if(map_file)
+	if(map_file) {
 		map_save(m, map_file);
-	else
+	} else
 		saveas_cb(w, p);
 }
 

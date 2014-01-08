@@ -3,6 +3,8 @@
 #include <string.h>
 #include <assert.h>
 
+#include <unistd.h>
+
 #include "tileset.h"
 #include "bmp.h"
 #include "map.h"
@@ -10,7 +12,7 @@
 #include "utils.h"
 #include "log.h"
 
-#define MAP_FILE_VERSION 1.1
+#define MAP_FILE_VERSION 1.2
 
 struct map *map_create(int nr, int nc, int tw, int th, int nl) {
 	int i;
@@ -132,9 +134,82 @@ void map_free(struct map *m) {
 	free(m);
 }
 
+/* Simplified function to get a relative path from 'from' to 'to' */
+static char *relpath(const char *from, const char *to, char *rel, size_t rellen) {	
+	/* Assumes its inputs are directories. */
+	char *rv = NULL;
+	char *from_path = NULL, *to_path = NULL;
+	char *from_start = NULL, *to_start = NULL;	
+	char *from_ptr, *to_ptr;
+	
+	if(rellen < 1)
+		goto error;
+	rel[0] = '\0';
+	
+	from_path = strdup(from);
+	from_start = from_path;
+	to_path = strdup(to);
+	to_start = to_path;
+	
+	/* Eliminate the common prefixes in the paths */
+	from_path = my_strtok_r(from_path, "/", &from_ptr);
+	to_path = my_strtok_r(to_path, "/", &to_ptr);	
+	while(from_path && to_path && !strcmp(from_path, to_path)) {
+		from_path = my_strtok_r(NULL, "/", &from_ptr);
+		to_path = my_strtok_r(NULL, "/", &to_ptr);
+	}	
+	
+	/* add ../ for every directory remaining in the 'from' path */
+	while(from_path) {
+		strncat(rel, "../", rellen - 1);
+		rellen -= 3;
+		from_path = my_strtok_r(NULL, "/", &from_ptr);
+	}
+	
+	/* append the remaining parts of the the 'to' path */
+	while(to_path) {
+		strncat(rel, to_path, rellen - 1);
+		rellen -= strlen(to_path);
+		strncat(rel, "/", rellen - 1);
+		rellen--;
+		to_path = my_strtok_r(NULL, "/", &to_ptr);
+	}
+	
+	rv = rel;
+	
+error:
+	free(from_start);
+	free(to_start);
+	
+	return rv;
+}
+
+static char *get_relpath(const char *mapfile, char *rel, size_t rellen) {
+	char *from;
+	
+	if(strrchr(mapfile, '/')) {
+		from = strdup(mapfile);
+		strrchr(from, '/')[0] = '\0';
+	} else {
+		from = strdup("");
+	}
+	
+	char * rv = relpath(from, "", rel, rellen);
+	
+	free(from);
+	return rv;
+}
+
 int map_save(struct map *m, const char *filename) {
 	int i, j;
 	char buffer[128];
+
+	/*
+	rwd is the relative path to the working directory (i.e the relative path 
+	to where game.ini can be found. Thus, if you're saving the map as
+	mygame/maps/level1.map and game.ini is in mygame then rwd should be ../
+	*/
+	char rwd[128];
 	
 	FILE *f = fopen(filename, "w");
 	if(!f) {
@@ -147,8 +222,10 @@ int map_save(struct map *m, const char *filename) {
 	fprintf(f, "\"type\" : \"2D_TILE_MAP\",\n");
 	fprintf(f, "\"version\" : %.2f,\n", MAP_FILE_VERSION);
 	
-	fprintf(f, "\"rows\" : %d,\n\"columns\" : %d,\n", m->nr, m->nc);
+	get_relpath(filename, rwd, sizeof rwd);
+	fprintf(f, "\"rel-work-directory\":\"%s\",\n", json_escape(rwd, buffer, sizeof buffer));
 	
+	fprintf(f, "\"rows\" : %d,\n\"columns\" : %d,\n", m->nr, m->nc);
 	fprintf(f, "\"num_layers\" : %d,\n", m->nl);
 	fprintf(f, "\"cells\" : [\n");
 	for(i = 0; i < m->nr * m->nc; i++) {
@@ -178,7 +255,7 @@ int map_save(struct map *m, const char *filename) {
 	return 1;
 }
 	
-struct map *map_load(const char *filename) {	
+struct map *map_load(const char *filename, int cd) {	
 	struct map *m;
 	char *text = my_readfile (filename);	
 	if(!text) {
@@ -186,12 +263,12 @@ struct map *map_load(const char *filename) {
 		return NULL;
 	}
 	rlog("Parsing map file %s", filename);
-	m = map_parse(text);	
+	m = map_parse(text, cd);	
 	free(text);
 	return m;
 }
 
-struct map *map_parse(const char *text) {
+struct map *map_parse(const char *text, int cd) {
 	double version;
 	struct map *m = NULL;
 	int nr, nc, tw, th, nl;
@@ -212,12 +289,19 @@ struct map *map_parse(const char *text) {
 	}
 		
 	version = json_get_number(j, "version");
-	if(version < 1.1) {
+	if(version < 1.2) {
 		rerror("Map version (%f) is too old", version);
 		json_free(j);
 		return NULL;
 	}
-		
+	
+	if(cd) {
+		const char *rwd = json_get_string(j, "rel-work-directory");
+		if(chdir(rwd)) {
+			rerror("chdir(%s): %s", rwd, strerror(errno));
+		}
+	}
+	
 	nr = json_get_number(j, "rows");
 	nc = json_get_number(j, "columns");
 	tw = json_get_number(j, "tile_width");
@@ -229,6 +313,9 @@ struct map *map_parse(const char *text) {
 		rerror("Unable to create map.");
 		return NULL;
 	}
+		
+	a = json_get_object(j, "tilesets");
+	ts_read_all(&m->tiles, a);
 	
 	a = json_get_array(j, "cells");
 	e = a->value;
@@ -269,9 +356,6 @@ struct map *map_parse(const char *text) {
 		
 		e = e->next;
 	}
-		
-	a = json_get_object(j, "tilesets");
-	ts_read_all(&m->tiles, a);	
 	
 	json_free(j);
 	

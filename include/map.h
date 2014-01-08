@@ -38,9 +38,9 @@ void map_free(struct map *m);
 
 int map_save(struct map *m, const char *filename);
 
-struct map *map_load(const char *filename);
+struct map *map_load(const char *filename, int cd);
 
-struct map *map_parse(const char *text);
+struct map *map_parse(const char *text, int cd);
 
 struct map_cell *map_get_cell(struct map *m, int x, int y);
 

@@ -36,6 +36,7 @@
 #include "utils.h"
 #include "particles.h"
 #include "log.h"
+#include "gamedb.h"
 
 #define MAX_TIMEOUTS 20
 
@@ -954,7 +955,7 @@ static int new_wav_obj(lua_State *L) {
 static int wav_tostring(lua_State *L) {	
 	struct Mix_Chunk **cp = luaL_checkudata(L,1, "SndObj");
 	struct Mix_Chunk *c = *cp;
-	lua_pushfstring(L, "SndObj");
+	lua_pushfstring(L, "SndObj[%p]", c->abuf);
 	return 1;
 }
 
@@ -968,6 +969,7 @@ static int gc_wav_obj(lua_State *L) {
 
 /*@ SndObj:play()
  *# Plays the sound.
+ *# It returns the {/channel/} on which the sound is being played.
  */
 static int wav_play(lua_State *L) {	
 	struct Mix_Chunk **cp = luaL_checkudata(L,1, "SndObj");
@@ -1000,6 +1002,13 @@ static void wav_obj_meta(lua_State *L) {
 	lua_setglobal(L, "Wav");
 }
 
+/*
+* TODO: A Sound object with methods like:
+*    Sound.pause(channel)
+*    Sound.resume(channel)
+*    Sound.halt(channel)
+* See the SDL Mixer documentation for details on how to do this.
+*/
 
 /* STATE FUNCTIONS */
 
@@ -1063,7 +1072,7 @@ static int lus_init(struct game_state *s) {
 			return 0;		
 		}
 		
-		sd->map = map_parse(map_text);
+		sd->map = map_parse(map_text, 0);
 		if(!sd->map) {
 			rerror("Unable to parse map '%s' (state %s).", map_file, s->name);
 			return 0;		

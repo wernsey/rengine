@@ -92,7 +92,7 @@ map.o: ../src/map.c ../include/tileset.h \
 luastate.o: luastate.c ../include/bmp.h \
  ../include/states.h ../include/map.h ../include/game.h ../include/ini.h \
  ../include/resources.h ../include/tileset.h ../include/utils.h \
- ../include/particles.h ../include/log.h
+ ../include/particles.h ../include/log.h ../include/gamedb.h
 musl.o: musl.c ../include/musl.h
 mustate.o: mustate.c ../include/bmp.h \
  ../include/states.h ../include/musl.h ../include/game.h ../include/ini.h \

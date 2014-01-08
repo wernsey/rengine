@@ -42,6 +42,22 @@ char *my_strupper (char *p)
   return p;
 }
 
+char *my_strtok_r(char *str, const char *delim, char **saveptr) {
+	if(!str)
+		str = *saveptr;
+	if(!str[0]) {
+		*saveptr = str;
+		return NULL;	
+	}
+	char *s = strpbrk(str, delim);
+	if(s) {
+		s[0] = '\0';
+		*saveptr = s + 1;
+	} else 
+		for(*saveptr = str; (*saveptr)[0]; (*saveptr)++);
+	return str;
+}
+
 /* Reads an entire file into a dynamically allocated memory buffer.
  * The returned buffer needs to be free()d afterwards
  */
