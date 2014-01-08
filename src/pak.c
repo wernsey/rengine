@@ -358,9 +358,9 @@ int pak_extract_file(struct pak_file * p, const char *filename, const char *to) 
 		return 0;
 	}
 	
-	out = fopen(to, "w");
+	out = fopen(to, "wb");
 	if(!out) {
-		if(pak_verbose) fprintf(stderr, "[pak_get_text] couldn't open %s for output: %s", to, strerror(errno));
+		if(pak_verbose) fprintf(stderr, "[pak_get_text] couldn't open %s for output: %s\n", to, strerror(errno));
 		rv = 0;
 	} else {
 		if(fwrite(blob, 1, len, out) != len) {
