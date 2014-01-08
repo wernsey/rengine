@@ -24,11 +24,11 @@ int inc_hidden = 0; /* Include hidden files in PAK. Default no */
 void usage(const char *name) {
 	fprintf(stderr, "Usage: %s [options] pakfile [files...]\n", name);
 	fprintf(stderr, "where options:\n");
-	fprintf(stderr, " -d dir      : Create/Overwrite pakfile from directory dir.\n");
-	fprintf(stderr, " -c          : Create/Overwrite pakfile from files.\n");
+	fprintf(stderr, " -c dir      : Create/Overwrite pakfile from directory dir.\n");
 	fprintf(stderr, " -x dir      : Extract pakfile into directory dir.\n");
 	fprintf(stderr, " -a          : Append files to pakfile.\n");
-	fprintf(stderr, " -u          : dUmps the contents of a file.\n");
+	fprintf(stderr, "               Creates the pakfile if it doesn't exist.\n");
+	fprintf(stderr, " -d          : Dumps the contents of a file.\n");
 	fprintf(stderr, " -t          : Dumps the contents of a text file.\n");
 	fprintf(stderr, " -o file     : Set the output file for -u and -t.\n");
 	fprintf(stderr, " -h          : Include hidden files when using the -d option.\n");
@@ -77,7 +77,7 @@ void pak_dir(DIR *dir, const char *base, struct pak_file *pak) {
 	}
 }
 
-int mkdir_tree(char *path) {
+int mkdir_tree(const char *path) {
 	char *p = strdup(path), *start = p, *rest;
 	char buffer[128];
 	size_t s = sizeof buffer;
@@ -111,7 +111,6 @@ int main(int argc, char *argv[]) {
 	
 	enum {
 		CREATE,
-		DIR_CREATE,
 		APPEND,
 		XTRACT,
 		DUMP,
@@ -119,13 +118,10 @@ int main(int argc, char *argv[]) {
 		LIST
 	} mode = LIST;
 	
-	while((opt = getopt(argc, argv, "d:cax:uto:v?")) != -1) {
+	while((opt = getopt(argc, argv, "c:ax:dto:v?")) != -1) {
 		switch(opt) {
 			case 'c' : {
 				mode = CREATE;
-			} break;
-			case 'd' : {
-				mode = DIR_CREATE;
 				dir_name = optarg;
 			} break;
 			case 'a' : {
@@ -135,7 +131,7 @@ int main(int argc, char *argv[]) {
 				mode = XTRACT;				
 				dir_name = optarg;
 			} break;
-			case 'u' : {
+			case 'd' : {
 				mode = DUMP;
 			} break;
 			case 't' : {
@@ -172,30 +168,13 @@ int main(int argc, char *argv[]) {
 	switch(mode) {
 		case CREATE : {
 			struct pak_file *p;
-			if(optind >= argc) {
-				fprintf(stderr, "error: cowardly refusing to create empty pakfile\n");
-				return 1;
-			}
-			
-			printf("Creating %s:\n", pakfile);
-			p = pak_create(pakfile);
-			
-			while(optind < argc) {
-				const char *filename = argv[optind++];
-				printf(" - %s\n", filename);
-				if(!pak_append_file(p, filename)) {
-					fprintf(stderr, "error: Unable to write %s to PAK file\n", filename);
-					break;
-				}
-			}
-			pak_close(p);
-		}break;
-		case DIR_CREATE : {
-			struct pak_file *p;
 			DIR *dir;
 			
 			printf("Creating %s:\n", pakfile);
 			p = pak_create(pakfile);
+			if(!p) {
+				fprintf(stderr, "error: unable to create %s\n", pakfile);
+			}
 			
 			if(!chdir(dir_name)) {
 				dir = opendir(".");
@@ -211,8 +190,15 @@ int main(int argc, char *argv[]) {
 				return 1;
 			}
 			struct pak_file *p = pak_open(pakfile);
+			if(!p) {
+				printf("Creating %s:\n", pakfile);
+				p = pak_create(pakfile);
+				if(!p) {
+					fprintf(stderr, "error: unable to create %s\n", pakfile);
+				}
+			} else
+				printf("Appending to %s:\n", pakfile);
 			
-			printf("Appending to %s:\n", pakfile);
 			while(optind < argc) {
 				const char *filename = argv[optind++];
 				printf(" - %s\n", filename);
@@ -252,6 +238,7 @@ int main(int argc, char *argv[]) {
 					}
 					snprintf(buffer, sizeof buffer, "%s%c%s%c%s", dir_name, d, filepath, d, file);
 				} else {
+					mkdir_tree(dir_name);
 					snprintf(buffer, sizeof buffer, "%s/%s", dir_name, filepath);
 				}
 				
