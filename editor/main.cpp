@@ -7,6 +7,7 @@
 
 #include "editor.h"
 #include "log.h"
+#include "paths.h"
 
 /*****************************************************************************************
  * GLOBALS ******************************************************************************/
@@ -73,17 +74,21 @@ void open_cb(Fl_Menu_* w, void*) {
 	if(!filepath)
 		return;
 	
+	char file_dir[FL_PATH_MAX];
+	
 	const char *file = fl_filename_name(filepath);
 	char *dir_end = strrchr(filepath, '/');
-	if(dir_end) {
-		char buffer[FL_PATH_MAX];
-		strncpy(buffer, filepath, dir_end - filepath);
-		buffer[dir_end - filepath] = '\0';
-		rlog("Changing working directory to %s", buffer);
-		chdir(buffer);
+	if(dir_end) {		
+		strncpy(file_dir, filepath, dir_end - filepath);
+		file_dir[dir_end - filepath] = '\0';
+		rlog("Changing working directory to %s", file_dir);
+		chdir(file_dir);		
+		if(!getcwd(file_dir, sizeof file_dir)) {
+			rerror("getcwd: %s\n", strerror(errno));
+		}
 	}
 	
-	rlog("Opening map file %s (relative path: %s)", file, filepath);
+	rlog("Opening map file %s", filepath);
 	
 	struct map * m = map_load(file, 1);
 	if(!m) {
@@ -91,14 +96,29 @@ void open_cb(Fl_Menu_* w, void*) {
 		return;
 	}
 	
-	char path[128];
+	char path[FL_PATH_MAX];
 	if(!getcwd(path, sizeof path)) {
 		rerror("getcwd: %s\n", strerror(errno));
-	} else
+	} else {
 		rlog("Working directory is now '%s'", path);
+	}
 	
 	if(map_file) free(map_file);
-	map_file = strdup(file);
+	
+	/* At this point, 
+	file_dir contains something like 'D:\sandbox\rengine\bin\game\maps'
+	path contains something like 'D:\sandbox\rengine\bin\game'
+	and we want map_file to be maps\thismap.map relative to the game\ directory
+	*/
+	char buffer[FL_PATH_MAX];
+	int len = sizeof buffer;
+	relpath(path, file_dir, buffer, len);
+	len -= strlen(buffer);
+	strncat(buffer, file, len);
+	for(char *c = buffer; c[0]; c++)
+		if(c[0] == '\\')
+			c[0] = '/';	
+	map_file = strdup(buffer);
 	
 	canvas->setMap(m);
 	tileSetSelect->clear();

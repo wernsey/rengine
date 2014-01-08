@@ -69,7 +69,7 @@ TileCanvas.o: TileCanvas.cpp TileCanvas.h ../include/bmp.h ../include/tileset.h
 	
 main.o: main.cpp LevelCanvas.h BMCanvas.h \
 		TileCanvas.h TileCanvas.h editor.h ../include/bmp.h \
-		../include/tileset.h ../include/map.h
+		../include/tileset.h ../include/map.h ../include/paths.h
 	g++ -c $(CPPFLAGS) $< -o $@
 	
 bmp.o: ../src/bmp.c ../include/bmp.h ../fonts/bold.xbm \
@@ -82,7 +82,7 @@ tileset.o: ../src/tileset.c ../include/bmp.h ../include/tileset.h \
 	$(CC) -c $(CFLAGS) $< -o $@
 map.o: ../src/map.c ../include/tileset.h \
  ../include/bmp.h ../include/map.h ../include/json.h \
- ../include/utils.h ../include/log.h
+ ../include/utils.h ../include/log.h ../include/paths.h
 	$(CC) -c $(CFLAGS) $< -o $@
 lexer.o: ../src/lexer.c ../include/lexer.h
 	$(CC) -c $(CFLAGS) $< -o $@
