@@ -277,7 +277,7 @@ int main(int argc, char *argv[]) {
 	const char *game_dir = NULL;
 	const char *pak_filename = "game.pak"; 
 		
-	const char *rlog_filename = "logfile.txt";
+	const char *rlog_filename = "rengine.log";
 	
 	const char *startstate;
 	
