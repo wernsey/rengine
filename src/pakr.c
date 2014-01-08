@@ -14,8 +14,10 @@ NOTE: On Windows, I use MinGW which provides
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <errno.h>
 
 #include "pak.h"
+#include "utils.h"
 
 int inc_hidden = 0; /* Include hidden files in PAK. Default no */
 
@@ -24,7 +26,7 @@ void usage(const char *name) {
 	fprintf(stderr, "where options:\n");
 	fprintf(stderr, " -d dir      : Create/Overwrite pakfile from directory dir.\n");
 	fprintf(stderr, " -c          : Create/Overwrite pakfile from files.\n");
-	fprintf(stderr, " -x          : Extract pakfile into current directory.\n");
+	fprintf(stderr, " -x dir      : Extract pakfile into directory dir.\n");
 	fprintf(stderr, " -a          : Append files to pakfile.\n");
 	fprintf(stderr, " -u          : dUmps the contents of a file.\n");
 	fprintf(stderr, " -t          : Dumps the contents of a text file.\n");
@@ -33,8 +35,7 @@ void usage(const char *name) {
 	fprintf(stderr, " -v          : Verbose mode. Each -v increase verbosity.\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "If no options are specified, the file is just listed.\n");
-	fprintf(stderr, "If the -o option is not used, files are written to stdout.\n");	
-	fprintf(stderr, "The extract option doesn't attempt to preserve the directory structure.\n");
+	fprintf(stderr, "If the -o option is not used, files are written to stdout.\n");
 }
 
 void pak_dir(DIR *dir, const char *base, struct pak_file *pak) {		
@@ -54,7 +55,7 @@ void pak_dir(DIR *dir, const char *base, struct pak_file *pak) {
 			strncpy(path, dp->d_name, sizeof path);
 		
 		if(stat(path, &statbuf)) {
-			fprintf(stderr, "Unable to stat %s: %s\n", path, strerror(errno));
+			fprintf(stderr, "error: Unable to stat %s: %s\n", path, strerror(errno));
 			continue;
 		}
 		
@@ -76,6 +77,31 @@ void pak_dir(DIR *dir, const char *base, struct pak_file *pak) {
 	}
 }
 
+int mkdir_tree(char *path) {
+	char *p = strdup(path), *start = p, *rest;
+	char buffer[128];
+	size_t s = sizeof buffer;
+	buffer[0] = '\0';
+	
+	p = my_strtok_r(p, "/\\", &rest);
+	while(p && p[0]) {
+		if(buffer[0])
+			strncat(buffer, "/", s--);
+		strncat(buffer, p, s);
+		s -= strlen(p);
+		
+		if(mkdir(buffer) && errno != EEXIST) {
+			fprintf(stderr, "error: mkdir(%s): %s\n", buffer, strerror(errno));
+			return -1;
+		}
+		
+		p = my_strtok_r(NULL, "/\\", &rest);
+	}
+	
+	free(start);
+	return 0;
+}
+
 int main(int argc, char *argv[]) {
 	
 	int opt;
@@ -93,7 +119,7 @@ int main(int argc, char *argv[]) {
 		LIST
 	} mode = LIST;
 	
-	while((opt = getopt(argc, argv, "d:caxuto:v?")) != -1) {
+	while((opt = getopt(argc, argv, "d:cax:uto:v?")) != -1) {
 		switch(opt) {
 			case 'c' : {
 				mode = CREATE;
@@ -107,6 +133,7 @@ int main(int argc, char *argv[]) {
 			} break;
 			case 'x' : {
 				mode = XTRACT;				
+				dir_name = optarg;
 			} break;
 			case 'u' : {
 				mode = DUMP;
@@ -198,8 +225,6 @@ int main(int argc, char *argv[]) {
 			
 		} break;
 		case XTRACT : {
-			/* The extract option doesn't attempt to preserve the directory structure.
-			It can't without going into platform specifics for managing the directories */
 			struct pak_file *p = pak_open(pakfile);
 			int i;
 
@@ -208,16 +233,34 @@ int main(int argc, char *argv[]) {
 				return 1;
 			}
 			for(i = 0; i < pak_num_files(p); i++) {
-				const char *filepath = pak_nth_file(p, i);
-				const char *file = filepath;
-				char *delim; 
+				const char *exfile = pak_nth_file(p, i);
+				char *filepath = strdup(exfile);
+				char *file = filepath, *delim; 
+				char buffer[128];
+				
 				if((delim = strrchr(filepath, '/')) != NULL || (delim = strrchr(filepath, '\\')) != NULL) {
+					char d = delim[0];
+					
 					file = delim + 1;
+					delim[0] = '\0';
+					
+					snprintf(buffer, sizeof buffer, "%s%c%s", dir_name, d, filepath);
+					
+					int r = mkdir_tree(buffer);
+					if(r != 0) {
+						continue;
+					}
+					snprintf(buffer, sizeof buffer, "%s%c%s%c%s", dir_name, d, filepath, d, file);
+				} else {
+					snprintf(buffer, sizeof buffer, "%s/%s", dir_name, filepath);
 				}
-				printf("%3d: %s -> %s\n", i, filepath, file);
-				if(!pak_extract_file(p, filepath, file)) {
-					fprintf(stderr, "error: unable to extract %s\n", file);
+				
+				printf("%3d: %s -> %s\n", i, exfile, buffer);
+				
+				if(!pak_extract_file(p, exfile, buffer)) {
+					fprintf(stderr, "error: unable to extract %s into %s\n", exfile, buffer);
 				}
+				free(filepath);
 			}		
 			pak_close(p);			
 		} break;

@@ -116,10 +116,10 @@ sound.o: sound.c ../include/resources.h ../include/log.h
 
 # Utilities ###################################
 
-$(PAKR_BIN) : pakr.o pak.o
+$(PAKR_BIN) : pakr.o pak.o utils.o
 	$(CC) -o $@ $^
 	
-pakr.o : pakr.c ../include/pak.h
+pakr.o : pakr.c ../include/pak.h ../include/utils.h
 	$(CC) -c $(INCLUDE_PATH) $< -o $@
 
 $(BACE_BIN) : bace.o
