@@ -32,11 +32,13 @@
 #include "map.h"
 #include "game.h"
 #include "ini.h"
-#include "resources.h"
 #include "utils.h"
 #include "particles.h"
 #include "log.h"
 #include "gamedb.h"
+
+#define WITH_MIXER
+#include "resources.h"
 
 #define MAX_TIMEOUTS 20
 

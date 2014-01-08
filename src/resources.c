@@ -8,7 +8,6 @@
 #include "pak.h"
 #include "bmp.h"
 #include "ini.h"
-#include "game.h"
 #include "utils.h"
 #include "hash.h"
 #include "log.h"
@@ -133,6 +132,10 @@ static SDL_RWops *re_get_RWops(const char *filename) {
 	return SDL_RWFromFile(filename, "rb");
 }
 
+/* There is also a re_get_bmp(const char *filename)
+ * defined in rengine/editor/resources.c which doesn't
+ * use the resource cache.
+ */
 struct bitmap *re_get_bmp(const char *filename) {
 	struct bitmap *bmp;
 	

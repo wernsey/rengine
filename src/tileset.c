@@ -10,6 +10,7 @@
 #include "json.h"
 #include "utils.h"
 #include "log.h"
+#include "resources.h"
 
 #define TILE_FILE_VERSION 1.1f
 
@@ -83,8 +84,8 @@ int ts_index_of(struct tile_collection *tc, const char *name) {
 	return -1;
 }
 
-static struct tileset *ts_make(const char *filename) {
-	struct bitmap *bm = bm_load(filename);
+static struct tileset *ts_make(const char *filename) {	
+	struct bitmap *bm = re_get_bmp(filename);	
 	if(bm) {
 		struct tileset *t = malloc(sizeof *t);
 		if(!t) { 
@@ -116,7 +117,11 @@ static struct tileset *ts_make(const char *filename) {
 static void ts_free(struct tileset *t) {
 	if(!t) return;
 	free(t->name);
+#ifdef EDITOR
+	/* In the game engine itself, the bitmap is freed
+	through the resource cache */
 	bm_free(t->bm);
+#endif
 	free(t);
 }
 

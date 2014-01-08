@@ -14,7 +14,7 @@ LFLAGS += `sdl2-config --libs` -lGL
 RES = 
 endif
 
-CFLAGS = -I ../include -I ..
+CFLAGS = -DEDITOR -I ../include -I ..
 CPPFLAGS = `$(fltk-config) --cxxflags` -c -I . -I./editor -I ../include
 LPPFLAGS = `$(fltk-config) --ldflags` 
 
@@ -47,7 +47,7 @@ debug:
 
 $(EDIT_BIN): main.o editor.o BMCanvas.o LevelCanvas.o TileCanvas.o \
 				bmp.o tileset.o map.o lexer.o json.o hash.o utils.o \
-				log.o paths.o
+				log.o paths.o resources.o
 	g++ -o $@  $^ $(LPPFLAGS)
 	
 editor.o : editor.cxx editor.h 
@@ -80,7 +80,7 @@ tileset.o: ../src/tileset.c ../include/bmp.h ../include/tileset.h \
  ../include/lexer.h ../include/json.h ../include/utils.h \
  ../include/log.h
 	$(CC) -c $(CFLAGS) $< -o $@
-map.o: ../src/map.c ../include/tileset.h \
+map.o: ../src/map.c ../include/tileset.h ../include/resources.h \
  ../include/bmp.h ../include/map.h ../include/json.h \
  ../include/utils.h ../include/log.h ../include/paths.h
 	$(CC) -c $(CFLAGS) $< -o $@
@@ -96,6 +96,8 @@ utils.o: ../src/utils.c ../include/utils.h
 log.o: ../src/log.c ../include/log.h
 	$(CC) -c $(CFLAGS) $< -o $@
 paths.o: ../src/paths.c ../include/utils.h
+	$(CC) -c $(CFLAGS) $< -o $@
+resources.o: resources.c ../include/bmp.h
 	$(CC) -c $(CFLAGS) $< -o $@
 
 .PHONY : clean

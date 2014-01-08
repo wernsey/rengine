@@ -266,7 +266,10 @@ struct map *map_parse(const char *text, int cd) {
 	}
 		
 	a = json_get_object(j, "tilesets");
-	ts_read_all(&m->tiles, a);
+	if(!ts_read_all(&m->tiles, a)) {
+		rerror("Not loading map because tilesets couldn't be loaded.");
+		return NULL;
+	}
 	
 	a = json_get_array(j, "cells");
 	e = a->value;

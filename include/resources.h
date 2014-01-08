@@ -12,6 +12,8 @@ struct ini_file *re_get_ini(const char *filename);
 
 struct bitmap *re_get_bmp(const char *filename);
 
+#ifdef WITH_MIXER
 Mix_Chunk *re_get_wav(const char *filename);
+#endif
 
 char *re_get_script(const char *filename);

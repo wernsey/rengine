@@ -102,15 +102,15 @@ mustate.o: mustate.c ../include/bmp.h \
 pak.o: pak.c ../include/pak.h
 particles.o: particles.c ../include/bmp.h
 resources.o: resources.c ../include/pak.h \
- ../include/bmp.h ../include/ini.h ../include/game.h ../include/utils.h \
+ ../include/bmp.h ../include/ini.h ../include/utils.h \
  ../include/hash.h ../include/log.h
 states.o: states.c ../include/ini.h \
  ../include/bmp.h ../include/states.h ../include/utils.h \
  ../include/game.h ../include/particles.h ../include/resources.h \
  ../include/log.h ../include/hash.h
 tileset.o: tileset.c ../include/bmp.h ../include/tileset.h \
- ../include/lexer.h ../include/json.h ../include/utils.h \
- ../include/log.h
+ ../include/resources.h ../include/lexer.h ../include/json.h \
+ ../include/utils.h ../include/log.h
 utils.o: utils.c
 gamedb.o: gamedb.c ../include/gamedb.h ../include/ini.h
 sound.o: sound.c ../include/resources.h ../include/log.h
