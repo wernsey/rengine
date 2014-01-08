@@ -284,8 +284,8 @@ whitespace:
 	if(t[0]) {		
 		if(strchr("[]:=", t[0])) {
 			tok = *t++;
-		} else if(isalnum(t[0])) {
-			while(isalnum(t[0]) || strchr("_-.\\", t[0])) {
+		} else if(isgraph(t[0]) && !strchr("\"'[];#", t[0])) {
+			while(isgraph(t[0]) && !strchr("\"'[];#", t[0])) {
 				t++;
 			}
 			*tend = t;
@@ -369,7 +369,7 @@ struct ini_file *ini_parse(const char *text, int *err, int *line) {
 	int t;
 	
 	if(err) *err = SUCCESS;
-	if(line) *line = 0;
+	if(line) *line = 1;
 	
 	ini = make_ini();
 	
