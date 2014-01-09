@@ -119,7 +119,9 @@ void open_cb(Fl_Menu_* w, void*) {
 		if(c[0] == '\\')
 			c[0] = '/';	
 	map_file = strdup(buffer);
-	
+	/* I had the idea once to store the absolute path in map_file, but
+		it broke down when the relative path is computed later. */
+		
 	canvas->setMap(m);
 	tileSetSelect->clear();
 	tiles->setMap(canvas->getMap());

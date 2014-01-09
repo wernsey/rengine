@@ -327,97 +327,67 @@ static void bmp_obj_meta(lua_State *L) {
 	lua_setglobal(L, "Bmp");
 }
 
-/*1 CellObj
- *# The Cell object.
- *# The CellObj encapsulates a collection of cells on the 
- *# map. You then use the methods of the CellObj to manipulate
- *# the cells.
+/*1 Map
+ *# The Map object provides access to the Map through
+ *# a variety of functions.
  *#
- *# You use the [[C(selector)|Lua-state#cselector]] function
- *# to create a CellObj instance that collects all the cells on 
- *# the maps that match the specific selector.
+ *# These fields are also available:
+ *{
+ ** {{Map.ROWS}} - The number of rows in the map.
+ ** {{Map.COLS}} - The number of columns in the map.
+ *}
+ *# The {{Map}} object is only available if the {{map}}
+ *# parameter has been set in the state's configuration
+ *# in the {{game.ini}} file.
  */
 
-typedef struct _cell_obj {
-	struct map_cell *cell;
-	struct _cell_obj *next;
-} cell_obj;
-
-static int class_selector(struct map_cell *c, const char *data) {
-	if(!c->clas) return 0;
-	return !my_stricmp(c->clas, data + 1);
-}
-
-static int id_selector(struct map_cell *c, const char *data) {
-	if(!c->id) return 0;
-	return !my_stricmp(c->id, data);
-}
-
-/*@ C(selector)
- *# Returns a `CellObj` instance that encapsulates all the
- *# cells on a map that matches the particular selector.
+/*@ Map.cell(r,c)
+ *# Returns a cell on the map at row {{r}}, column {{c}} as 
+ *# a {{CellObj}} instance.\n
+ *# {{r}} must be between {{1}} and {{Map.ROWS}} inclusive.
+ *# {{c}} must be between {{1}} and {{Map.COLS}} inclusive.
  */
-static int new_cell_obj(lua_State *L) {
-	const char *selector;
-	int i;
-	int (*sel_fun)(struct map_cell *c, const char *data);
-	struct lustate_data *sd;
-	cell_obj **o;
-
+static int get_cell_obj(lua_State *L) {
+	
+	int r = luaL_checkint(L,1) - 1;
+	int c = luaL_checkint(L,2) - 1;	
+	struct lustate_data *sd = get_state_data(L);	
+	struct map_cell **o;
+	
+	assert(sd->map);
+	
+	if(c < 0 || c >= sd->map->nc) 
+		luaL_error(L, "Invalid r value");
+	if(r < 0 || r >= sd->map->nr) 
+		luaL_error(L, "Invalid c value");
+	
 	o = lua_newuserdata(L, sizeof *o);	
 	luaL_setmetatable(L, "CellObj");
-	*o = NULL;
-	
-	lua_getglobal(L, STATE_DATA_VAR);	
-	if(!lua_islightuserdata(L, -1)) {
-		/* Don't ever do anything to ___the_map in your Lua scripts */
-		luaL_error(L, "Variable %s got tampered with.", STATE_DATA_VAR);
-	}
-	sd = lua_touserdata(L, -1);
-	lua_pop(L, 1);
-	
-	if(!sd->map) {
-		/* This Lua state does not have a map, so return an empty list */
-		return 1;		
-	}
-	
-	selector = luaL_checkstring(L,1);
-	if(selector[0] == '.') {
-		sel_fun = class_selector;
-	} else {		
-		sel_fun = id_selector;
-	}
-	
-	/* Is there a non-O(n) way to find cells matching a selector? 
-	 * I ought to put the ids in a hashtable at least
-	 */
-	for(i = 0; i < sd->map->nr * sd->map->nc; i++) {
-		struct map_cell *c = &sd->map->cells[i];
-		if(sel_fun(c, selector)) {
-			cell_obj *co = malloc(sizeof *co);
-			co->cell = c;
-			co->next = *o;				
-			*o = co;
-			if(sel_fun == id_selector)
-				break;
-		}
-	}
+		
+	*o = map_get_cell(sd->map, c, r);
 	
 	return 1;
 }
+
+static const luaL_Reg map_funcs[] = {
+  {"cell",      	get_cell_obj},
+  {0, 0}
+};
+
+/*1 CellObj
+ *# The CellObj encapsulates an individual cell on the 
+ *# map. You then use the methods of the CellObj to manipulate
+ *# the cell.
+ *#
+ *# Cell Objects are obtained through the {{Map.cell(r,c)}} function.
+ */
 
 /*@ CellObj:__tostring()
  *# Returns a string representation of the CellObj
  */
 static int cell_tostring(lua_State *L) {	
-	cell_obj **os = luaL_checkudata(L,1, "CellObj");
-	cell_obj *o = *os;
-	int count = 0;
-	while(o) {
-		count++;
-		o=o->next;
-	}
-	lua_pushfstring(L, "CellObj[%d]", count);
+	luaL_checkudata(L,1, "CellObj");
+	lua_pushstring(L, "CellObj");
 	return 1;
 }
 
@@ -425,12 +395,7 @@ static int cell_tostring(lua_State *L) {
  *# Frees the CellObj when it is garbage collected.
  */
 static int gc_cell_obj(lua_State *L) {
-	cell_obj **o = luaL_checkudata(L,1, "CellObj");
-	while(*o) {
-		cell_obj *t = *o;
-		*o = (*o)->next;		
-		free(t);
-	}
+	/* Nothing to do, since we don't actually own the pointer to the map_cell */
 	return 0;
 }
 
@@ -444,39 +409,53 @@ static int gc_cell_obj(lua_State *L) {
  */
 static int cell_set(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
-	cell_obj **os = luaL_checkudata(L,1, "CellObj");
-	cell_obj *o;
+	struct map_cell **cp = luaL_checkudata(L,1, "CellObj");
+	struct map_cell *c = *cp;
+	
 	int l = luaL_checkint(L,2);
 	int si = luaL_checkint(L,3);
 	int ti = luaL_checkint(L,4);
 	
 	if(l < 0 || l > 2) {
-		lua_pushfstring(L, "Invalid level passed to CellObj.set()");
-		lua_error(L);
+		luaL_error(L, "Invalid level passed to CellObj:set()");
 	}
 	
 	assert(sd->map); /* cant create a CellObj if this is false. */
 	if(si < 0 || si >= ts_get_num(&sd->map->tiles)) {
-		lua_pushfstring(L, "Invalid si passed to CellObj.set()");
-		lua_error(L);
+		luaL_error(L, "Invalid si passed to CellObj:set()");
 	}
 	/* FIXME: error checking on ti? */
 	
-	o = *os;
-	while(o) {
-		struct map_cell *c = o->cell;
-		/* TODO: Maybe you ought to store
-		this change in some sort of list
-		so that the savedgames can handle 
-		changes to the map like this. */
-		c->tiles[l].ti = ti;
-		c->tiles[l].si = si;
-		o = o->next;
-	}
+	/* TODO: Maybe you ought to store
+	this change in some sort of list
+	so that the savedgames can handle 
+	changes to the map like this. */
+	c->tiles[l].ti = ti;
+	c->tiles[l].si = si;
 	
 	/* Push the CellObj back onto the stack so that other methods can be called on it */
 	lua_pushvalue(L, -4);
 	
+	return 1;
+}
+
+/*@ CellObj:getId()
+ *# Returns the {/id/} of a cell as defined in the Rengine Editor
+ */
+static int cell_get_id(lua_State *L) {
+	struct map_cell **cp = luaL_checkudata(L,1, "CellObj");
+	struct map_cell *c = *cp;	
+	lua_pushstring(L, c->id ? c->id : "");
+	return 1;
+}
+
+/*@ CellObj:getClass()
+ *# Returns the {/class/} of a cell as defined in the Rengine Editor
+ */
+static int cell_get_class(lua_State *L) {
+	struct map_cell **cp = luaL_checkudata(L,1, "CellObj");
+	struct map_cell *c = *cp;	
+	lua_pushstring(L, c->clas ? c->clas : "");
 	return 1;
 }
 
@@ -492,6 +471,10 @@ static void cell_obj_meta(lua_State *L) {
 	/* FIXME: Add other methods. */
 	lua_pushcfunction(L, cell_set);
 	lua_setfield(L, -2, "set");
+	lua_pushcfunction(L, cell_get_id);
+	lua_setfield(L, -2, "getId");
+	lua_pushcfunction(L, cell_get_class);
+	lua_setfield(L, -2, "getClass");
 	
 	lua_pushcfunction(L, cell_tostring);
 	lua_setfield(L, -2, "__tostring");	
@@ -499,8 +482,8 @@ static void cell_obj_meta(lua_State *L) {
 	lua_setfield(L, -2, "__gc");	
 	
 	/* The global method C() */
-	lua_pushcfunction(L, new_cell_obj);
-	lua_setglobal(L, "C");
+	lua_pushcfunction(L, get_cell_obj);
+	lua_setglobal(L, "Cell");
 }
 
 /*1 G
@@ -1080,6 +1063,13 @@ static int lus_init(struct game_state *s) {
 			return 0;		
 		}
 		free(map_text);
+		
+		luaL_newlib(L, map_funcs);
+		/* Register some Lua variables. */	
+		SET_TABLE_INT_VAL("ROWS", sd->map->nr);
+		SET_TABLE_INT_VAL("COLS", sd->map->nc);
+		lua_setglobal(L, "Map");
+		
 	} else {
 		rlog("Lua state %s does not specify a map file.", s->name);
 	}
