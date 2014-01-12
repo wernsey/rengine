@@ -10,3 +10,5 @@ int gdb_load(const char *filename);
 void gdb_put(const char *key, const char *value);
 
 const char *gdb_get(const char *key);
+
+int gdb_has(const char *key);

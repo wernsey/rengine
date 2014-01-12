@@ -59,3 +59,8 @@ void gdb_put(const char *key, const char *value) {
 const char *gdb_get(const char *key) {
 	return ini_get(gamedb, "data", key, "");
 }
+
+int gdb_has(const char *key) {
+	return ini_get(gamedb, "data", key, NULL) != NULL;
+}
+
