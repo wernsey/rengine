@@ -953,31 +953,12 @@ static int gc_wav_obj(lua_State *L) {
 	return 0;
 }
 
-/*@ SndObj:play()
- *# Plays the sound.
- *# It returns the {/channel/} on which the sound is being played.
- */
-static int wav_play(lua_State *L) {	
-	struct Mix_Chunk **cp = luaL_checkudata(L,1, "SndObj");
-	struct Mix_Chunk *c = *cp;
-	int ch = Mix_PlayChannel(-1, c, 0);
-	if(ch < 0) {
-		luaL_error(L, "SndObj:play(): %s", Mix_GetError());
-	}
-	lua_pushinteger(L, ch);
-	return 1;
-}
-
 static void wav_obj_meta(lua_State *L) {
 	/* Create the metatable for MyObj */
 	luaL_newmetatable(L, "SndObj");
 	lua_pushvalue(L, -1);
 	lua_setfield(L, -2, "__index"); /* BmpObj.__index = BmpObj */
-		
-	/* Add methods */
-	lua_pushcfunction(L, wav_play);
-	lua_setfield(L, -2, "play");
-	
+			
 	lua_pushcfunction(L, wav_tostring);
 	lua_setfield(L, -2, "__tostring");	
 	lua_pushcfunction(L, gc_wav_obj);
@@ -988,13 +969,141 @@ static void wav_obj_meta(lua_State *L) {
 	lua_setglobal(L, "Wav");
 }
 
-/*
-* TODO: A Sound object with methods like:
-*    Sound.pause(channel)
-*    Sound.resume(channel)
-*    Sound.halt(channel)
-* See the SDL Mixer documentation for details on how to do this.
-*/
+/*1 Sound
+ *# The {{Sound}} object exposes functions through which 
+ *# sounds can be played an paused in your games.
+ */
+
+/*@ Sound.play(sound)
+ *# Plays a sound.
+ *# {{sound}} is a {{SndObj}} object previously loaded through
+ *# the {{Wav(filename)}} function.
+ *# It returns the {{channel}} the sound is playing on, which can be used
+ *# with other {{Sound}} functions.
+ */
+static int sound_play(lua_State *L) {
+	struct Mix_Chunk **cp = luaL_checkudata(L,1, "SndObj");
+	struct Mix_Chunk *c = *cp;
+	int ch = Mix_PlayChannel(-1, c, 0);
+	if(ch < 0) {
+		luaL_error(L, "Sound.play(): %s", Mix_GetError());
+	}
+	lua_pushinteger(L, ch);
+	return 1;
+}
+
+/*@ Sound.loop(sound, [n])
+ *# Loops a sound {{n}} times. 
+ *# If {{n}} is omitted, the sound will loop indefinitely.
+ *# {{sound}} is a {{SndObj}} object previously loaded through
+ *# the {{Wav(filename)}} function.
+ *# It returns the {{channel}} the sound is playing on, which can be used
+ *# with other {{Sound}} functions.
+ */
+static int sound_loop(lua_State *L) {
+	struct Mix_Chunk **cp = luaL_checkudata(L,1, "SndObj");
+	struct Mix_Chunk *c = *cp;
+	
+	int n = -1;
+	if(lua_gettop(L) > 0) {
+		n = luaL_checkinteger(L, 2);
+	}
+	if(n < 1) n = 1;
+	
+	int ch = Mix_PlayChannel(-1, c, n - 1);
+	if(ch < 0) {
+		luaL_error(L, "Sound.loop(): %s", Mix_GetError());
+	}
+	lua_pushinteger(L, ch);
+	return 1;
+}
+
+/*@ Sound.pause([channel])
+ *# Pauses a sound.
+ *# {{channel}} is the channel previously returned by
+ *# {{Sound.play()}}. If it's omitted, all sound will be paused.
+ */
+static int sound_pause(lua_State *L) {
+	int channel = -1;
+	if(lua_gettop(L) > 0) {
+		channel = luaL_checkinteger(L, 1);
+	}
+	if(Mix_Pause(channel) < 0) {
+		luaL_error(L, "Sound.pause(): %s", Mix_GetError());
+	}
+	return 0;
+}
+
+/*@ Sound.resume([channel])
+ *# Resumes a paused sound on a specific channel.
+ *# {{channel}} is the channel previously returned by
+ *# {{Sound.play()}}. If it's omitted, all sound will be resumed.
+ */
+static int sound_resume(lua_State *L) {
+	int channel = -1;
+	if(lua_gettop(L) > 0) {
+		channel = luaL_checkinteger(L, 1);
+	}
+	if(Mix_Resume(channel) < 0) {
+		luaL_error(L, "Sound.pause(): %s", Mix_GetError());
+	}
+	return 0;
+}
+
+/*@ Sound.halt([channel])
+ *# Halts a sound playing on a specific channel.
+ *# {{channel}} is the channel previously returned by
+ *# {{Sound.play()}}. If it's omitted, all sound will be halted.
+ */
+static int sound_halt(lua_State *L) {
+	int channel = -1;
+	if(lua_gettop(L) > 0) {
+		channel = luaL_checkinteger(L, 1);
+	}
+	if(Mix_HaltChannel(channel) < 0) {
+		luaL_error(L, "Sound.pause(): %s", Mix_GetError());
+	}
+	return 0;
+}
+
+/*@ Sound.playing([channel])
+ *# Returns whether the sound on {{channel}} is currently playing.
+ *# If {{channel}} is omitted, it will return an integer containing the
+ *# number of channels currently playing.
+ */
+static int sound_playing(lua_State *L) {
+	if(lua_gettop(L) > 0) {
+		int channel = luaL_checkinteger(L, 1);
+		lua_pushboolean(L, Mix_Playing(channel));
+	}
+	lua_pushinteger(L, Mix_Playing(-1));
+	return 1;
+}
+
+/*@ Sound.paused([channel])
+ *# Returns whether the sound on {{channel}} is currently paused.
+ *# If {{channel}} is omitted, it will return an integer containing the
+ *# number of channels currently paused.
+ */
+static int sound_paused(lua_State *L) {
+	if(lua_gettop(L) > 0) {
+		int channel = luaL_checkinteger(L, 1);
+		lua_pushboolean(L, Mix_Paused(channel));
+	}
+	lua_pushinteger(L, Mix_Paused(-1));
+	return 1;
+}
+
+static const luaL_Reg sound_funcs[] = {
+  {"play",  sound_play},
+  {"loop",  sound_loop},
+  {"pause",  sound_pause},
+  {"resume",  sound_resume},
+  {"halt",  sound_halt},
+  {"playing",  sound_playing},
+  {"paused",  sound_paused},
+  {0, 0}
+};
 
 /*1 GameDB
  *# The {/Game Database/}. 
@@ -1159,6 +1268,9 @@ static int lus_init(struct game_state *s) {
 	luaL_newlib(L, gdb_funcs);
 	lua_setglobal(L, "GameDB");	
 	
+	luaL_newlib(L, sound_funcs);
+	lua_setglobal(L, "Sound");	
+	
 	/* The Bitmap object is constructed through the Bmp() function that loads 
 		a bitmap through the resources module that can be drawn with G.blit() */
 	bmp_obj_meta(L);
@@ -1268,6 +1380,10 @@ static int lus_deinit(struct game_state *s) {
 	if(!L)
 		return 0;
 	
+	/* Stop all sounds */
+	Mix_HaltChannel(-1);
+	
+	/* Remove the map */
 	lua_getglobal(L, STATE_DATA_VAR);
 	if(!lua_isnil(L,-1)) {
 		if(!lua_islightuserdata(L, -1)) {
