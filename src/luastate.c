@@ -1028,9 +1028,7 @@ static int sound_pause(lua_State *L) {
 	if(lua_gettop(L) > 0) {
 		channel = luaL_checkinteger(L, 1);
 	}
-	if(Mix_Pause(channel) < 0) {
-		luaL_error(L, "Sound.pause(): %s", Mix_GetError());
-	}
+	Mix_Pause(channel);
 	return 0;
 }
 
@@ -1044,9 +1042,7 @@ static int sound_resume(lua_State *L) {
 	if(lua_gettop(L) > 0) {
 		channel = luaL_checkinteger(L, 1);
 	}
-	if(Mix_Resume(channel) < 0) {
-		luaL_error(L, "Sound.pause(): %s", Mix_GetError());
-	}
+	Mix_Resume(channel);
 	return 0;
 }
 
@@ -1094,6 +1090,36 @@ static int sound_paused(lua_State *L) {
 	return 1;
 }
 
+/*@ Sound.volume([channel,] v)
+ *# Sets the volume 
+ *# {{v}} should be a value between {{0}} (minimum volume) and {{1}} (maximum volume).
+ *# If {{channel}} is omitted, the volume of all channels will be set.
+ *# It returns the volume of the {{channel}}. If the channel is not specified, it
+ *# will return the average volume of all channels. To get the volume of a channel
+ *# without changing it, use a negative value for {{v}}.
+ */
+static int sound_volume(lua_State *L) {
+	int channel = -1;
+	double v = -1;
+	int vol = -1;
+	if(lua_gettop(L) > 1) {
+		channel = luaL_checkinteger(L, 1);
+		v = luaL_checknumber(L, 2);	
+	} else {
+		v = luaL_checknumber(L, 1);	
+	}
+	if(v < 0) {
+		vol = -1;
+	} else {
+		if(v > 1.0){
+			v = 1.0;
+		}
+		vol = v * MIX_MAX_VOLUME;
+	}		
+	lua_pushinteger(L, Mix_Volume(channel, vol));
+	return 1;
+}
+
 static const luaL_Reg sound_funcs[] = {
   {"play",  sound_play},
   {"loop",  sound_loop},
@@ -1102,6 +1128,7 @@ static const luaL_Reg sound_funcs[] = {
   {"halt",  sound_halt},
   {"playing",  sound_playing},
   {"paused",  sound_paused},
+  {"volume",  sound_volume},
   {0, 0}
 };
 
