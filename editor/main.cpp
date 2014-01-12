@@ -335,7 +335,7 @@ void map_select_cb(LevelCanvas *canvas) {
 		map_get(m, i, x, y, &si, &ti);		
 		snprintf(sub[i], sizeof sub[i], "l:%d si:%d ti:%d", i, si, ti);
 	}	
-	snprintf(buffer, sizeof buffer, "x:%d y:%d [%s] [%s] [%s]", canvas->col(), canvas->row(), sub[0], sub[1], sub[2]);
+	snprintf(buffer, sizeof buffer, "r:%d c:%d [%s] [%s] [%s]", canvas->row() + 1, canvas->col() + 1, sub[0], sub[1], sub[2]);
 	
 	mapStatus->value(buffer);
 }
