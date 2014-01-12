@@ -98,7 +98,7 @@ musl.o: musl.c ../include/musl.h
 mustate.o: mustate.c ../include/bmp.h \
  ../include/states.h ../include/musl.h ../include/game.h ../include/ini.h \
  ../include/resources.h ../include/utils.h ../include/particles.h \
- ../include/log.h
+ ../include/log.h ../include/gamedb.h
 pak.o: pak.c ../include/pak.h
 particles.o: particles.c ../include/bmp.h
 resources.o: resources.c ../include/pak.h \

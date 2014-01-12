@@ -30,6 +30,7 @@
 #include "utils.h"
 #include "particles.h"
 #include "log.h"
+#include "gamedb.h"
 
 /* Structures */
 
@@ -445,6 +446,39 @@ static struct mu_par mus_blit(struct musl *m, int argc, struct mu_par argv[]) {
 	return rv;
 }
 
+/*@ GDB_SET(key, val)
+ *# Saves the value {{val}} associated with the {{key}}
+ *# in the {/Game Database/}.
+ */
+static struct mu_par mus_dbset(struct musl *m, int argc, struct mu_par argv[]) {
+	struct mu_par rv = {mu_int, {0}};
+	const char *key = mu_par_str(m, 0, argc, argv);
+	const char *val = mu_par_str(m, 1, argc, argv);
+	gdb_put(key, val);
+	return rv;
+}
+
+/*@ GDB_GET(key)
+ *# Retrieves the value {{val}} associated with the {{key}}
+ *# from the {/Game Database/}
+ */
+static struct mu_par mus_dbget(struct musl *m, int argc, struct mu_par argv[]) {
+	struct mu_par rv = {mu_str, {0}};
+	const char *key = mu_par_str(m, 0, argc, argv);
+	rv.v.s = strdup(gdb_get(key));
+	return rv;
+}
+
+/*@ GDB_HAS(key)
+ *# Checks whether the value {{key}} is in the {/Game Database/}
+ */
+static struct mu_par mus_dbhas(struct musl *m, int argc, struct mu_par argv[]) {
+	struct mu_par rv = {mu_int, {0}};
+	const char *key = mu_par_str(m, 0, argc, argv);
+	rv.v.i = gdb_has(key);
+	return rv;
+}
+
 /* State Functions */
 
 static int mus_init(struct game_state *s) {
@@ -507,6 +541,10 @@ static int mus_init(struct game_state *s) {
 	mu_add_func(md->mu, "draw", mus_draw);
 	mu_add_func(md->mu, "setmask", mus_setmask);
 	mu_add_func(md->mu, "blit", mus_blit);		
+	
+	mu_add_func(md->mu, "gdb_set", mus_dbset);		
+	mu_add_func(md->mu, "gdb_get", mus_dbget);		
+	mu_add_func(md->mu, "gdb_has", mus_dbhas);		
 		
 	mu_set_int(md->mu, "mouse_x", mouse_x);
 	mu_set_int(md->mu, "mouse_y", mouse_y);
