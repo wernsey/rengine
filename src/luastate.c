@@ -225,17 +225,18 @@ static int l_changeState(lua_State *L) {
 
 /*@ Game.createParticle(x,y, dx,dy, life, color)
  *# Creates a particle at position (x,y), with color {{color}} moving in direction (dx,dy) every frame.
- *# The particle {{life}} lasts for frames (So if the game's FPS is 33, then a {{life}}
- *# value of 66 will mean the the particle will last for 2 seconds)
+ *# The particle  lasts for {{life}} seconds.
+ *N This function generates particles for title screens.
+ *# The particles don't do collision detection on the map and don't take layers into account.
  */
 static int l_createParticle(lua_State *L) {
 	float x = luaL_checknumber(L, -6);
 	float y = luaL_checknumber(L, -5);
 	float dx = luaL_checknumber(L, -4);
 	float dy = luaL_checknumber(L, -3);
-	int life = luaL_checkinteger(L, -2); 
-	int color = bm_color_atoi(luaL_checkstring(L, -1));	
-	add_particle(x, y, dx, dy, life, color);
+	float life = luaL_checknumber(L, -2) * fps; 
+	int color = bm_color_atoi(luaL_checkstring(L, -1));
+	add_particle(x, y, dx, dy, (int)life, color);
 	return 0;
 }
 
@@ -335,6 +336,8 @@ static void bmp_obj_meta(lua_State *L) {
  *{
  ** {{Map.ROWS}} - The number of rows in the map.
  ** {{Map.COLS}} - The number of columns in the map.
+ ** {{Map.TILE_WIDTH}} - The width (in pixels) of the cells on the map.
+ ** {{Map.TILE_HEIGHT}} - The height (in pixels) of the cells on the map.
  *}
  *# The {{Map}} object is only available if the {{map}}
  *# parameter has been set in the state's configuration
@@ -426,10 +429,8 @@ static int cell_set(lua_State *L) {
 	}
 	/* FIXME: error checking on ti? */
 	
-	/* TODO: Maybe you ought to store
-	this change in some sort of list
-	so that the savedgames can handle 
-	changes to the map like this. */
+	/* TODO: Maybe you ought to store this change in some sort of list
+	   so that the savedgames can handle changes to the map like this. */
 	c->tiles[l].ti = ti;
 	c->tiles[l].si = si;
 	
@@ -995,6 +996,57 @@ static void wav_obj_meta(lua_State *L) {
 * See the SDL Mixer documentation for details on how to do this.
 */
 
+/*1 GameDB
+ *# The {/Game Database/}. 
+ *# These functions are used to store key-value pairs in a
+ *# globally available memory area. The purpose is twofold:
+ *{
+ ** To share data between different game states.
+ ** To save game-specific variables in the "Save Game"/"Load Game" functionality.
+ *}
+ */
+
+/*@ GameDB.set(key, value)
+ *# Saves a key-value pair in the game database.
+ *# {{key}} and {{value}} are converted to strings internally.
+ */
+static int gamedb_set(lua_State *L) {	
+	const char *key = luaL_checkstring(L, 1);
+	const char *val = luaL_checkstring(L, 2);
+	gdb_put(key, val);
+	return 0;
+}
+
+/*@ GameDB.get(key)
+ *# Retrieves the value associated with the {{key}} from the game database (as a string).
+ *# It returns {{""}} if the key does not exist in the database.
+ */
+static int gamedb_get(lua_State *L) {	
+	const char *key = luaL_checkstring(L, 1);
+	const char *val = gdb_get(key);
+	if(val)
+		lua_pushstring(L, val);
+	else
+		lua_pushstring(L, "");
+	return 1;
+}
+
+/*@ GameDB.has(key)
+ *# Returns {{true}} if the {{key}} is stored in the Game database.
+ */
+static int gamedb_has(lua_State *L) {	
+	const char *key = luaL_checkstring(L, 1);
+	lua_pushboolean(L, gdb_has(key));
+	return 1;
+}
+
+static const luaL_Reg gdb_funcs[] = {
+  {"set",  gamedb_set},
+  {"get",  gamedb_get},
+  {"has",  gamedb_has},
+  {0, 0}
+};
+
 /* STATE FUNCTIONS */
 
 #define GLOBAL_FUNCTION(name, fun)	lua_pushcfunction(L, fun); lua_setglobal(L, name);
@@ -1068,6 +1120,8 @@ static int lus_init(struct game_state *s) {
 		/* Register some Lua variables. */	
 		SET_TABLE_INT_VAL("ROWS", sd->map->nr);
 		SET_TABLE_INT_VAL("COLS", sd->map->nc);
+		SET_TABLE_INT_VAL("TILE_WIDTH", sd->map->tiles.tw);
+		SET_TABLE_INT_VAL("TILE_HEIGHT", sd->map->tiles.th);		
 		lua_setglobal(L, "Map");
 		
 	} else {
@@ -1101,6 +1155,9 @@ static int lus_init(struct game_state *s) {
 	SET_TABLE_INT_VAL("MIDDLE", 2);
 	SET_TABLE_INT_VAL("RIGHT", 3);
 	lua_setglobal(L, "Mouse");
+	
+	luaL_newlib(L, gdb_funcs);
+	lua_setglobal(L, "GameDB");	
 	
 	/* The Bitmap object is constructed through the Bmp() function that loads 
 		a bitmap through the resources module that can be drawn with G.blit() */
