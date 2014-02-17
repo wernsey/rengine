@@ -73,7 +73,7 @@ struct lustate_data {
 	} timeout[MAX_TIMEOUTS];
 	int n_timeout;
 	
-	struct _update_function *update_fcn;
+	struct _update_function *update_fcn, *last_fcn;
 	
 	int change_state;
 	char *next_state;
@@ -194,8 +194,15 @@ static int l_onUpdate(lua_State *L) {
 		fn->ref = luaL_ref(L, LUA_REGISTRYINDEX);		
 		rlog("Registering onUpdate() callback %d", fn->ref);
 		
-		fn->next = sd->update_fcn;
-		sd->update_fcn = fn;
+		fn->next = NULL;
+		if(!sd->last_fcn) {
+			assert(sd->update_fcn == NULL);
+			sd->last_fcn = fn;
+			sd->update_fcn = fn;
+		} else {
+			sd->last_fcn->next = fn;
+			sd->last_fcn = fn;
+		}
 		
 		lua_pushinteger(L, fn->ref);
 		
@@ -308,6 +315,24 @@ static int bmp_set_mask(lua_State *L) {
 	return 0;
 }
 
+/*@ BmpObj:width()
+ *# Returns the width of the bitmap
+ */
+static int bmp_width(lua_State *L) {	
+	struct bitmap **bp = luaL_checkudata(L,1, "BmpObj");
+	lua_pushinteger(L, (*bp)->w);
+	return 1;
+}
+
+/*@ BmpObj:height()
+ *# Returns the height of the bitmap
+ */
+static int bmp_height(lua_State *L) {	
+	struct bitmap **bp = luaL_checkudata(L,1, "BmpObj");
+	lua_pushinteger(L, (*bp)->h);
+	return 1;
+}
+
 static void bmp_obj_meta(lua_State *L) {
 	/* Create the metatable for MyObj */
 	luaL_newmetatable(L, "BmpObj");
@@ -317,6 +342,10 @@ static void bmp_obj_meta(lua_State *L) {
 	/* Add methods */
 	lua_pushcfunction(L, bmp_set_mask);
 	lua_setfield(L, -2, "setMask");
+	lua_pushcfunction(L, bmp_width);
+	lua_setfield(L, -2, "width");
+	lua_pushcfunction(L, bmp_height);
+	lua_setfield(L, -2, "height");
 	
 	lua_pushcfunction(L, bmp_tostring);
 	lua_setfield(L, -2, "__tostring");	
@@ -334,6 +363,9 @@ static void bmp_obj_meta(lua_State *L) {
  *#
  *# These fields are also available:
  *{
+ ** {{Map.BACKGROUND}} - Constant for the Map's background layer. See {{Map.render()}}
+ ** {{Map.CENTER}} - Constant for the Map's center layer. See {{Map.render()}}
+ ** {{Map.FOREGROUND}} - Constant for the Map's foreground layer. See {{Map.render()}}
  ** {{Map.ROWS}} - The number of rows in the map.
  ** {{Map.COLS}} - The number of columns in the map.
  ** {{Map.TILE_WIDTH}} - The width (in pixels) of the cells on the map.
@@ -343,6 +375,37 @@ static void bmp_obj_meta(lua_State *L) {
  *# parameter has been set in the state's configuration
  *# in the {{game.ini}} file.
  */
+
+/*@ Map.render(layer, [scroll_x, scroll_y])
+ *# Renders the specified layer of the map (background, center or foreground).
+ *# The center layer is where all the action in the game occurs and sprites and so on moves around.
+ *# The background is drawn behind the center layer for objects in the background. It needs to be drawn first,
+ *# so that the center and foreground layers are drawn over it.
+ *# The foreground layer is drawn last and contains objects in the foreground. 
+ */
+static int render_map(lua_State *L) {
+	int layer = luaL_checkint(L,1);
+	int sx = 0, sy = 0;
+	struct lustate_data *sd = get_state_data(L);
+	
+	if(!sd->map) {
+		luaL_error(L, "Attempt to render non-existent Map");
+	} 
+	if(layer < 0 || layer >= 3) {
+		luaL_error(L, "Attempt to render non-existent Map layer %d", layer);
+	}
+	if(!sd->bmp) {
+		luaL_error(L, "Attempt to render Map outside of a screen update");	
+	}
+	
+	if(lua_gettop(L) > 2) {
+		sx = luaL_checkint(L,1);
+		sy = luaL_checkint(L,2);
+	}
+	
+	map_render(sd->map, sd->bmp, layer, sx, sy);
+	return 0;
+}
 
 /*@ Map.cell(r,c)
  *# Returns a cell on the map at row {{r}}, column {{c}} as 
@@ -360,9 +423,9 @@ static int get_cell_obj(lua_State *L) {
 	assert(sd->map);
 	
 	if(c < 0 || c >= sd->map->nc) 
-		luaL_error(L, "Invalid r value");
+		luaL_error(L, "Invalid r value in Map.cell()");
 	if(r < 0 || r >= sd->map->nr) 
-		luaL_error(L, "Invalid c value");
+		luaL_error(L, "Invalid c value in Map.cell()");
 	
 	o = lua_newuserdata(L, sizeof *o);	
 	luaL_setmetatable(L, "CellObj");
@@ -373,6 +436,7 @@ static int get_cell_obj(lua_State *L) {
 }
 
 static const luaL_Reg map_funcs[] = {
+  {"render",      	render_map},
   {"cell",      	get_cell_obj},
   {0, 0}
 };
@@ -460,6 +524,16 @@ static int cell_get_class(lua_State *L) {
 	return 1;
 }
 
+/*@ CellObj:isBarrier()
+ *# Returns whether the cell is a barrier
+ */
+static int cell_is_barrier(lua_State *L) {
+	struct map_cell **cp = luaL_checkudata(L,1, "CellObj");
+	struct map_cell *c = *cp;	
+	lua_pushboolean(L, c->flags & TS_FLAG_BARRIER);
+	return 1;
+}
+
 /*
 	I may have been doing this wrong. See http://lua-users.org/wiki/UserDataWithPointerExample
 */
@@ -469,13 +543,15 @@ static void cell_obj_meta(lua_State *L) {
 	lua_pushvalue(L, -1);
 	lua_setfield(L, -2, "__index"); /* CellObj.__index = CellObj */
 	
-	/* FIXME: Add other methods. */
+	/* Add methods here */
 	lua_pushcfunction(L, cell_set);
 	lua_setfield(L, -2, "set");
 	lua_pushcfunction(L, cell_get_id);
 	lua_setfield(L, -2, "getId");
 	lua_pushcfunction(L, cell_get_class);
 	lua_setfield(L, -2, "getClass");
+	lua_pushcfunction(L, cell_is_barrier);
+	lua_setfield(L, -2, "isBarrier");
 	
 	lua_pushcfunction(L, cell_tostring);
 	lua_setfield(L, -2, "__tostring");	
@@ -1225,6 +1301,8 @@ static int lus_init(struct game_state *s) {
 	
 	sd->state = s;	
 	sd->update_fcn = NULL;	
+	sd->last_fcn = NULL;
+	
 	sd->n_timeout = 0;
 	sd->map = NULL;
 	sd->bmp = NULL;
@@ -1253,16 +1331,18 @@ static int lus_init(struct game_state *s) {
 		free(map_text);
 		
 		luaL_newlib(L, map_funcs);
-		/* Register some Lua variables. */	
+		SET_TABLE_INT_VAL("BACKGROUND", 0);
+		SET_TABLE_INT_VAL("CENTER", 1);
+		SET_TABLE_INT_VAL("FOREGROUND", 2);
 		SET_TABLE_INT_VAL("ROWS", sd->map->nr);
 		SET_TABLE_INT_VAL("COLS", sd->map->nc);
 		SET_TABLE_INT_VAL("TILE_WIDTH", sd->map->tiles.tw);
-		SET_TABLE_INT_VAL("TILE_HEIGHT", sd->map->tiles.th);		
-		lua_setglobal(L, "Map");
-		
+		SET_TABLE_INT_VAL("TILE_HEIGHT", sd->map->tiles.th);
 	} else {
 		rlog("Lua state %s does not specify a map file.", s->name);
+		lua_pushnil(L);
 	}
+	lua_setglobal(L, "Map");
 	
 	GLOBAL_FUNCTION("log", l_log);
 	GLOBAL_FUNCTION("setTimeout", l_set_timeout);
@@ -1270,9 +1350,6 @@ static int lus_init(struct game_state *s) {
 	
 	luaL_newlib(L, game_funcs);
 	/* Register some Lua variables. */	
-	SET_TABLE_INT_VAL("BACKGROUND", 0);
-	SET_TABLE_INT_VAL("CENTER", 1);
-	SET_TABLE_INT_VAL("FOREGROUND", 2);
 	lua_setglobal(L, "Game");
 	
 	/* The graphics object G gives you access to all the 2D drawing functions */
@@ -1335,7 +1412,6 @@ static int lus_init(struct game_state *s) {
 }
 
 static int lus_update(struct game_state *s, struct bitmap *bmp) {
-	int i;
 	struct lustate_data *sd = NULL;
 	lua_State *L = s->data;
 	struct _update_function *fn;
@@ -1380,11 +1456,6 @@ static int lus_update(struct game_state *s, struct bitmap *bmp) {
 		}
 		
 		fn = fn->next;
-	}
-	
-	if(sd->map) {
-		for(i = 0; i < 3; i++)
-			map_render(sd->map, bmp, i, 0, 0);
 	}
 	
 	if(sd->change_state) {
