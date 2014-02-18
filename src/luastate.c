@@ -384,7 +384,7 @@ static void bmp_obj_meta(lua_State *L) {
  *# The foreground layer is drawn last and contains objects in the foreground. 
  */
 static int render_map(lua_State *L) {
-	int layer = luaL_checkint(L,1);
+	int layer = luaL_checkint(L,1) - 1;
 	int sx = 0, sy = 0;
 	struct lustate_data *sd = get_state_data(L);
 	
@@ -479,7 +479,7 @@ static int cell_set(lua_State *L) {
 	struct map_cell **cp = luaL_checkudata(L,1, "CellObj");
 	struct map_cell *c = *cp;
 	
-	int l = luaL_checkint(L,2);
+	int l = luaL_checkint(L,2) - 1;
 	int si = luaL_checkint(L,3);
 	int ti = luaL_checkint(L,4);
 	
@@ -534,6 +534,20 @@ static int cell_is_barrier(lua_State *L) {
 	return 1;
 }
 
+/*@ CellObj:setBarrier(b)
+ *# Sets whether the cell is a barrier
+ */
+static int cell_set_barrier(lua_State *L) {
+	struct map_cell **cp = luaL_checkudata(L,1, "CellObj");
+	struct map_cell *c = *cp;	
+	int b = luaL_checkint(L,2);
+	if(b)
+		c->flags |= TS_FLAG_BARRIER;
+	else
+		c->flags &= ~TS_FLAG_BARRIER;
+	return 0;
+}
+
 /*
 	I may have been doing this wrong. See http://lua-users.org/wiki/UserDataWithPointerExample
 */
@@ -552,6 +566,8 @@ static void cell_obj_meta(lua_State *L) {
 	lua_setfield(L, -2, "getClass");
 	lua_pushcfunction(L, cell_is_barrier);
 	lua_setfield(L, -2, "isBarrier");
+	lua_pushcfunction(L, cell_set_barrier);
+	lua_setfield(L, -2, "setBarrier");
 	
 	lua_pushcfunction(L, cell_tostring);
 	lua_setfield(L, -2, "__tostring");	
@@ -1331,9 +1347,9 @@ static int lus_init(struct game_state *s) {
 		free(map_text);
 		
 		luaL_newlib(L, map_funcs);
-		SET_TABLE_INT_VAL("BACKGROUND", 0);
-		SET_TABLE_INT_VAL("CENTER", 1);
-		SET_TABLE_INT_VAL("FOREGROUND", 2);
+		SET_TABLE_INT_VAL("BACKGROUND", 1);
+		SET_TABLE_INT_VAL("CENTER", 2);
+		SET_TABLE_INT_VAL("FOREGROUND", 3);
 		SET_TABLE_INT_VAL("ROWS", sd->map->nr);
 		SET_TABLE_INT_VAL("COLS", sd->map->nc);
 		SET_TABLE_INT_VAL("TILE_WIDTH", sd->map->tiles.tw);
