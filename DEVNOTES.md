@@ -28,10 +28,6 @@ Docs says `SDL_UpdateTexture()` be slow. Do something different.
 The scheme of pushing/popping states has some implications on the
 save game system. And on the sprite system I intend to add later.
 
-I need a Local version of the Game database for saving things specific to a 
-particular state. I'm thinking along the lines of GameDB.local.set(key, value)
-and GameDB.local.get(key)
-
 ## Graphics
 
 My Bitmap module should have a `#pragma pack()` at the

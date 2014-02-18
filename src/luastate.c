@@ -1268,10 +1268,51 @@ static int gamedb_has(lua_State *L) {
 	return 1;
 }
 
+/*@ LocalDB.set(key, value)
+ *# Saves a key-value pair in the game database.
+ *# {{key}} and {{value}} are converted to strings internally.
+ */
+static int gamedb_local_set(lua_State *L) {	
+	const char *key = luaL_checkstring(L, 1);
+	const char *val = luaL_checkstring(L, 2);
+	gdb_local_put(key, val);
+	return 0;
+}
+
+/*@ LocalDB.get(key)
+ *# Retrieves the value associated with the {{key}} from the game database (as a string).
+ *# It returns {{""}} if the key does not exist in the database.
+ */
+static int gamedb_local_get(lua_State *L) {	
+	const char *key = luaL_checkstring(L, 1);
+	const char *val = gdb_local_get(key);
+	if(val)
+		lua_pushstring(L, val);
+	else
+		lua_pushstring(L, "");
+	return 1;
+}
+
+/*@ LocalDB.has(key)
+ *# Returns {{true}} if the {{key}} is stored in the Game database.
+ */
+static int gamedb_local_has(lua_State *L) {	
+	const char *key = luaL_checkstring(L, 1);
+	lua_pushboolean(L, gdb_local_has(key));
+	return 1;
+}
+
 static const luaL_Reg gdb_funcs[] = {
   {"set",  gamedb_set},
   {"get",  gamedb_get},
   {"has",  gamedb_has},
+  {0, 0}
+};
+
+static const luaL_Reg gdb_local_funcs[] = {
+  {"set",  gamedb_local_set},
+  {"get",  gamedb_local_get},
+  {"has",  gamedb_local_has},
   {0, 0}
 };
 
@@ -1387,6 +1428,8 @@ static int lus_init(struct game_state *s) {
 	
 	luaL_newlib(L, gdb_funcs);
 	lua_setglobal(L, "GameDB");	
+	luaL_newlib(L, gdb_local_funcs);
+	lua_setglobal(L, "LocalDB");
 	
 	luaL_newlib(L, sound_funcs);
 	lua_setglobal(L, "Sound");	

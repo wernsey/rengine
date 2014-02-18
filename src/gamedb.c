@@ -12,6 +12,8 @@ has, whether he's completed a sub-quest and so on.
 
 #include "ini.h"
 #include "log.h"
+struct bitmap; /* states.h needs to know about this */
+#include "states.h"
 #include "gamedb.h"
 
 static struct ini_file *gamedb = NULL;
@@ -50,17 +52,32 @@ int gdb_load(const char *filename) {
 }
 
 void gdb_put(const char *key, const char *value) {
-	if(!ini_put(gamedb, "data", key, value)) {
+	if(!ini_put(gamedb, NULL, key, value)) {
 		rerror("Unable to insert '%s' = '%s' into game database", key, value);
 	}
 }
 
-
 const char *gdb_get(const char *key) {
-	return ini_get(gamedb, "data", key, "");
+	return ini_get(gamedb, NULL, key, "");
 }
 
 int gdb_has(const char *key) {
-	return ini_get(gamedb, "data", key, NULL) != NULL;
+	return ini_get(gamedb, NULL, key, NULL) != NULL;
 }
 
+void gdb_local_put(const char *key, const char *value) {
+	const char *name = current_state()->name;	
+	if(!ini_put(gamedb, name, key, value)) {
+		rerror("Unable to insert '%s' = '%s' into game database", key, value);
+	}
+}
+
+const char *gdb_local_get(const char *key){
+	const char *name = current_state()->name;
+	return ini_get(gamedb, name, key, "");
+}
+
+int gdb_local_has(const char *key) {
+	const char *name = current_state()->name;
+	return ini_get(gamedb, name, key, NULL) != NULL;
+}
