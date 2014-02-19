@@ -1,4 +1,23 @@
--- From Chapter 12 of Game Coding Complete (4th Ed)
+--[[ 
+Poofs! some functions I don't want accessible to user created
+scripts; http://stackoverflow.com/a/1054957/115589
+]]
+require = nil;
+collectgarbage = nil;
+load = nil;
+loadfile = nil;
+loadstring = nil;
+dofile = nil;
+rawequal = nil;
+rawget = nil;
+rawset = nil;
+setfenv = nil;
+module = nil;
+
+--[[
+For Object Oriented Programming
+From Chapter 12 of Game Coding Complete (4th Ed)
+]]
 function class(baseClass, body)
 	local ret = body or {};
 	

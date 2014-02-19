@@ -540,7 +540,8 @@ static int cell_is_barrier(lua_State *L) {
 static int cell_set_barrier(lua_State *L) {
 	struct map_cell **cp = luaL_checkudata(L,1, "CellObj");
 	struct map_cell *c = *cp;	
-	int b = luaL_checkint(L,2);
+	luaL_checktype(L, 2, LUA_TBOOLEAN);
+	int b = lua_toboolean(L, 2);
 	if(b)
 		c->flags |= TS_FLAG_BARRIER;
 	else
@@ -1321,6 +1322,33 @@ static const luaL_Reg gdb_local_funcs[] = {
 #define GLOBAL_FUNCTION(name, fun)	lua_pushcfunction(L, fun); lua_setglobal(L, name);
 #define SET_TABLE_INT_VAL(k, v)     lua_pushstring(L, k); lua_pushinteger(L, v); lua_rawset(L, -3);
 
+/*
+Based on the discussion at http://stackoverflow.com/a/966778/115589
+I've copied the code from Lua's linit.c and removed the functions
+deemed unsafe.
+*/
+static const luaL_Reg sandbox_libs[] = {
+  {"_G", luaopen_base},
+  /*{LUA_LOADLIBNAME, luaopen_package}, */
+  {LUA_COLIBNAME, luaopen_coroutine},
+  {LUA_TABLIBNAME, luaopen_table},
+  /*{LUA_IOLIBNAME, luaopen_io},*/
+  /*{LUA_OSLIBNAME, luaopen_os},*/
+  {LUA_STRLIBNAME, luaopen_string},
+  {LUA_BITLIBNAME, luaopen_bit32},
+  {LUA_MATHLIBNAME, luaopen_math},
+  /*{LUA_DBLIBNAME, luaopen_debug},*/
+  {NULL, NULL}
+};
+
+void open_sandbox_libs (lua_State *L) {
+	const luaL_Reg *lib;
+	for (lib = sandbox_libs; lib->func; lib++) {
+		luaL_requiref(L, lib->name, lib->func, 1);
+		lua_pop(L, 1);  /* remove lib */
+	}
+}
+
 static int lus_init(struct game_state *s) {
 	
 	const char *map_file, *script_file;
@@ -1349,7 +1377,9 @@ static int lus_init(struct game_state *s) {
 		return 0;
 	}
 	s->data = L;
-	luaL_openlibs(L);
+	
+	/* Sandbox Lua instead of calling luaL_openlibs(L); */
+	open_sandbox_libs(L);
 	
 	/* Create and init the State Data that the interpreter carries with it. */
 	sd = malloc(sizeof *sd);
