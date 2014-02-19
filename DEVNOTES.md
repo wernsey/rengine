@@ -5,21 +5,10 @@ and TODOs in here.
 
 ## Lua
 
-We should consider disabling some _unsafe_ Lua built in functions such as
-`dofile()`, `load()` and `loadfile()`, etc.
-
-It appears that _Sandbox_ is the term you're looking for.
-See http://lua-users.org/wiki/SandBoxes. Also read the discussion
-of the topic at http://stackoverflow.com/q/966162/115589 and
-http://stackoverflow.com/q/1224708/115589
-
-It seems that the accepted solution is to not call `luaL_openlibs()`
-and rather copying and modifying linit.c according to your needs.
-
 ## SDL
 
-I still have to put audio into the engine. At the moment I have SDL_mixer
-2.0.0 built, but without any support for additional file formats.
+At the moment I have SDL_mixer 2.0.0 built, but without any support for 
+additional file formats.
 
 Docs says `SDL_UpdateTexture()` be slow. Do something different.
 
@@ -29,13 +18,6 @@ The scheme of pushing/popping states has some implications on the
 save game system. And on the sprite system I intend to add later.
 
 ## Graphics
-
-My Bitmap module should have a `#pragma pack()` at the
-structure declaration. The PAK file module should have
-it too. See the bottom of this section on the wikipedia:
-http://en.wikipedia.org/wiki/Data_structure_alignment in the section
-"Typical alignment of C structs on x86" (Seems it is not a big GCC issue,
-rather a MSVC thing)
 
 The `bm_fill()` function in `bmp.c` doesn't take the clipping rectangle
 into account. I'm not quite sure how to handle it.
@@ -48,7 +30,7 @@ high on my list of priorities.
 
 ## Resources
 
-Also wrt the PAK file module, the ZIP file format turns out to be
+Also wrt. the PAK file module, the ZIP file format turns out to be
 not that different, so I should look into it more closely.
 
 ## Input
@@ -60,19 +42,11 @@ to porting it to devices without keyboards and mouses.
 
 ## Musl
 
-I don't like the fact that you have to `strdup()` the string you
-return to Musl in the case of an external Musl function returning a
-string. The interpreter should be modified so that Musl does a `strdup()`
-after calling the external function in `fparams()` in musl.c (look for
-`v->v.fun()`).
-
-The current way of doing it has its pros, so I should think about it
-first before committing to a course of action. The best place to think
-about it is where I actually use the API (which at the moment is Rengine)
+I should remove Musl from Rengine completely. The thing I had in mind when
+I put it in can now be done in Lua as the engine involved. Having Musl now
+forces me to maintain two scripting language bindings.
 
 # Editor
-
-FIXME: _"Save on exit"_ prompt.
 
 Changing the Working Directory affects the tilesets, so you should rather
 set the working directory when you start a new project. I should simply
@@ -138,11 +112,6 @@ where options:
  ```
 
 # Documentation
-
-I keep this file (and README.md) nicely formatted with this command:
-```
-fmt DEVNOTES.md > DEVNOTES.md~; mv DEVNOTES.md~ DEVNOTES.md
-```
 
 ## Wiki Documentation 
 
