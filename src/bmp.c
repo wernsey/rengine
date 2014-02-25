@@ -479,6 +479,73 @@ void bm_maskedblit(struct bitmap *dst, int dx, int dy, struct bitmap *src, int s
 	}
 }
 
+void bm_blit_ex(struct bitmap *dst, int dx, int dy, int dw, int dh, struct bitmap *src, int sx, int sy, int sw, int sh, int mask) {
+	int x, y;
+	int ssx = sx; 
+	int ynum = 0;
+	
+	if(sw == dw && sh == dh) {
+		if(mask) {
+			bm_maskedblit(dst, dx, dy, src, sx, sy, dw, dh);
+		} else {
+			bm_blit(dst, dx, dy, src, sx, sy, dw, dh);
+		}
+		return;
+	}
+	
+	if(sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0)
+		return;
+	if(dx >= dst->clip.x1 || dx + dw < dst->clip.x0)
+		return;
+	if(dy >= dst->clip.y1 || dy + dh < dst->clip.y0)
+		return;
+	
+	/*
+	Uses Bresenham's algoritm to implement a simple scaling while blitting.
+	See the article "Scaling Bitmaps with Bresenham" by Tim Kientzle in the
+	October 1995 issue of C/C++ Users Journal
+	
+	Or see these links:
+		http://www.drdobbs.com/image-scaling-with-bresenham/184405045
+		http://www.compuphase.com/graphic/scale.htm	
+	*/	
+	for(y = dy; y < dy + dh; y++){
+		int xnum = 0;			
+		sx = ssx;			
+		
+		if(sy >= src->h || y >= dst->clip.y1)
+			break;
+		
+		for(x = dx; x < dx + dw; x++) {
+			
+			if(sx >= src->w || x >= dst->clip.x1)
+				break;
+			
+			/* FIXME: The clipping can probably be better */
+			if(x >= dst->clip.x0 && x < dst->clip.x1 && y >= dst->clip.y0 && y < dst->clip.y1
+				&& sx >= 0 && sx < src->w && sy >= 0 && sy < src->h) {
+				int r = BM_GETR(src, sx, sy),
+					g = BM_GETG(src, sx, sy),
+					b = BM_GETB(src, sx, sy);
+				if(!mask || r != src->r || g != src->g || b != src->b)
+					BM_SET(dst, x, y, r, g, b);
+			}
+			
+			xnum += sw;
+			while(xnum > dw) {
+				xnum -= dw;
+				sx++;
+			}
+		}
+		
+		ynum += sh;
+		while(ynum > dh) {
+			ynum -= dh;
+			sy++;
+		}
+	}
+}
+
 void bm_smooth(struct bitmap *b) {
 	struct bitmap *tmp = bm_create(b->w, b->h);
 	unsigned char *t = b->data;

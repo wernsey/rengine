@@ -200,6 +200,13 @@ void bm_blit(struct bitmap *dst, int dx, int dy, struct bitmap *src, int sx, int
  */
 void bm_maskedblit(struct bitmap *dst, int dx, int dy, struct bitmap *src, int sx, int sy, int w, int h);
 
+/*@ void bm_blit_ex(struct bitmap *dst, int dx, int dy, int dw, int dh, struct bitmap *src, int sx, int sy, int sw, int sh, int mask)
+ *# Extended blit function. Blits an area of sw*sh pixels at sx,sy from the {{src}} bitmap to 
+ *# dx,dy on the {{dst}} bitmap into an area of dw*dh pixels, stretching or shrinking the blitted area as neccessary.
+ *# If {{mask}} is non-zero, pixels on the src bitmap that matches the src bitmap colour are not blitted.
+ */
+void bm_blit_ex(struct bitmap *dst, int dx, int dy, int dw, int dh, struct bitmap *src, int sx, int sy, int sw, int sh, int mask);
+
 /*@ void bm_smooth(struct bitmap *b)
  *# Smoothes the bitmap by essentially applying a 3x3 median filter.
  */
