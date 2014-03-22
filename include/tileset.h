@@ -17,19 +17,20 @@ struct tileset {
 	
 	char *name;
 	
+	int border;
+	
 	int nmeta;
 	struct tile_meta *meta;
 };
 
 struct tile_collection {
 	int tw, th;
-	int border;
-	
+		
 	struct tileset **tilesets;
 	int ntilesets;
 };
 
-void ts_init(struct tile_collection *tc, int tw, int th, int border);
+void ts_init(struct tile_collection *tc, int tw, int th);
 
 int ts_add(struct tile_collection *tc, const char *filename);
 

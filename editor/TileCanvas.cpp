@@ -67,8 +67,8 @@ void TileCanvas::paint() {
 		}
 		
 		if(selRow >= 0 && selCol >= 0) {
-			int x = selCol * (_map->tiles.tw + _map->tiles.border);
-			int y = selRow * (_map->tiles.th + _map->tiles.border);
+			int x = selCol * (_map->tiles.tw + tiles->border);
+			int y = selRow * (_map->tiles.th + tiles->border);
 			pen("white");
 			rect(x, y, x + _map->tiles.tw - 1, y + _map->tiles.th - 1);
 		}

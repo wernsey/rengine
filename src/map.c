@@ -25,7 +25,7 @@ struct map *map_create(int nr, int nc, int tw, int th, int nl) {
 	m->nl = nl;
 	m->dirty = 0;
 	
-	ts_init(&m->tiles, tw, th, 0); /* FIXME: The Border. */
+	ts_init(&m->tiles, tw, th);
 	
 	m->cells = calloc(nr * nc, sizeof *m->cells);
 	

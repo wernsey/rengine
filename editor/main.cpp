@@ -1,5 +1,6 @@
 #include <FL/fl_ask.H>
 #include <FL/Fl_File_Chooser.H>
+#include <FL/Fl_Color_Chooser.H>
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -86,6 +87,8 @@ void open_cb(Fl_Menu_* w, void*) {
 		if(!getcwd(file_dir, sizeof file_dir)) {
 			rerror("getcwd: %s\n", strerror(errno));
 		}
+	} else {
+		strcpy(file_dir, "");
 	}
 	
 	rlog("Opening map file %s", filepath);
@@ -110,18 +113,23 @@ void open_cb(Fl_Menu_* w, void*) {
 	path contains something like 'D:\sandbox\rengine\bin\game'
 	and we want map_file to be maps\thismap.map relative to the game\ directory
 	*/
+	rlog("Map paths: '%s' '%s'", path, file_dir);
 	char buffer[FL_PATH_MAX];
 	int len = sizeof buffer;
-	relpath(path, file_dir, buffer, len);
-	len -= strlen(buffer);
-	strncat(buffer, file, len);
-	for(char *c = buffer; c[0]; c++)
-		if(c[0] == '\\')
-			c[0] = '/';	
-	map_file = strdup(buffer);
-	/* I had the idea once to store the absolute path in map_file, but
-		it broke down when the relative path is computed later. */
-		
+	if(file_dir[0] && relpath(path, file_dir, buffer, len)) {
+		len -= strlen(buffer);
+		strncat(buffer, file, len);
+		for(char *c = buffer; c[0]; c++)
+			if(c[0] == '\\')
+				c[0] = '/';	
+		map_file = strdup(buffer);
+		/* I had the idea once to store the absolute path in map_file, but
+			it broke down when the relative path is computed later. */
+	} else {
+		map_file = strdup(filepath);
+	}
+	rlog("Map file is now '%s'", map_file);
+	
 	canvas->setMap(m);
 	tileSetSelect->clear();
 	tiles->setMap(canvas->getMap());
@@ -185,7 +193,6 @@ void main_window_callback(Fl_Widget *w, void *p) {
 	
 	int result = 0;
 
-	// FIXME: Only prompt if the file is modified.
 	result = fl_choice("Do you want to save before quitting?", 
                            "Don't Save",  // 0
                            "Save",        // 1
@@ -269,6 +276,39 @@ void tilesetload_cb(Fl_Menu_* w, void*) {
 		tileset *ts = ts_get(tc, i);
 		tileSetSelect->add(ts->name);
 	}
+}
+
+void tileset_reload_img_cb(Fl_Menu_*, void*) {
+	tileset *ts = tiles->getTileset();	
+	if(!ts) 
+		return;
+	bitmap *bm = ts->bm;
+	int mask = bm_get_color_i(bm);
+	
+	ts->bm = bm_load(ts->name);
+	if(ts->bm) {
+		bm_set_color_i(ts->bm, mask);
+		bm_free(bm);
+		canvas->redraw();
+	} else {
+		ts->bm = bm;
+		fl_alert("Unable to reload tileset %s", ts->name);
+	}
+}
+
+void tileset_props_cb(Fl_Menu_*, void*) {	
+	tileset *ts = tiles->getTileset();	
+	if(!ts) 
+		return;
+	
+	int r, g, b;
+	
+	bm_get_color(ts->bm, &r, &g, &b);
+	mask_color_box->color(fl_rgb_color(r,g,b));
+	
+	tile_border_input->value(ts->border);
+	
+	tile_props_dlg->show();
 }
 
 /*****************************************************************************************
@@ -433,6 +473,42 @@ void tileBarrier_cb(Fl_Check_Button*w, void*p) {
 void tileDrawBarrier_cb(Fl_Check_Button*w, void*p) {
 	tiles->drawBarriers(w->value() == 1);		
 	tiles->redraw();
+}
+
+/*****************************************************************************************
+ * TILESET PROPERTIES CALLBACKS *********************************************************/
+
+void tile_props_ok_cb(Fl_Button*, void*) {
+	int col = mask_color_box->color() >> 8;
+	
+	tileset *ts = tiles->getTileset();	
+	if(ts) {
+		bm_set_color_i(ts->bm, col);
+		ts->border = tile_border_input->value();
+	}
+	
+	tile_props_dlg->hide();
+	canvas->redraw();
+}
+
+void tile_props_cancel_cb(Fl_Button*, void*) {
+	tile_props_dlg->hide();
+}
+
+void mask_color_click_cb(Fl_Button*, void*) {
+	
+	int c = mask_color_box->color() >> 8;
+	int ri = (c >> 16) & 0xFF;
+	int gi = (c >> 8) & 0xFF;
+	int bi = (c) & 0xFF;
+	
+	double r = ri / 255.0, g = gi / 255.0, b = bi / 255.0;	
+	
+	if(fl_color_chooser("New Mask Color", r, g, b)) {
+		int ri = r * 255.0, gi = g * 255.0, bi = b * 255.0;
+		mask_color_box->color(fl_rgb_color(ri,gi,bi));
+		mask_color_box->redraw();
+	}		
 }
 
 /*****************************************************************************************

@@ -25,7 +25,7 @@ into account. I'm not quite sure how to handle it.
 The `bmp.c` can do with an `bm_arc(bmp, start_angle, end_angle, radius)`
 function.
 
-`bmp.c` is also still missing a `bm_fillellipse()` function. it is not
+`bmp.c` is also still missing a `bm_fillellipse()` function. It is not
 high on my list of priorities.
 
 ## Resources
@@ -43,7 +43,7 @@ to porting it to devices without keyboards and mouses.
 ## Musl
 
 I should remove Musl from Rengine completely. The thing I had in mind when
-I put it in can now be done in Lua as the engine involved. Having Musl now
+I put it in can now be done in Lua as the engine evolved. Keeping Musl now
 forces me to maintain two scripting language bindings.
 
 # Editor
@@ -54,15 +54,6 @@ disable the menu option after you've started editing the level. This
 implies that there should be a `SetDirty()` function that changes the
 titlebar, causes the user to be prompted for a save on exit, and disables
 the set working directory menu option.
-
-~~I should actually have the tilesets be part of the map structure. This
-will help with managing resources when I implement the push/pop of game
-states later. _Are the tileset bitmaps obtained through the resources
-module?_~~
-
-A menu option to reload the current tileset bitmap. The use case is that
-you may have the file open in a paint program while you're editing your
-level, and want to see how your changes affect the level.
 
 # Other Tools
 

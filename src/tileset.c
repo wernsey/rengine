@@ -12,18 +12,17 @@
 #include "log.h"
 #include "resources.h"
 
-#define TILE_FILE_VERSION 1.1f
+#define TILE_FILE_VERSION 1.2f
 
 static struct tileset *ts_make(const char *filename);
 
 static void ts_free(struct tileset *t);
 
-void ts_init(struct tile_collection *tc, int tw, int th, int border) {
+void ts_init(struct tile_collection *tc, int tw, int th) {
 	tc->tilesets = NULL;
 	tc->ntilesets = 0;
 	tc->tw = tw;
 	tc->th = th;
-	tc->border = border;
 };
 
 void ts_deinit(struct tile_collection *tc) {
@@ -98,12 +97,11 @@ static struct tileset *ts_make(const char *filename) {
 		
 		t->bm = bm;
 		
-		/* FIXME: The transparent color of the 
-			tileset should be configurable and 
-			saved/loaded from the timeset file
-		*/
-		bm_set_color_s(t->bm, "#FF00FF");
+		bm_set_color_s(t->bm, "#FF00FF"); /* Mask color */
+		
+		t->border = 0;
 				
+		/* Meta data */
 		t->nmeta = 0;
 		t->meta = NULL;
 		
@@ -214,21 +212,22 @@ int ts_write_all(struct tile_collection *tc, FILE *f) {
 	char buffer[128];
 	
 	fprintf(f, "{\n");	
-	fprintf(f, "\"type\" : \"TILESET\",\n");
-	fprintf(f, "\"version\" : %.2f,\n", TILE_FILE_VERSION);
-	fprintf(f, "\"count\" : %d,\n", tc->ntilesets);
-	fprintf(f, "\"tw\" : %d,\n  \"th\" : %d, \n", tc->tw, tc->th);
-	fprintf(f, "\"border\" : %d,\n\n", tc->border);
-	fprintf(f, "\"tilesets\": [\n");
+	fprintf(f, "  \"type\" : \"TILESET\",\n");
+	fprintf(f, "  \"version\" : %.2f,\n", TILE_FILE_VERSION);
+	fprintf(f, "  \"count\" : %d,\n", tc->ntilesets);
+	fprintf(f, "  \"tw\" : %d,\n  \"th\" : %d, \n", tc->tw, tc->th);
+	fprintf(f, "  \"tilesets\": [\n");
 	for(i = 0; i < tc->ntilesets; i++) {
 		struct tileset *t = tc->tilesets[i];
 		fprintf(f, "  {\n");		
-		fprintf(f, "  \"name\" : \"%s\",\n", json_escape(t->name, buffer, sizeof buffer));
-		fprintf(f, "  \"nmeta\" : %d,\n", t->nmeta);
-		fprintf(f, "  \"meta\" : [\n");
+		fprintf(f, "    \"name\" : \"%s\",\n", json_escape(t->name, buffer, sizeof buffer));
+		fprintf(f, "    \"nmeta\" : %d,\n", t->nmeta);
+		fprintf(f, "    \"border\" : %d,\n", t->border);
+		fprintf(f, "    \"mask\" : \"#%06X\",\n", bm_get_color_i(t->bm));
+		fprintf(f, "    \"meta\" : [\n");
 		for(j = 0; j < t->nmeta; j++) {
 			struct tile_meta *m = &t->meta[j];
-			fprintf(f, "    {");
+			fprintf(f, "      {");
 			fprintf(f, "\"ti\":%d, ", m->ti);
 			fprintf(f, "\"class\":\"%s\", ", json_escape(m->clas, buffer, sizeof buffer));
 			fprintf(f, "\"flags\":%d", m->flags);
@@ -237,7 +236,7 @@ int ts_write_all(struct tile_collection *tc, FILE *f) {
 		fprintf(f, "  ]\n");
 		fprintf(f, "  }%c\n", (i < tc->ntilesets - 1) ? ',' : ' ');		
 	}
-	fprintf(f, "]\n");
+	fprintf(f, "  ]\n");
 	fprintf(f, "}\n");
 	
 	return 1;
@@ -275,6 +274,8 @@ int ts_read_all(struct tile_collection *tc, struct json *j) {
 	
 	struct json *a, *e;
 	
+	int border = 0;
+	
 	if(!json_get_string(j, "type") || strcmp(json_get_string(j, "type"), "TILESET")) {
 		rerror("JSON object is not of type TILESET");
 		return 0;
@@ -288,7 +289,9 @@ int ts_read_all(struct tile_collection *tc, struct json *j) {
 	
 	tc->tw = json_get_number(j, "tw");
 	tc->th = json_get_number(j, "th");
-	tc->border = json_get_number(j, "border");
+	
+	if(version < 1.2f)
+		border = json_get_number(j, "border");
 	
 	a = json_get_array(j, "tilesets");
 	if(!a) {
@@ -306,7 +309,7 @@ int ts_read_all(struct tile_collection *tc, struct json *j) {
 		name = json_get_string(e, "name");
 		nmeta = json_get_number(e, "nmeta");
 		(void)nmeta;
-				
+	
 		y = ts_add(tc, name);
 		if(y < 0) {
 			return 0;
@@ -315,6 +318,14 @@ int ts_read_all(struct tile_collection *tc, struct json *j) {
 		
 		t->nmeta = 0;
 		t->meta = NULL;
+		
+		if(version > 1.1f) {
+			t->border = json_get_number(e, "border");
+			bm_set_color_i(t->bm, bm_color_atoi(json_get_string(e, "mask")));
+		} else {
+			t->border = border;
+			bm_set_color_i(t->bm, 0xFF00FF);
+		}
 		
 		aa = json_get_array(e, "meta");
 		assert(json_array_len(aa) == nmeta);

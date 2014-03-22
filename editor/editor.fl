@@ -6,9 +6,9 @@ Function {make_window()} {open
 } {
   Fl_Window main_window {
     label {Rengine Editor} open
-    xywh {459 170 905 590} type Double resizable visible
+    xywh {572 205 905 590} type Double resizable visible
   } {
-    Fl_Menu_Bar {} {
+    Fl_Menu_Bar {} {open
       xywh {0 0 905 25}
     } {
       Submenu {} {
@@ -68,6 +68,16 @@ Function {make_window()} {open
         MenuItem {} {
           label {&Import}
           callback tilesetload_cb
+          xywh {0 0 100 20} divider
+        }
+        MenuItem {} {
+          label {&Reload Image}
+          callback tileset_reload_img_cb
+          xywh {0 0 100 20}
+        }
+        MenuItem {} {
+          label {&Properties}
+          callback tileset_props_cb
           xywh {0 0 100 20}
         }
       }
@@ -81,7 +91,7 @@ Function {make_window()} {open
         class LevelCanvas
       }
     }
-    Fl_Scroll {} {
+    Fl_Scroll {} {open
       xywh {580 30 320 360} box DOWN_BOX color 8
     } {
       Fl_Box tiles {
@@ -109,7 +119,7 @@ Function {make_window()} {open
     }
     Fl_Check_Button {} {
       label {Show Markers}
-      callback mapDrawMarkers_cb selected
+      callback mapDrawMarkers_cb
       xywh {190 395 130 25} down_box DOWN_BOX
     }
     Fl_Input mapClass {
@@ -202,34 +212,58 @@ Function {make_window()} {open
     }
   }
   Fl_Window new_map_dlg {
-    label {New Map}
-    xywh {609 222 170 191} type Double hide modal
+    label {New Map} open
+    xywh {759 270 166 193} type Double hide modal
   } {
     Fl_Value_Input new_map_width {
       label {Map Width}
-      xywh {80 5 80 25}
+      tooltip {Number of tiles in the map's x dimension} xywh {80 5 80 25}
     }
     Fl_Value_Input new_map_height {
       label {Map Height}
-      xywh {80 35 80 25}
+      tooltip {Number of tiles in the map's y dimension} xywh {80 35 80 25}
     }
     Fl_Value_Input new_tile_width {
       label {Tile Width}
-      xywh {80 65 80 25}
+      tooltip {Width in pixels of each tile} xywh {80 65 80 25}
     }
     Fl_Value_Input new_tile_height {
       label {Tile Height}
-      xywh {80 95 80 25}
+      tooltip {Height in pixels of each tile} xywh {80 95 80 25}
     }
     Fl_Button {} {
       label OK
       callback new_btn_ok_cb
-      xywh {25 155 65 25}
+      xywh {25 160 65 25}
     }
     Fl_Button {} {
       label Cancel
       callback new_btn_cancel_cb
-      xywh {95 155 65 25}
+      xywh {95 160 65 25}
+    }
+  }
+  Fl_Window tile_props_dlg {
+    label {Tileset Properties} open
+    xywh {1017 273 166 132} type Double align 17 modal visible
+  } {
+    Fl_Value_Input tile_border_input {
+      label {Tile Border} selected
+      xywh {80 40 80 25} maximum 10 step 1
+    }
+    Fl_Button {} {
+      label OK
+      callback tile_props_ok_cb
+      xywh {25 100 65 25}
+    }
+    Fl_Button {} {
+      label Cancel
+      callback tile_props_cancel_cb
+      xywh {95 100 65 25}
+    }
+    Fl_Button mask_color_box {
+      label {Mask Color}
+      callback mask_color_click_cb
+      xywh {80 5 80 30} color 5 align 4
     }
   }
 } 
