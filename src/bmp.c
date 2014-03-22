@@ -861,6 +861,10 @@ void bm_get_color(struct bitmap *bm, int *r, int *g, int *b) {
 	*b = bm->b;
 }
 
+int bm_get_color_i(struct bitmap *bm) {
+	return (bm->r << 16) | (bm->g << 8) | (bm->b << 0);
+}
+
 void bm_picker(struct bitmap *bm, int x, int y) {
 	if(x < 0 || x >= bm->w || y < 0 || y >= bm->h) 
 		return;

@@ -156,6 +156,11 @@ void bm_set_color_i(struct bitmap *bm, int col);
  */
 void bm_get_color(struct bitmap *bm, int *r, int *g, int *b);
 
+/*@ int bm_get_color_i(struct bitmap *bc)
+ *# Retrieves the pen colour.
+ */
+int bm_get_color_i(struct bitmap *bm);
+
 /*@ void bm_picker(struct bitmap *bm, int x, int y)
  *# Sets the colour of the pen to the colour of the pixel at <x,y>
  *# on the bitmap.
