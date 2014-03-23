@@ -88,8 +88,7 @@ void map_render(struct map *m, struct bitmap *bmp, int layer, int scroll_x, int 
 	
 	if(layer >= m->nl)
 		return;
-		
-	/* FIXME: The transparent color ought to be part of the tileset. */	
+
 	y = -scroll_y;	
 	for(j = 0; j < m->nr; j++) {
 		x = -scroll_x;
@@ -110,7 +109,7 @@ void map_render(struct map *m, struct bitmap *bmp, int layer, int scroll_x, int 
 				r = tile->ti / nht;
 				c = tile->ti % nht;
 				
-				bm_maskedblit(bmp, x, y, ts->bm, c * m->tiles.tw, r * m->tiles.th, m->tiles.tw, m->tiles.th);
+				bm_maskedblit(bmp, x, y, ts->bm, c * (m->tiles.tw + ts->border), r * (m->tiles.th + ts->border), m->tiles.tw, m->tiles.th);
 			}
 			x += m->tiles.tw;
 		}
