@@ -1042,7 +1042,7 @@ static int wav_tostring(lua_State *L) {
  *# Garbage collects the `SndObj` instance.
  */
 static int gc_wav_obj(lua_State *L) {
-	/* No need to free the bitmap: It's in the resource cache. */
+	/* No need to free the Mix_Chunk: It's in the resource cache. */
 	return 0;
 }
 
@@ -1050,7 +1050,7 @@ static void wav_obj_meta(lua_State *L) {
 	/* Create the metatable for MyObj */
 	luaL_newmetatable(L, "SndObj");
 	lua_pushvalue(L, -1);
-	lua_setfield(L, -2, "__index"); /* BmpObj.__index = BmpObj */
+	lua_setfield(L, -2, "__index"); /* SndObj.__index = SndObj */
 			
 	lua_pushcfunction(L, wav_tostring);
 	lua_setfield(L, -2, "__tostring");	
@@ -1224,6 +1224,100 @@ static const luaL_Reg sound_funcs[] = {
   {"volume",  sound_volume},
   {0, 0}
 };
+
+/*1 MusicObj
+ *# The music object that encapsulates a music file in the engine.
+ */
+
+/*@ Music(filename)
+ *# Loads the music file specified by {{filename}} from the
+ *# [[Resources|Resource Management]] and returns it
+ *# encapsulated within a `MusObj` instance.
+ */
+static int new_mus_obj(lua_State *L) {
+	const char *filename = luaL_checkstring(L,1);
+	
+	Mix_Music **mp = lua_newuserdata(L, sizeof *mp);	
+	luaL_setmetatable(L, "MusicObj");
+	
+	*mp = re_get_mus(filename);
+	if(!*mp) {
+		luaL_error(L, "Unable to load music file '%s'", filename);
+	}
+	return 1;
+}
+
+/*@ MusicObj:play([loops])
+ *# Plays a piece of music.
+ */
+static int mus_play(lua_State *L) {	
+	Mix_Music **mp = luaL_checkudata(L,1, "MusicObj");
+	Mix_Music *m = *mp;
+	
+	int loops = -1;
+	
+	if(lua_gettop(L) > 1) {
+		loops = luaL_checkinteger(L, 1);
+	}
+	
+	if(Mix_PlayMusic(m, loops) == -1) {
+		rerror("Unable to play music: %s", Mix_GetError());
+	}	
+		
+	return 0;
+}
+
+/*@ MusicObj:halt()
+ *# Stops music.
+ */
+static int mus_halt(lua_State *L) {	
+	luaL_checkudata(L,1, "MusicObj");
+	
+	Mix_HaltMusic();
+		
+	return 0;
+}
+
+Mix_HaltMusic();
+
+/*@ MusicObj:__tostring()
+ *# Returns a string representation of the `MusicObj` instance.
+ */
+static int mus_tostring(lua_State *L) {	
+	Mix_Music **mp = luaL_checkudata(L,1, "MusicObj");
+	Mix_Music *m = *mp;
+	lua_pushfstring(L, "MusicObj[%p]", m);
+	return 1;
+}
+
+/*@ MusicObj:__gc()
+ *# Garbage collects the `MusObj` instance.
+ */
+static int gc_mus_obj(lua_State *L) {
+	/* No need to free the Mix_Music: It's in the resource cache. */
+	return 0;
+}
+
+static void mus_obj_meta(lua_State *L) {
+	/* Create the metatable for MusicObj */
+	luaL_newmetatable(L, "MusicObj");
+	lua_pushvalue(L, -1);
+	lua_setfield(L, -2, "__index"); /* MusicObj.__index = MusicObj */
+			
+	lua_pushcfunction(L, mus_play);
+	lua_setfield(L, -2, "play");	
+	lua_pushcfunction(L, mus_halt);
+	lua_setfield(L, -2, "halt");	
+	
+	lua_pushcfunction(L, mus_tostring);
+	lua_setfield(L, -2, "__tostring");	
+	lua_pushcfunction(L, gc_mus_obj);
+	lua_setfield(L, -2, "__gc");	
+	
+	/* The global method Music() */
+	lua_pushcfunction(L, new_mus_obj);
+	lua_setglobal(L, "Music");
+}
 
 /*1 GameDB
  *# The {/Game Database/}. 
@@ -1470,6 +1564,8 @@ static int lus_init(struct game_state *s) {
 	
 	wav_obj_meta(L);
 	
+	mus_obj_meta(L);
+	
 	/* There is a function C('selector') that returns a CellObj object that
 		gives you access to the cells on the map. */
 	cell_obj_meta(L);
@@ -1569,6 +1665,7 @@ static int lus_deinit(struct game_state *s) {
 	
 	/* Stop all sounds */
 	Mix_HaltChannel(-1);
+	Mix_HaltMusic();
 	
 	/* Remove the map */
 	lua_getglobal(L, STATE_DATA_VAR);

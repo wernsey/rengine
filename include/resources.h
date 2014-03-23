@@ -14,6 +14,7 @@ struct bitmap *re_get_bmp(const char *filename);
 
 #ifdef WITH_MIXER
 Mix_Chunk *re_get_wav(const char *filename);
+Mix_Music *re_get_mus(const char *filename);
 #endif
 
 char *re_get_script(const char *filename);

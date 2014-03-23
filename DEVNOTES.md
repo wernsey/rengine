@@ -46,6 +46,28 @@ I should remove Musl from Rengine completely. The thing I had in mind when
 I put it in can now be done in Lua as the engine evolved. Keeping Musl now
 forces me to maintain two scripting language bindings.
 
+## Audio
+
+In order to compile SDL_mixer with support for Ogg Vorbis (under MinGW), I 
+had to set the CFLAGS and LDFLAGS environment variables when I ran `./configure`
+in SDL_mixer:
+
+	# cd libvorbis-1.3.4/
+	./configure
+	make
+	make install
+	# cd libogg-1.3.1/
+	./configure
+	make
+	make install
+	# cd SDL2_mixer-2.0.0
+	export CFLAGS=-I/usr/local/include/
+	export LDFLAGS=-L/usr/local/lib
+	./configure
+	make
+	make install
+
+
 # Editor
 
 Changing the Working Directory affects the tilesets, so you should rather

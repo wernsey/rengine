@@ -22,6 +22,7 @@ struct resource_cache {
 	
 	struct hash_tbl *bmp_cache;
 	struct hash_tbl *wav_cache;
+	struct hash_tbl *mus_cache;
 	
 	/* I expect as development continues, other 
 	things will be cached as well */
@@ -33,6 +34,7 @@ static struct resource_cache *re_cache_create() {
 	struct resource_cache *rc = malloc(sizeof *rc);
 	rc->bmp_cache = ht_create(128);
 	rc->wav_cache = ht_create(128);
+	rc->mus_cache = ht_create(128);
 	rc->parent = NULL;
 	return rc;
 }
@@ -49,9 +51,16 @@ static void wav_cache_cleanup(const char *key, void *vb) {
 	Mix_FreeChunk(sound);
 }
 
+static void mus_cache_cleanup(const char *key, void *vb) {
+	Mix_Music *music = vb;
+	rlog("Freeing '%s'", key);
+	Mix_FreeMusic(music);
+}
+
 static void re_cache_destroy(struct resource_cache *rc) {
 	ht_free(rc->bmp_cache, bmp_cache_cleanup);
 	ht_free(rc->wav_cache, wav_cache_cleanup);
+	ht_free(rc->mus_cache, mus_cache_cleanup);
 	free(rc);
 }
 
@@ -189,7 +198,6 @@ Mix_Chunk *re_get_wav(const char *filename) {
 	
 	SDL_RWops * ops = re_get_RWops(filename);
 	if(!ops) {
-		/*  */
 		return NULL;
 	}	
 	chunk = Mix_LoadWAV_RW(ops, 1);
@@ -201,6 +209,33 @@ Mix_Chunk *re_get_wav(const char *filename) {
 	rlog("Cached WAV '%s'", filename);
 	
 	return chunk;
+}
+
+Mix_Music *re_get_mus(const char *filename) {	
+	Mix_Music *music = NULL;
+	
+	struct resource_cache *rc = re_cache;	
+	while(rc) {
+		music = ht_find(rc->mus_cache, filename);
+		if(music) {
+			return music;
+		}
+		rc = rc->parent;
+	}
+	
+	SDL_RWops * ops = re_get_RWops(filename);
+	if(!ops) {
+		return NULL;
+	}	
+	music = Mix_LoadMUS_RW(ops, 1);
+	if(!music) {
+		return NULL;
+	}
+	
+	ht_insert(re_cache->mus_cache, filename, music);
+	rlog("Cached Music '%s'", filename);
+	
+	return music;
 }
 
 char *re_get_script(const char *filename) {
