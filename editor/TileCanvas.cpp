@@ -23,8 +23,8 @@ int TileCanvas::handle(int event) {
 					int mx = (Fl::event_x() - x())/zoom();
 					int my = (Fl::event_y() - y())/zoom();
 					
-					selCol = mx/_map->tiles.tw;
-					selRow = my/_map->tiles.th;
+					selCol = mx/(_map->tiles.tw + tiles->border);
+					selRow = my/(_map->tiles.th + tiles->border);
 					
 					if(select_callback)
 						select_callback(this);
