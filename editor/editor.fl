@@ -243,13 +243,9 @@ Function {make_window()} {open
     }
   }
   Fl_Window tile_props_dlg {
-    label {Tileset Properties} open
+    label {Tileset Properties} open selected
     xywh {1017 273 166 132} type Double align 17 modal visible
   } {
-    Fl_Value_Input tile_border_input {
-      label {Tile Border} selected
-      xywh {80 40 80 25} maximum 10 step 1
-    }
     Fl_Button {} {
       label OK
       callback tile_props_ok_cb
@@ -264,6 +260,10 @@ Function {make_window()} {open
       label {Mask Color}
       callback mask_color_click_cb
       xywh {80 5 80 30} color 5 align 4
+    }
+    Fl_Spinner tile_border_input {
+      label {Tile Border}
+      xywh {80 45 80 25} minimum 0 maximum 10 value 0
     }
   }
 } 
