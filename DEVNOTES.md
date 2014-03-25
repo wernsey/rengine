@@ -14,8 +14,29 @@ Docs says `SDL_UpdateTexture()` be slow. Do something different.
 
 ## Game
 
-The scheme of pushing/popping states has some implications on the
-save game system. And on the sprite system I intend to add later.
+~~The scheme of pushing/popping states has some implications on the
+save game system. And on the sprite system I intend to add later.~~
+
+At the moment I'm seriously considering removing the ability to push/pop
+states. The reason is that being able to push/pop states doesn't really 
+add any benefit that can't be achieved through the Game Database.
+
+Pros of bing able to push/pop states:
+* You can easily do things like the player walking through a town then 
+entering a store (pushing the town state), and when he leaves the store
+again popping the state to return the player to the town.
+* If you pop a state, you already have that state's resources in memory.
+Likewise, if you push a state that reuses an old state's resources then
+they can be reused.
+
+Cons:
+* You need to somehow save the stack of states when saving the game, and
+then reliably restore it again when the game is loaded.
+* What about music that's playing when you change states through 
+pushing/popping?
+
+If I do this, I should also remove that functionality from the resources
+module.
 
 ## Graphics
 
@@ -30,7 +51,7 @@ high on my list of priorities.
 
 ## Resources
 
-Also wrt. the PAK file module, the ZIP file format turns out to be
+Wrt. the PAK file module, the ZIP file format turns out to be
 not that different, so I should look into it more closely.
 
 ## Input
