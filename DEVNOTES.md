@@ -38,6 +38,9 @@ pushing/popping?
 If I do this, I should also remove that functionality from the resources
 module.
 
+Onn the other hand, I don't expose the push/pop API yet, so I don't 
+really have to change any code right now.
+
 ## Graphics
 
 The `bm_fill()` function in `bmp.c` doesn't take the clipping rectangle

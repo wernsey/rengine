@@ -107,6 +107,24 @@ static int l_log(lua_State *L) {
 	return 0;
 }
 
+/*@ import(path)
+ *# Loads a Lua script from the resource on the specified path.
+ *# This function is needed because the standard Lua functions like
+ *# require() and dofile() are disabled in the Rengine sandbox.
+ */
+static int l_import(lua_State *L) {	
+	const char *path = lua_tolstring(L, 1, NULL);
+	char * script = re_get_script(path);
+	if(!script)
+		luaL_error(L, "Could not import %s", path);
+	rlog("Imported %s", path);
+	if(luaL_dostring(L, script)) {
+		sublog("lua", "%s: %s", path, lua_tostring(L, -1));
+	}
+	free(script);
+	return 0;
+}
+
 /*@ setTimeout(func, millis)
  *# Waits for {{millis}} milliseconds, then calls {{func}}
  */
@@ -1506,6 +1524,7 @@ static int lus_init(struct game_state *s) {
 	GLOBAL_FUNCTION("log", l_log);
 	GLOBAL_FUNCTION("setTimeout", l_set_timeout);
 	GLOBAL_FUNCTION("onUpdate", l_onUpdate);
+	GLOBAL_FUNCTION("import", l_import);
 	
 	luaL_newlib(L, game_funcs);
 	/* Register some Lua variables. */	
