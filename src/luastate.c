@@ -33,11 +33,9 @@
 #include "game.h"
 #include "ini.h"
 #include "utils.h"
-#include "particles.h"
 #include "log.h"
 #include "gamedb.h"
 
-#define WITH_MIXER
 #include "resources.h"
 
 #define MAX_TIMEOUTS 20
@@ -230,23 +228,6 @@ static int l_changeState(lua_State *L) {
 	return 0;
 }
 
-/*@ Game.createParticle(x,y, dx,dy, life, color)
- *# Creates a particle at position (x,y), with color {{color}} moving in direction (dx,dy) every frame.
- *# The particle  lasts for {{life}} seconds.
- *N This function generates particles for title screens.
- *# The particles don't do collision detection on the map and don't take layers into account.
- */
-static int l_createParticle(lua_State *L) {
-	float x = luaL_checknumber(L, -6);
-	float y = luaL_checknumber(L, -5);
-	float dx = luaL_checknumber(L, -4);
-	float dy = luaL_checknumber(L, -3);
-	float life = luaL_checknumber(L, -2) * fps; 
-	int color = bm_color_atoi(luaL_checkstring(L, -1));
-	add_particle(x, y, dx, dy, (int)life, color);
-	return 0;
-}
-
 /*@ Game.getStyle(style)
  *# Retrieves a specific [[Style]] from the [[game.ini]] file.
  */
@@ -260,7 +241,6 @@ static int l_getstyle(lua_State *L) {
 static const luaL_Reg game_funcs[] = {
   {"changeState",     l_changeState},
   {"getStyle",        l_getstyle},
-  {"createParticle",  l_createParticle},
   {0, 0}
 };
 
@@ -1277,8 +1257,6 @@ static int mus_halt(lua_State *L) {
 		
 	return 0;
 }
-
-Mix_HaltMusic();
 
 /*@ MusicObj:__tostring()
  *# Returns a string representation of the `MusicObj` instance.

@@ -28,7 +28,6 @@
 #include "ini.h"
 #include "resources.h"
 #include "utils.h"
-#include "particles.h"
 #include "log.h"
 #include "gamedb.h"
 
@@ -224,17 +223,6 @@ static struct mu_par mus_log(struct musl *m, int argc, struct mu_par argv[]) {
 	}	
 	return rv;
 }
-
-
-/*@ CLEAR_PARTICLES() 
- *# Removes al particles
- */
-static struct mu_par mus_clr_par(struct musl *m, int argc, struct mu_par argv[]) {
-	struct mu_par rv = {mu_int, {0}};
-	clear_particles();
-	return rv;
-}
-
 
 /*@ DELAY([millis]) 
  *# Waits for a couple of milliseconds
@@ -524,7 +512,6 @@ static int mus_init(struct game_state *s) {
 	mu_add_func(md->mu, "show", mus_show);
 	mu_add_func(md->mu, "log", mus_log);
 	mu_add_func(md->mu, "delay", mus_delay);
-	mu_add_func(md->mu, "clear_particles", mus_clr_par);
 	
 	mu_add_func(md->mu, "pixel", mus_putpixel);
 	mu_add_func(md->mu, "line", mus_line);	

@@ -12,7 +12,7 @@ struct ini_file *re_get_ini(const char *filename);
 
 struct bitmap *re_get_bmp(const char *filename);
 
-#ifdef WITH_MIXER
+#ifdef _SDL_MIXER_H
 Mix_Chunk *re_get_wav(const char *filename);
 Mix_Music *re_get_mus(const char *filename);
 #endif

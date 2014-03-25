@@ -16,7 +16,6 @@
 #include "states.h"
 #include "utils.h"
 #include "game.h"
-#include "particles.h"
 #include "resources.h"
 #include "log.h"
 
@@ -230,10 +229,8 @@ static void basic_state(struct game_state *s, struct bitmap *bmp) {
 	bm_puts(bmp, tx, ty, text);	
 }
 
-static int basic_init(struct game_state *s) {	
-	
+static int basic_init(struct game_state *s) {		
 	reset_keys();
-	clear_particles();
 	return 1;
 }
 

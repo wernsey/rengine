@@ -16,7 +16,6 @@
 #include "bmp.h"
 #include "ini.h"
 #include "game.h"
-#include "particles.h"
 #include "utils.h"
 #include "states.h"
 #include "resources.h"
@@ -175,9 +174,7 @@ void advanceFrame() {
 	SDL_Event event;	
 	Uint32 end;
 	int new_btns;
-	
-	update_particles(bmp, 0, 0);
-	
+		
 	render();
 		
 	end = SDL_GetTicks();
@@ -439,9 +436,7 @@ start_demo:
 	}*/
 	
 	bm_free(bmp);
-	
-	clear_particles();
-	
+		
 	SDL_DestroyTexture(tex);
 	SDL_DestroyRenderer(ren);
 	SDL_DestroyWindow(win);
