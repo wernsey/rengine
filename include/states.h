@@ -19,8 +19,11 @@ struct game_state *current_state();
 
 int change_state(struct game_state *next);
 
+#if 0
+/* As of now, consider these functions deprecated */
 int push_state(struct game_state *next);
 int pop_state(struct game_state *next);
+#endif
 
 int set_state(const char *name);
 

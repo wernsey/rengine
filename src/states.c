@@ -470,6 +470,8 @@ int change_state(struct game_state *next) {
 	return 1;
 }
 
+#if 0
+/* As of now, consider these functions deprecated */
 int push_state(struct game_state *next) {
 	if(state_top > MAX_NESTED_STATES - 1) {
 		rerror("Too many nested states");
@@ -492,6 +494,7 @@ int pop_state(struct game_state *next) {
 	re_pop();	
 	return r;
 }
+#endif
 
 static struct game_state *get_state(const char *name) {
 	const char *type;

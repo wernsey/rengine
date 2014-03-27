@@ -2,9 +2,11 @@
 void re_initialize();
 void re_clean_up();
 
+#if 0
+/* As of now, consider these functions deprecated */
 void re_push();
-
 void re_pop();
+#endif
 
 int rs_read_pak(const char *filename);
 
