@@ -1,12 +1,13 @@
 --[[ 
 Poofs! some functions I don't want accessible to user created
-scripts; http://stackoverflow.com/a/1054957/115589
+scripts;
+See http://stackoverflow.com/a/1054957/115589 and http://lua-users.org/wiki/SandBoxes
 ]]
 require = nil;
 collectgarbage = nil;
 load = nil;
 loadfile = nil;
-loadstring = nil;
+--loadstring = nil; -- Actually needed for deserializing stuff.
 dofile = nil;
 rawequal = nil;
 rawget = nil;
@@ -50,4 +51,34 @@ function class(baseClass, body)
 	end
 	
 	return ret;
+end;
+
+--[[
+Serializes an object {{o}} to a string.
+Based on the one in section 12.1.1 of the PIL book http://www.lua.org/pil/12.1.1.html
+It does not serialize tables with cycles.
+]]
+function serialize(o)
+	if type(o) == "number" then
+		return tostring(o)
+	elseif type(o) == "string" then
+		return string.format("%q", o)
+	elseif type(o) == "table" then
+		local s = "{"
+		for k,v in pairs(o) do
+			s = s .. "[" .. serialize(k) .. "]=" .. serialize(v) .. ","
+		end
+		return s .. "}";
+	else	
+		return "";
+	end
+end;
+
+--[[
+Deserializes an object pr
+http://www.lua.org/pil/8.html
+]]
+function deserialize(s)
+	local f = assert(loadstring("do return " .. s .. " end"))
+	return f()
 end

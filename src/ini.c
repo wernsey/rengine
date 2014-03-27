@@ -20,7 +20,9 @@
 #include "ini.h"
 #include "utils.h"
 
-/* Maximum number of characters expected on a line */
+/* Maximum number of characters expected on a line.
+It is only used by the ini_putf() function.
+*/
 #define MAX_LINE		1024
 
 /* Various error codes */

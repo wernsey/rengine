@@ -41,6 +41,11 @@ module.
 Onn the other hand, I don't expose the push/pop API yet, so I don't 
 really have to change any code right now.
 
+I should consider changing ini.c to use hash.c hash tables rather than its
+own built in binary trees. The first obvious reason is the O(1) lookup, but
+another advantage will be the ability to iterate through the INI file using
+`ht_next()`
+
 ## Graphics
 
 The `bm_fill()` function in `bmp.c` doesn't take the clipping rectangle
