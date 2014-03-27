@@ -78,6 +78,9 @@ void re_clean_up() {
 	}
 }
 
+
+#if 0
+/* As of now, consider these functions deprecated */
 void re_push() {
 	struct resource_cache *rc = re_cache_create();
 	rc->parent = re_cache;
@@ -95,6 +98,7 @@ void re_pop() {
 	re_cache = re_cache->parent;
 	re_cache_destroy(rc);	
 }
+#endif
 
 int rs_read_pak(const char *filename) {
 	game_pak = pak_open(filename);

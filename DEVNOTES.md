@@ -38,8 +38,8 @@ pushing/popping?
 If I do this, I should also remove that functionality from the resources
 module.
 
-Onn the other hand, I don't expose the push/pop API yet, so I don't 
-really have to change any code right now.
+For now, I've just surrounded the functions with `#ifdef 0`s. I can decide
+later.
 
 I should consider changing ini.c to use hash.c hash tables rather than its
 own built in binary trees. The first obvious reason is the O(1) lookup, but
