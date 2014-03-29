@@ -195,6 +195,7 @@ static void process_timeouts(lua_State *L) {
 
 /*@ onUpdate(func)
  *# Registers the function {{func}} to be called every frame
+ *# when Rengine draws the screen.
  */
 static int l_onUpdate(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
@@ -227,6 +228,24 @@ static int l_onUpdate(lua_State *L) {
 	}
 	
 	return 1;
+}
+
+/*@ advanceFrame()
+ *# Low-level function to advance the animation frame on the screen.\n
+ *# It flips the back buffer, retrieves user inputs and processes system 
+ *# events.\n
+ *# In general you should not call this function directly, since Rengine
+ *# does the above automatically. This function is provided for the special
+ *# case where you need a Lua script to run in a loop, and during each 
+ *# iteration update the screen and get new user input.\n
+ *# An example of such a case is drwaing a GUI completely in a Lua script.\n
+ *# It does not clear the screen - you'll need to do that yourself.
+ *# Timeouts set through {{setTimeout()}} will also be processed.
+ */
+static int l_advanceFrame(lua_State *L) {	
+	process_timeouts(L);
+	advanceFrame();
+	return 0;
 }
 
 /*1 Game object
@@ -1255,7 +1274,7 @@ static int mus_play(lua_State *L) {
 	int loops = -1;
 	
 	if(lua_gettop(L) > 1) {
-		loops = luaL_checkinteger(L, 1);
+		loops = luaL_checkinteger(L, 2);
 	}
 	
 	if(Mix_PlayMusic(m, loops) == -1) {
@@ -1525,6 +1544,7 @@ static int lus_init(struct game_state *s) {
 	GLOBAL_FUNCTION("setTimeout", l_set_timeout);
 	GLOBAL_FUNCTION("onUpdate", l_onUpdate);
 	GLOBAL_FUNCTION("import", l_import);
+	GLOBAL_FUNCTION("advanceFrame", l_advanceFrame);
 	
 	luaL_newlib(L, game_funcs);
 	/* Register some Lua variables. */	
