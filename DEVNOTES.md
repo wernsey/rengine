@@ -7,9 +7,6 @@ and TODOs in here.
 
 ## SDL
 
-At the moment I have SDL_mixer 2.0.0 built, but without any support for 
-additional file formats.
-
 Docs says `SDL_UpdateTexture()` be slow. Do something different.
 
 ## Game

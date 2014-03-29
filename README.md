@@ -49,9 +49,11 @@ them under Windows.
 ## License
 
 Rengine is distributed under the terms of the MIT License. See the
-`LICENSE` file for details.
+`LICENSE.md` file for details.
 
 There are no restrictions on any games produced with the engine.
 
 Also refer to the [Wikipedia
 article](http://en.wikipedia.org/wiki/MIT_License) for more information.
+
+
