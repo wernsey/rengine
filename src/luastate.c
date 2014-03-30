@@ -52,9 +52,9 @@ extern size_t base_lua_len;
 /* Don't tamper with this variable from your Lua scripts. */
 #define STATE_DATA_VAR	"___state_data"
 
-struct _update_function {
+struct callback_function {
 	int ref;
-	struct _update_function *next;
+	struct callback_function *next;
 };
 
 struct lustate_data {
@@ -71,7 +71,8 @@ struct lustate_data {
 	} timeout[MAX_TIMEOUTS];
 	int n_timeout;
 	
-	struct _update_function *update_fcn, *last_fcn;
+	struct callback_function *update_fcn, *last_fcn;	
+	struct callback_function *atexit_fcn;
 	
 	int change_state;
 	char *next_state;
@@ -201,7 +202,7 @@ static int l_onUpdate(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
 
 	if(lua_gettop(L) == 1 && lua_isfunction(L, -1)) {
-		struct _update_function *fn;
+		struct callback_function *fn;
 				
 		fn = malloc(sizeof *fn);
 		if(!fn)
@@ -229,6 +230,38 @@ static int l_onUpdate(lua_State *L) {
 	
 	return 1;
 }
+
+/*@ atExit(func)
+ *# Registers the function {{func}} to be called when the
+ *# current state is exited.\n
+ *# These functions should not do any drawing.
+ */
+static int l_atExit(lua_State *L) {
+	struct lustate_data *sd = get_state_data(L);
+
+	if(lua_gettop(L) == 1 && lua_isfunction(L, -1)) {
+		struct callback_function *fn;
+				
+		fn = malloc(sizeof *fn);
+		if(!fn)
+			luaL_error(L, "Out of memory");
+		
+		/* And create a reference to it in the special LUA_REGISTRYINDEX */
+		fn->ref = luaL_ref(L, LUA_REGISTRYINDEX);		
+		rlog("Registering atExit() callback %d", fn->ref);
+		
+		fn->next = sd->atexit_fcn;
+		sd->atexit_fcn = fn;
+		
+		lua_pushinteger(L, fn->ref);		
+	} else {
+		luaL_error(L, "atExit() requires a function as a parameter");
+	}
+	
+	return 1;
+}
+
+struct callback_function *atexit_fcn, *last_atexit_fcn;
 
 /*@ advanceFrame()
  *# Low-level function to advance the animation frame on the screen.\n
@@ -1498,6 +1531,7 @@ static int lus_init(struct game_state *s) {
 	sd->state = s;	
 	sd->update_fcn = NULL;	
 	sd->last_fcn = NULL;
+	sd->atexit_fcn = NULL;	
 	
 	sd->n_timeout = 0;
 	sd->map = NULL;
@@ -1543,6 +1577,7 @@ static int lus_init(struct game_state *s) {
 	GLOBAL_FUNCTION("log", l_log);
 	GLOBAL_FUNCTION("setTimeout", l_set_timeout);
 	GLOBAL_FUNCTION("onUpdate", l_onUpdate);
+	GLOBAL_FUNCTION("atExit", l_atExit);
 	GLOBAL_FUNCTION("import", l_import);
 	GLOBAL_FUNCTION("advanceFrame", l_advanceFrame);
 	
@@ -1616,7 +1651,7 @@ static int lus_init(struct game_state *s) {
 static int lus_update(struct game_state *s, struct bitmap *bmp) {
 	struct lustate_data *sd = NULL;
 	lua_State *L = s->data;
-	struct _update_function *fn;
+	struct callback_function *fn;
 	
 	assert(L);
 	
@@ -1679,20 +1714,30 @@ static int lus_deinit(struct game_state *s) {
 	
 	if(!L)
 		return 0;
-	
-	/* Stop all sounds */
-	Mix_HaltChannel(-1);
-	Mix_HaltMusic();
-	
-	/* Remove the map */
+		
 	lua_getglobal(L, STATE_DATA_VAR);
 	if(!lua_isnil(L,-1)) {
 		if(!lua_islightuserdata(L, -1)) {
 			rerror("Variable %s got tampered with (lus_deinit)", STATE_DATA_VAR);
 		} else {
-			struct _update_function *fn;
+			struct callback_function *fn;
 			
-			sd = lua_touserdata(L, -1);
+			sd = lua_touserdata(L, -1);			
+			
+			/* Execute the atExit() callbacks */
+			fn = sd->atexit_fcn;
+			while(fn) {				
+				struct callback_function *old = fn;
+				lua_rawgeti(L, LUA_REGISTRYINDEX, fn->ref);
+				if(lua_pcall(L, 0, 0, 0)) {
+					rerror("Unable to execute atExit() callback (%d)", fn->ref);
+					sublog("lua", "%s", lua_tostring(L, -1));
+				}
+				fn = fn->next;
+				free(old);
+			}
+			
+			/* Remove the map */
 			map_free(sd->map);
 			
 			while(sd->update_fcn) {
@@ -1708,6 +1753,10 @@ static int lus_deinit(struct game_state *s) {
 		}
 	}
 	lua_pop(L, 1);
+	
+	/* Stop all sounds */
+	Mix_HaltChannel(-1);
+	Mix_HaltMusic();
 	
 	lua_close(L);
 	L = NULL;

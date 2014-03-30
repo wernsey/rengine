@@ -53,12 +53,11 @@ Rengine is distributed under the terms of the MIT License.
 The `LICENSE.md` file contains the specific details, along with the 
 details of the library dependencies.
 
-There are no restrictions on any games produced with the engine.
-
-3rd party licenses
+3rd party licenses:
 * SDL2 is licensed under the zlib license.
 * Lua is licensed under the MIT license
 * libogg and libvorbis are licensed under the New BSD license.
 * FLTK is provided under the terms of the LGPL with an exception for
 	static linking.
 
+There are no restrictions on any games produced with the engine.
