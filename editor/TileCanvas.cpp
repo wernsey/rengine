@@ -53,12 +53,12 @@ void TileCanvas::paint() {
 			for(int n = 0; n < tiles->nmeta; n++) {
 				struct tile_meta *m = &tiles->meta[n];
 				if(m->flags & TS_FLAG_BARRIER) {				
-					int tr = tiles->bm->w / _map->tiles.tw;
+					int tr = tiles->bm->w / (_map->tiles.tw + tiles->border);
 					int row = m->ti / tr;
 					int col = m->ti % tr;
 					
-					for(int y = row * _map->tiles.th; y < (row + 1) * _map->tiles.th; y++)
-						for(int x = col * _map->tiles.tw; x < (col + 1) * _map->tiles.tw; x++) {
+					for(int y = row * (_map->tiles.th + tiles->border); y < (row + 1) * (_map->tiles.th + tiles->border); y++)
+						for(int x = col * (_map->tiles.tw + tiles->border); x < (col + 1) * (_map->tiles.tw + tiles->border); x++) {
 							if((x + y) % 2) 
 								putpixel(x, y);
 						}

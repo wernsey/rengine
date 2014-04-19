@@ -290,6 +290,7 @@ void tileset_reload_img_cb(Fl_Menu_*, void*) {
 		bm_set_color_i(ts->bm, mask);
 		bm_free(bm);
 		canvas->redraw();
+		tiles->redraw();
 	} else {
 		ts->bm = bm;
 		fl_alert("Unable to reload tileset %s", ts->name);
@@ -489,6 +490,7 @@ void tile_props_ok_cb(Fl_Button*, void*) {
 	
 	tile_props_dlg->hide();
 	canvas->redraw();
+	tiles->redraw();
 }
 
 void tile_props_cancel_cb(Fl_Button*, void*) {
