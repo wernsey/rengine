@@ -1,6 +1,6 @@
 # Rengine
 
-A Retro Game Engine.
+An Open-Source Retro Game Engine.
 
 Rengine is intended for _Retro-style_ games. The word _style_ is used
 because while games running under Rengine will look retro, they are by no
@@ -11,6 +11,9 @@ Rengine also includes a 2D level editor for editing maps.
 * The home of Rengine is at https://github.com/wernsey/rengine
 * Documentation can be found on the [Rengine wiki](https://github.com/wernsey/rengine/wiki)
 	page on GitHub.
+
+Rengine is distributed under the terms of the MIT License, which means that
+it can be used for just about any purpose. See below for details.
 
 # Technical
 
@@ -24,7 +27,9 @@ others invoke a scripting engine to draw graphics and control the game.
 
 ## Dependencies
 
-Rengine is dependant upon these 3rd party libraries:
+Rengine is dependant upon these 3rd party libraries. The version numbers in
+parenthesis are the latest specific versions that rengine was built and 
+tested against:
 
 * SDL (2.0.1) - Cross-platform low level game library -
 http://www.libsdl.org
@@ -36,6 +41,13 @@ http://www.libsdl.org/projects/SDL_mixer/
 
 * libvorbis-1.3.4 and libogg-1.3.1 - Open audio encoding and 
 	streaming technology - https://www.xiph.org/downloads/
+
+* libpng (1.5.4) - Portable network graphics reference library
+	used for support of the PNG file format
+	http://www.libpng.org/pub/png/libpng.html
+	
+* zlib (1.2.8) - Compression library, used by libpng.
+	http://www.zlib.net/
 
 * FLTK (1.3.2) - Cross-platform GUI toolkit, used for the map editor -
 http://www.fltk.org
