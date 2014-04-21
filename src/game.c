@@ -143,7 +143,7 @@ int handleSpecialKeys(SDL_Scancode key) {
 		}
 		return 1;
 	} else if(key == SDL_SCANCODE_F12) {
-		const char *filename = "save.bmp";
+		const char *filename = "save.png";
 		bm_save(bmp, filename);
 		rlog("Screenshot saved as %s", filename);
 		return 1;
