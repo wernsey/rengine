@@ -14,9 +14,9 @@ LFLAGS += `sdl2-config --libs` -lGL
 RES = 
 endif
 
-CFLAGS = -DEDITOR -I ../include -I ..
+CFLAGS = -DEDITOR -I ../include -I .. -I /usr/local/include -DUSEPNG
 CPPFLAGS = `$(fltk-config) --cxxflags` -c -I . -I./editor -I ../include
-LPPFLAGS = `$(fltk-config) --ldflags` 
+LPPFLAGS = `$(fltk-config) --ldflags` -lpng -lz
 
 ifeq ($(BUILD),debug)
 # Debug mode: Unoptimized and with debugging symbols

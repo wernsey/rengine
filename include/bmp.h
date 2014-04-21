@@ -32,11 +32,11 @@ struct bitmap {
 	/* Dimesions of the bitmap */
 	int w, h;	
 	
-	/* The actual pixel data */
+	/* The actual pixel data in RGBA format */
 	unsigned char *data;
 		
 	/* Color for the pen, of the canvas */
-	int r,g,b;
+	int r,g,b,a;
 	
 	/* XBM font. See font.xbm */
 	const unsigned char *font;
@@ -65,19 +65,25 @@ struct bitmap *bm_create(int w, int h);
 void bm_free(struct bitmap *b);
 
 /*@ struct bitmap *bm_load(const char *filename)
- *# Loads the file {{filename}} into a bitmap structure.\n
+ *# Loads a bitmap file {{filename}} into a bitmap structure.\n
+ *# It tries to detect the file type from the first bytes in the file.
+ *# BMP support is always enabled, while PNG support is optional.\n
  *# Returns NULL if the file could not be loaded.
  */
 struct bitmap *bm_load(const char *filename);
 
 /*@ struct bitmap *bm_load_fp(FILE *f)
- *# Loads the a bitmap from a {{FILE*}} that's already open.\n
+ *# Loads a bitmap from a {{FILE*}} that's already open.\n
+ *# BMP support is always enabled, while PNG support is optional.\n
  *# Returns {{NULL}} if the file could not be loaded.
  */
 struct bitmap *bm_load_fp(FILE *f);
 
 /*@ int bm_save(struct bitmap *b, const char *fname)
- *# Saves the bitmap {{b}} to the file named {{fname}}.\n
+ *# Saves the bitmap {{b}} to a BMP or PNG file named {{fname}}.\n
+ *# It will only save to PNG if PNG support is enabled, in which case
+ *# it checks whether the filename contains {{".bmp"}}. If it does, the
+ *# file is saved as a BMP, otherwise as a PNG.
  *# Returns 1 on success, 0 on failure.
  */
 int bm_save(struct bitmap *b, const char *fname);
@@ -87,6 +93,11 @@ int bm_save(struct bitmap *b, const char *fname);
  */
 /* THIS FUNCTION IS NOT PROPERLY TESTED YET */
 struct bitmap *bm_copy(struct bitmap *b);
+
+/*@ void bm_flip_vertical(struct bitmap *b)
+ *# Flips the bitmap vertically.
+ */
+void bm_flip_vertical(struct bitmap *b);
 
 /*@ void bm_clip(struct bitmap *b, int x0, int y0, int x1, int y1)
  *# Sets the clipping rectangle on the bitmap from {{x0,y0}} (inclusive)
@@ -99,10 +110,15 @@ void bm_clip(struct bitmap *b, int x0, int y0, int x1, int y1);
  */
 void bm_unclip(struct bitmap *b);
 
-/*@ unsigned char bm_getr(struct bitmap *b, int x, int y)
+/*@ void bm_set(struct bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B)
  *# Sets a pixel at x,y in the bitmap b to the specified R,G,B color
  */ 
 void bm_set(struct bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B);
+
+/*@ void bm_set_a(struct bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B, unsigned char A)
+ *# Sets a pixel at x,y in the bitmap b to the specified R,G,B,A color
+ */ 
+void bm_set_a(struct bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B, unsigned char A);
 
 /*@ unsigned char bm_getr(struct bitmap *b, int x, int y)
  *# Retrieves the R value of the pixel at x,y in bitmap b 
@@ -119,10 +135,20 @@ unsigned char bm_getg(struct bitmap *b, int x, int y);
  */
 unsigned char bm_getb(struct bitmap *b, int x, int y);
 
+/*@ unsigned char bm_geta(struct bitmap *b, int x, int y)
+ *# Retrieves the A (alpha) value of the pixel at x,y in bitmap b 
+ */
+unsigned char bm_geta(struct bitmap *b, int x, int y);
+
 /*@ void bm_set_color(struct bitmap *bc, int r, int g, int b)
  *# Sets the colour of the pen to (r,g,b)
  */
 void bm_set_color(struct bitmap *bm, int r, int g, int b);
+
+/*@ void bm_set_alpha(struct bitmap *bm, int a)
+ *# Sets the alpha value of the pen to {{a}}
+ */
+void bm_set_alpha(struct bitmap *bm, int a);
 
 /*@ void bm_set_color_s(struct bitmap *bm, const char *text)
  *# Sets the colour of the pen to a colour represented by text.

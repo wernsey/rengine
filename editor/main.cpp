@@ -219,7 +219,7 @@ void quit_cb(Fl_Menu_* w, void *p) {
 
 void tilesetadd_cb(Fl_Menu_* w, void*) {
 	if(!canvas->getMap()) return;
-	char * filename = fl_file_chooser("Choose Bitmap", "Bitmap files (*.bmp)", "", 1);
+	char * filename = fl_file_chooser("Choose Bitmap", "Bitmap files (*.bmp)\tPNG files (*.png)", "", 1);
 	if(filename != NULL) {
 		tile_collection *tc = &canvas->getMap()->tiles;
 		if(ts_find(tc, filename)) {
