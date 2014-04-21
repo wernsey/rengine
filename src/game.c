@@ -95,7 +95,7 @@ int init(const char *appTitle, int virt_width, int virt_height) {
 			flags |= SDL_WINDOW_BORDERLESS;
 	}
 	
-	win = SDL_CreateWindow(appTitle, 100, 100, screenWidth, screenHeight, flags);	
+	win = SDL_CreateWindow(appTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, screenWidth, screenHeight, flags);	
 	if(!win) {
 		rerror("SDL_CreateWindow: %s", SDL_GetError());
 		return 0;
@@ -211,18 +211,8 @@ void advanceFrame() {
 		} else if(event.type == SDL_KEYUP) {
 			int index = event.key.keysym.scancode;			
 			assert(index < SDL_NUM_SCANCODES);			
-			keys[index] = 0;
-						
-		}  else if(event.type == SDL_MOUSEBUTTONDOWN) {
-			/* We don't need these anymore.
-			if(event.button.button == SDL_BUTTON_LEFT) {
-				int i;
-				for(i = 0; i < 20; i++) {
-					add_particle(mouse_x, mouse_y, (float)(rand()%8 - 3)/2, (float)(rand()%8 - 3)/2, rand()%33 + 10, bm_lerp(0xFFFFFF, 0x00FF00, (double)rand()/RAND_MAX));					
-				}
-			} else if(event.button.button == SDL_BUTTON_RIGHT) {
-			}
-			*/			
+			keys[index] = 0;						
+		} else if(event.type == SDL_MOUSEBUTTONDOWN) {		
 		} else if(event.type == SDL_WINDOWEVENT) {
 			switch(event.window.event) {
 			case SDL_WINDOWEVENT_RESIZED:
