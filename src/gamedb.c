@@ -61,6 +61,10 @@ const char *gdb_get(const char *key) {
 	return ini_get(gamedb, NULL, key, "");
 }
 
+const char *gdb_get_null(const char *key) {
+	return ini_get(gamedb, NULL, key, NULL);
+}
+
 int gdb_has(const char *key) {
 	return ini_get(gamedb, NULL, key, NULL) != NULL;
 }
@@ -75,6 +79,11 @@ void gdb_local_put(const char *key, const char *value) {
 const char *gdb_local_get(const char *key){
 	const char *name = current_state()->name;
 	return ini_get(gamedb, name, key, "");
+}
+
+const char *gdb_local_get_null(const char *key){
+	const char *name = current_state()->name;
+	return ini_get(gamedb, name, key, NULL);
 }
 
 int gdb_local_has(const char *key) {

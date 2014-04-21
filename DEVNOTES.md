@@ -36,7 +36,9 @@ If I do this, I should also remove that functionality from the resources
 module.
 
 For now, I've just surrounded the functions with `#ifdef 0`s. I can decide
-later.
+later. It seems that the ability to push/pop states are still useful if you
+want to change state to a system menu (Like configuring your input device
+and so on).
 
 I should consider changing ini.c to use hash.c hash tables rather than its
 own built in binary trees. The first obvious reason is the O(1) lookup, but
@@ -92,7 +94,6 @@ in SDL_mixer:
 	./configure
 	make
 	make install
-
 
 # Editor
 

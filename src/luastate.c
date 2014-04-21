@@ -1378,7 +1378,7 @@ static void mus_obj_meta(lua_State *L) {
  */
 
 /*@ GameDB.set(key, value)
- *# Saves a key-value pair in the game database.
+ *# Saves a key-value pair in the game database.\n
  *# {{key}} and {{value}} are converted to strings internally.
  */
 static int gamedb_set(lua_State *L) {	
@@ -1388,17 +1388,22 @@ static int gamedb_set(lua_State *L) {
 	return 0;
 }
 
-/*@ GameDB.get(key)
- *# Retrieves the value associated with the {{key}} from the game database (as a string).
- *# It returns {{""}} if the key does not exist in the database.
+/*@ GameDB.get(key, [default])
+ *# Retrieves the value associated with the {{key}} from the game database (as a string).\n
+ *# If the key does not exist in the database it will either return {{default}} 
+ *# if it is provided, otherwise {{nil}}.
  */
 static int gamedb_get(lua_State *L) {	
 	const char *key = luaL_checkstring(L, 1);
-	const char *val = gdb_get(key);
+	const char *val = gdb_get_null(key);
 	if(val)
 		lua_pushstring(L, val);
-	else
-		lua_pushstring(L, "");
+	else {
+		if(lua_gettop(L) > 1) 
+			lua_pushvalue(L, 2);
+		else
+			lua_pushnil(L);
+	}
 	return 1;
 }
 
@@ -1412,7 +1417,7 @@ static int gamedb_has(lua_State *L) {
 }
 
 /*@ LocalDB.set(key, value)
- *# Saves a key-value pair in the game database.
+ *# Saves a key-value pair in the game database.\n
  *# {{key}} and {{value}} are converted to strings internally.
  */
 static int gamedb_local_set(lua_State *L) {	
@@ -1422,17 +1427,22 @@ static int gamedb_local_set(lua_State *L) {
 	return 0;
 }
 
-/*@ LocalDB.get(key)
- *# Retrieves the value associated with the {{key}} from the game database (as a string).
- *# It returns {{""}} if the key does not exist in the database.
+/*@ LocalDB.get(key, [default])
+ *# Retrieves the value associated with the {{key}} from the game database (as a string).\n
+ *# If the key does not exist in the database it will either return {{default}} 
+ *# if it is provided, otherwise {{nil}}.
  */
 static int gamedb_local_get(lua_State *L) {	
 	const char *key = luaL_checkstring(L, 1);
-	const char *val = gdb_local_get(key);
+	const char *val = gdb_local_get_null(key);
 	if(val)
 		lua_pushstring(L, val);
-	else
-		lua_pushstring(L, "");
+	else {
+		if(lua_gettop(L) > 1) 
+			lua_pushvalue(L, 2);
+		else
+			lua_pushnil(L);
+	}
 	return 1;
 }
 
