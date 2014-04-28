@@ -6,12 +6,8 @@ fltk-config = fltk-config
 # Different executables, and -lopengl32 is required for Windows
 ifeq ($(OS),Windows_NT)
 EDIT_BIN = ../bin/editor.exe
-LFLAGS += `sdl2-config --libs` -lopengl32
-RES = rengine.res
 else
 EDIT_BIN = ../bin/editor
-LFLAGS += `sdl2-config --libs` -lGL
-RES = 
 endif
 
 CFLAGS = -DEDITOR -I ../include -I .. -I /usr/local/include -DUSEPNG
