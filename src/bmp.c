@@ -10,11 +10,15 @@
 Use the -DUSEPNG compiler option to enable PNG support via libpng.
 If you use it, you need to link against the libpng (-lpng)
 and zlib (-lz) libraries.
-I've decided to keep it optional, for situations where
+Use the -DUSEJPG compiler option to enable JPG support via libjpg.
+I've decided to keep both optional, for situations where
 you may not want to import a bunch of third party libraries.
 */
 #ifdef USEPNG
 #	include <png.h>
+#endif
+#ifdef USEJPG
+#	include <jpeglib.h>
 #endif
 
 #include "bmp.h"
@@ -141,23 +145,46 @@ struct bitmap *bm_load(const char *filename) {
 }
 
 static struct bitmap *bm_load_bmp_fp(FILE *f);
-static struct bitmap *bm_load_png_fp(FILE *f);
-
-struct bitmap *bm_load_fp(FILE *f) {	
 #ifdef USEPNG
-	struct bmpfile_magic magic; 	
-	long start = ftell(f), isbmp = 0;	
+static struct bitmap *bm_load_png_fp(FILE *f);
+#endif
+#ifdef USEJPG
+static struct bitmap *bm_load_jpg_fp(FILE *f);
+#endif
+
+struct bitmap *bm_load_fp(FILE *f) {
+	unsigned char magic[2];	
+
+	long start = ftell(f), 
+		isbmp = 0, ispng = 0, isjpg = 0;	
 	/* Tries to detect the type of file by looking at the first bytes. */
-	if((fread(&magic, sizeof magic, 1, f) == 1) && magic.magic[0] == 'B' && magic.magic[1] == 'M') 
-		isbmp = 1;
+	if(fread(magic, sizeof magic, 1, f) == 1) {
+		if(magic[0] == 'B' && magic[1] == 'M') 
+			isbmp = 1;
+		else if(magic[0] == 0xFF && magic[1] == 0xD8)
+			isjpg = 1;
+		else
+			ispng = 1; /* Assume PNG by default. 
+					JPG and BMP magic numbers are simpler */
+	}
 	fseek(f, start, SEEK_SET);
-	if(isbmp)
-		return bm_load_bmp_fp(f);
-	else
+	
+#ifdef USEJPG
+	if(isjpg)
+		return bm_load_jpg_fp(f);
+#else
+	(void)isjpg;
+#endif
+#ifdef USEPNG
+	if(ispng)
 		return bm_load_png_fp(f);
 #else
-	return bm_load_bmp_fp(f);
+	(void)ispng;
 #endif
+	if(!isbmp) 
+		return NULL;
+	return bm_load_bmp_fp(f);
+
 }
 
 static struct bitmap *bm_load_bmp_fp(FILE *f) {	
@@ -263,24 +290,39 @@ error:
 }
 
 static int bm_save_bmp(struct bitmap *b, const char *fname);
+#ifdef USEPNG
 static int bm_save_png(struct bitmap *b, const char *fname);
+#endif
+#ifdef USEJPG
+static int bm_save_jpg(struct bitmap *b, const char *fname);
+#endif
 
 int bm_save(struct bitmap *b, const char *fname) {	
-#ifdef USEPNG
 	/* If the filename contains ".bmp" save as BMP,
+	   if the filename contains ".jpg" save as JPG,
 		otherwise save as PNG */
-	char *lname = strdup(fname), *c;
+	char *lname = strdup(fname), *c, 
+		bmp = 0, jpg = 0, png = 0;
 	for(c = lname; *c; c++)
 		*c = tolower(*c);
-	c = strstr(lname, ".bmp");
+	bmp = !!strstr(lname, ".bmp");
+	jpg = !!strstr(lname, ".jpg") || !!strstr(lname, ".jpeg");
+	png = !bmp && !jpg;
 	free(lname);
-	if(c) {		
-		return bm_save_bmp(b, fname);
-	}
-	return bm_save_png(b, fname);
+	
+#ifdef USEPNG
+	if(png)
+		return bm_save_png(b, fname);
 #else
+	(void)png;
+#endif	
+#ifdef USEJPG
+	if(jpg)
+		return bm_save_jpg(b, fname);
+#else
+	(void)jpg;
+#endif	
 	return bm_save_bmp(b, fname);
-#endif
 }
 
 static int bm_save_bmp(struct bitmap *b, const char *fname) {	
@@ -505,6 +547,107 @@ done:
 	if(png) png_destroy_write_struct(&png, NULL);
     fclose(f);
 	return rv;
+}
+#endif
+
+#ifdef USEJPG
+static struct bitmap *bm_load_jpg_fp(FILE *f) {
+	struct jpeg_decompress_struct cinfo;
+	struct jpeg_error_mgr jerr;
+	struct bitmap *bmp = NULL;
+	int i, j, row_stride;
+	unsigned char *data;
+	JSAMPROW row_pointer[1];
+		
+	cinfo.err = jpeg_std_error(&jerr);
+	jpeg_create_decompress(&cinfo);
+	
+	jpeg_stdio_src(&cinfo, f);
+	
+	jpeg_read_header(&cinfo, TRUE);
+	
+	cinfo.out_color_space = JCS_BG_RGB;
+	
+	bmp = bm_create(cinfo.image_width, cinfo.image_height);
+	if(!bmp) {
+		return NULL;
+	}
+	row_stride = bmp->w * 3; 
+	
+	data = malloc(row_stride);
+	if(!data) {
+		return NULL;
+	}
+	memset(data, 0x00, row_stride);
+	row_pointer[0] = data;
+	
+	jpeg_start_decompress(&cinfo);
+	
+	for(j = 0; j < cinfo.output_height; j++) {
+		jpeg_read_scanlines(&cinfo, row_pointer, 1);		
+		for(i = 0; i < bmp->w; i++) {
+			unsigned char *ptr = &(data[i * 3]);
+			BM_SET(bmp, i, j, ptr[0], ptr[1], ptr[2], 0xFF);
+		}
+	}
+	free(data);
+	jpeg_finish_decompress(&cinfo);
+	jpeg_destroy_decompress(&cinfo);
+	
+	return bmp;
+}
+static int bm_save_jpg(struct bitmap *b, const char *fname) {
+	struct jpeg_compress_struct cinfo;
+	struct jpeg_error_mgr jerr;
+	FILE *f;
+	int i, j;
+	JSAMPROW row_pointer[1];
+	int row_stride;
+	unsigned char *data;
+	
+	cinfo.err = jpeg_std_error(&jerr);
+	jpeg_create_compress(&cinfo);
+	
+	if(!(f = fopen(fname, "wb"))) {
+		return 0;
+	}
+	jpeg_stdio_dest(&cinfo, f);
+	
+	cinfo.image_width = b->w;
+	cinfo.image_height = b->h;
+	cinfo.input_components = 3;
+	cinfo.in_color_space = JCS_RGB;
+	
+	jpeg_set_defaults(&cinfo);
+	/*jpeg_set_quality(&cinfo, 100, TRUE);*/
+	
+	row_stride = b->w * 3; 
+	
+	data = malloc(row_stride);
+	if(!data) {
+		fclose(f);
+		return 0;
+	}
+	memset(data, 0x00, row_stride);
+		
+	jpeg_start_compress(&cinfo, TRUE);
+	for(j = 0; j < b->h; j++) {
+		for(i = 0; i < b->w; i++) {
+			data[i*3+2] = BM_GETR(b, i, j);
+			data[i*3+1] = BM_GETG(b, i, j);
+			data[i*3+0] = BM_GETB(b, i, j);
+		}
+		row_pointer[0] = data;
+		jpeg_write_scanlines(&cinfo, row_pointer, 1);
+	}
+	
+	free(data);
+	
+	jpeg_finish_compress(&cinfo);
+	jpeg_destroy_compress(&cinfo);
+	
+	fclose(f);	
+	return 1;
 }
 #endif
 

@@ -18,8 +18,8 @@ endif
 
 INCLUDE_PATH = -I /usr/local/include -I ../include -I ..
 
-CFLAGS += `sdl2-config --cflags` $(INCLUDE_PATH) -DUSEPNG 
-LFLAGS += -llua -lSDL2_mixer -lpng -lz
+CFLAGS += `sdl2-config --cflags` $(INCLUDE_PATH) -DUSEPNG -DUSEJPG
+LFLAGS += -llua -lSDL2_mixer -lpng -lz -ljpeg
 
 # Different executables, and -lopengl32 is required for Windows
 ifeq ($(OS),Windows_NT)

@@ -1,6 +1,8 @@
 /*! bmp.h
- *# Low-level routines to manipulate BMP files.\n
- *# At the moment, only 24-bit bitmap files are supported.
+ *# Low-level routines to manipulate bitmap graphic files.\n
+ *# It supports BMP files without any third party dependencies.
+ *# PNG support is optional through libpng (http://www.libpng.org/pub/png/libpng.html). Use -DUSEPNG when compiling.
+ *# JPG support is optional through libjpeg (http://www.ijg.org/). Use -DUSEJPG when compiling.
  *# 
  *@ References:
  *{
@@ -67,23 +69,24 @@ void bm_free(struct bitmap *b);
 /*@ struct bitmap *bm_load(const char *filename)
  *# Loads a bitmap file {{filename}} into a bitmap structure.\n
  *# It tries to detect the file type from the first bytes in the file.
- *# BMP support is always enabled, while PNG support is optional.\n
+ *# BMP support is always enabled, while JPG and PNG support is optional.\n
  *# Returns NULL if the file could not be loaded.
  */
 struct bitmap *bm_load(const char *filename);
 
 /*@ struct bitmap *bm_load_fp(FILE *f)
  *# Loads a bitmap from a {{FILE*}} that's already open.\n
- *# BMP support is always enabled, while PNG support is optional.\n
+ *# BMP support is always enabled, while JPG and PNG support is optional.\n
  *# Returns {{NULL}} if the file could not be loaded.
  */
 struct bitmap *bm_load_fp(FILE *f);
 
 /*@ int bm_save(struct bitmap *b, const char *fname)
- *# Saves the bitmap {{b}} to a BMP or PNG file named {{fname}}.\n
- *# It will only save to PNG if PNG support is enabled, in which case
- *# it checks whether the filename contains {{".bmp"}}. If it does, the
- *# file is saved as a BMP, otherwise as a PNG.
+ *# Saves the bitmap {{b}} to a BMP, JPG or PNG file named {{fname}}.\n
+ *# If the filename contains {{".bmp"}} or {{".jpg"}} the file is 
+ *# saved as a BMP or JPG, otherwise the PNG format is the default.
+ *# It can only save to JPG or PNG if JPG or PNG support is enabled
+ *# at compile time, otherwise it saves to a BMP file.\n
  *# Returns 1 on success, 0 on failure.
  */
 int bm_save(struct bitmap *b, const char *fname);
