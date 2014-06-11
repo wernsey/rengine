@@ -103,7 +103,7 @@ struct musl {
  * Operators and Keywords
  */
 
-#define OPERATORS	"=<>~+-*/%&()[],:@"
+#define OPERATORS	"=<>+-*/%&()[],:@"
 
 #define T_END		0
 #define T_IDENT		1  /* Identifiers for normal variables eg "foo" */
@@ -128,6 +128,8 @@ struct musl {
 #define T_DO		269
 #define T_STEP		270
 #define T_NEXT		271
+
+#define T_NE		272	/* Not-Equals '<>' operator */
 
 struct {
 	char * name;
@@ -328,6 +330,8 @@ whitespace:
 					case 'n' : *t++ = '\n'; break;
 					case 'r' : *t++ = '\r'; break;
 					case 't' : *t++ = '\t'; break;
+					case 'b' : *t++ = '\b'; break;
+					case 'a' : *t++ = '\a'; break;
 					default : *t++ = m->s[1]; break;
 				}
 				m->s+=2;
@@ -725,7 +729,7 @@ start:
 			expect(m, T_DO, "DO");
 
 			idx = mu_get_int(m, buf);
-			if(idx == stop) {
+			if((step > 0 && idx >= stop) || (step < 0 && idx <= stop)) {
 				m->s = save;
 				m->for_sp--;
 			} else {
@@ -739,7 +743,7 @@ start:
 			tok_reset(m);
 		return NULL;
 	} else
-		mu_throw(m, "Statement expected (%d)", t);
+		mu_throw(m, "Statement expected");
 
 	if((t=tokenize(m)) == ':') {
 		while(tokenize(m) == T_LF);
@@ -748,7 +752,7 @@ start:
 	}
 
 	if(t != T_LF && t != T_KEND && t != T_END)
-		mu_throw(m, "':' or <LF> expected (%d)", t);
+		mu_throw(m, "':' or <LF> expected");
 
 	tok_reset(m);
 	return NULL;
@@ -861,17 +865,26 @@ static struct mu_par not_expr(struct musl *m) {
 	return comp_expr(m);
 }
 
-/*# comp_expr ::= cat_expr [('='|'<'|'>'|'~') cat_expr]
+/*# comp_expr ::= cat_expr [('='|'<'|'>'|'<>') cat_expr]
  */
 static struct mu_par comp_expr(struct musl *m) {
 	int t, n = 0, r;
 	struct mu_par lhs = cat_expr(m);
-	if((t=tokenize(m)) == '=' || t == '<' || t == '>' || t == '~') {
+	t = tokenize(m);
+	
+	if(t == '<') { 
+		if(tokenize(m) == '>')
+			t = T_NE;
+		else
+			tok_reset(m);
+	}
+	
+	if(t == '=' || t == '<' || t == '>' || t == T_NE) {
 		struct mu_par rhs = cat_expr(m);
 		if(lhs.type == mu_str) {
 			par_as_str(&rhs);
 			r = strcmp(lhs.v.s, rhs.v.s);
-			n = (t == '=' && !r) || (t == '<' && r < 0) || (t == '>' && r > 0) || (t == '~' && r);
+			n = (t == '=' && !r) || (t == '<' && r < 0) || (t == '>' && r > 0) || (t == T_NE && r);
 			free(lhs.v.s);
 			free(rhs.v.s);
 			lhs.type = mu_int;
@@ -884,7 +897,7 @@ static struct mu_par comp_expr(struct musl *m) {
 				n = lhs.v.i < rhs.v.i;
 			else if(t == '>')
 				n = lhs.v.i > rhs.v.i;
-			else if(t == '~')
+			else if(t == T_NE)
 				n = lhs.v.i != rhs.v.i;
 			lhs.v.i = n;
 		}
@@ -1030,14 +1043,16 @@ static struct mu_par atom(struct musl *m) {
 		v = find_var(m->vars, name);
 		if(!v) {
 			if(!m->active) return ret;
-			mu_throw(m, "Read from undefined variable '%s'", name);
-		}
-
+			/* Undefined variables are inited to "" */
+			ret.type = mu_str;
+			ret.v.s = strdup("");
+		} else {
 		ret.type = v->type;
 		if(v->type == mu_int) {
 			ret.v.i = v->v.i;
 		} else {
 			ret.v.s = strdup(v->v.s);
+		}
 		}
 
 		return ret;
@@ -1265,7 +1280,7 @@ int mu_add_func(struct musl *m, const char *name, mu_func fun) {
 	return 1;
 }
 
-int mu_par_num(struct musl *m, int n, int argc, struct mu_par argv[]) {
+int mu_par_int(struct musl *m, int n, int argc, struct mu_par argv[]) {
 	if(n >= argc)
 		mu_throw(m, "Too few parameters to function");
 	return par_as_int(&argv[n]);
@@ -1302,10 +1317,10 @@ int mu_valid_id(const char *id) {
  * because Musl will call free() on them at a later stage.
  */
 
-/*@ ##VAL(x$)
+/*@ ##INT(x$)
  *# Converts the string {{x$}} to a number. */
-static struct mu_par m_val(struct musl *m, int argc, struct mu_par argv[]) {
-	struct mu_par rv = {mu_int, {mu_par_num(m, 0, argc, argv)}};
+static struct mu_par m_int(struct musl *m, int argc, struct mu_par argv[]) {
+	struct mu_par rv = {mu_int, {mu_par_int(m, 0, argc, argv)}};
 	return rv;
 }
 
@@ -1315,6 +1330,29 @@ static struct mu_par m_str(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv;
 	rv.type = mu_str;
 	rv.v.s = strdup(mu_par_str(m, 0, argc, argv));
+	return rv;
+}
+
+/*@ ##ASC(a)
+ *# Returns the ASCII value of {{a}} 
+ *X ASC('A') = 65 
+ */
+static struct mu_par m_asc(struct musl *m, int argc, struct mu_par argv[]) {
+	struct mu_par rv = {mu_int, {0}};
+	const char *c = mu_par_str(m, 0, argc, argv);
+	rv.v.i = c[0];
+	return rv;
+}
+
+/*@ ##CHR(v)
+ *# Returns the character associated with the ASCII value {{a}} 
+ *X CHR(66) = 'B' 
+ */
+static struct mu_par m_chr(struct musl *m, int argc, struct mu_par argv[]) {
+	struct mu_par rv = {mu_str, {0}};
+	int a = mu_par_int(m, 0, argc, argv);
+	rv.v.s = strdup(" ");
+	rv.v.s[0] = a;	
 	return rv;
 }
 
@@ -1331,7 +1369,7 @@ static struct mu_par m_len(struct musl *m, int argc, struct mu_par argv[]) {
 static struct mu_par m_left(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv;
 	const char *s = mu_par_str(m, 0, argc, argv);
-	int len = mu_par_num(m, 1, argc, argv);
+	int len = mu_par_int(m, 1, argc, argv);
 
 	if(len < 0)
 		mu_throw(m, "Invalid parameters to LEFT$()");
@@ -1351,7 +1389,7 @@ static struct mu_par m_left(struct musl *m, int argc, struct mu_par argv[]) {
 static struct mu_par m_right(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv;
 	const char *s = mu_par_str(m, 0, argc, argv);
-	int len = mu_par_num(m, 1, argc, argv);
+	int len = mu_par_int(m, 1, argc, argv);
 
 	if(len < 0)
 		mu_throw(m, "Invalid parameters to RIGHT$()");
@@ -1378,8 +1416,8 @@ static struct mu_par m_right(struct musl *m, int argc, struct mu_par argv[]) {
 static struct mu_par m_mid(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv;
 	const char *s = mu_par_str(m, 0, argc, argv);
-	int p = mu_par_num(m, 1, argc, argv) - 1;
-	int q = mu_par_num(m, 2, argc, argv);
+	int p = mu_par_int(m, 1, argc, argv) - 1;
+	int q = mu_par_int(m, 2, argc, argv);
 	int len = q - p;
 
 	if(q < p || p < 0)
@@ -1461,7 +1499,7 @@ static struct mu_par m_instr(struct musl *m, int argc, struct mu_par argv[]) {
  */
 static struct mu_par m_iff(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
-	int res = mu_par_num(m, 0, argc, argv) ? 1 : 2;
+	int res = mu_par_int(m, 0, argc, argv) ? 1 : 2;
 	rv = argv[res];
 	if(rv.type == mu_str) {
 		rv.v.s = strdup(rv.v.s);
@@ -1575,10 +1613,11 @@ static struct mu_par m_push(struct musl *m, int argc, struct mu_par argv[]) {
 	return rv;
 }
 
-/*@ ##POP()
+/*@ ##POP([@val])
  *# Pops a value from the stack that was pushed earlier through the
  *# {{~~PUSH()}} function.
  *X foo = POP()
+ *X POP @foo
  */
 static struct mu_par m_pop(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_str, {0}};
@@ -1595,25 +1634,36 @@ static struct mu_par m_pop(struct musl *m, int argc, struct mu_par argv[]) {
 	snprintf(name, TOK_SIZE, "__stack[%d]", sp);
 	rv.v.s = strdup(mu_get_str(m, name));
 	
+	if(argc > 0) {
+		const char * name = mu_par_str(m, 0, argc, argv);
+		mu_set_str(m, name, rv.v.s);
+	}
+	
 	mu_set_int(m, "__sp", sp - 1);
 	
 	return rv;
 }
 
-/*@ ##THROW(msg$)
- *# Throws an error with the specified message.
+/*@ ##ABORT([msg$])
+ *# Aborts the current program by throwing an error with the specified message.
  */
-static struct mu_par m_throw(struct musl *m, int argc, struct mu_par argv[]) {
+static struct mu_par m_abort(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
+	if(argc > 0) {
 	char *msg = (char*)mu_par_str(m, 0, argc, argv);	
 	mu_throw(m, "%s", msg);
+	} else {
+		mu_throw(m, "program aborted");
+	}
 	return rv;
 }
 
 /* Adds the standard functions to the interpreter */
 static int add_stdfuns(struct musl *m) {
-	return !(!mu_add_func(m, "val", m_val) ||
+	return !(!mu_add_func(m, "int", m_int) ||
 		!mu_add_func(m, "str$", m_str) ||
+		!mu_add_func(m, "asc", m_asc) ||
+		!mu_add_func(m, "chr", m_chr) ||
 		!mu_add_func(m, "len", m_len) ||
 		!mu_add_func(m, "left$", m_left) ||
 		!mu_add_func(m, "right$", m_right)||
@@ -1627,6 +1677,6 @@ static int add_stdfuns(struct musl *m) {
 		!mu_add_func(m, "map", m_map)||
 		!mu_add_func(m, "push", m_push)||
 		!mu_add_func(m, "pop", m_pop) ||
-		!mu_add_func(m, "throw", m_throw)
+		!mu_add_func(m, "abort", m_abort)
 		);
 }

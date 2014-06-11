@@ -128,8 +128,8 @@ static struct mu_par mus_font(struct musl *m, int argc, struct mu_par argv[]) {
 static struct mu_par mus_gotoxy(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
 	
-	mu_set_int(m, "_px", mu_par_num(m, 0, argc, argv));
-	mu_set_int(m, "_py", mu_par_num(m, 1, argc, argv));
+	mu_set_int(m, "_px", mu_par_int(m, 0, argc, argv));
+	mu_set_int(m, "_py", mu_par_int(m, 1, argc, argv));
 
 	return rv;
 }
@@ -230,7 +230,7 @@ static struct mu_par mus_log(struct musl *m, int argc, struct mu_par argv[]) {
 static struct mu_par mus_delay(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
 	Uint32 start = SDL_GetTicks();
-	rv.v.i = mu_par_num(m, 0, argc, argv);
+	rv.v.i = mu_par_int(m, 0, argc, argv);
 	do {
 		advanceFrame();
 		if(quit) {
@@ -248,7 +248,7 @@ static struct mu_par mus_delay(struct musl *m, int argc, struct mu_par argv[]) {
 static struct mu_par mus_putpixel(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
 	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
-	bm_putpixel(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv));
+	bm_putpixel(bmp, mu_par_int(m, 0, argc, argv), mu_par_int(m, 1, argc, argv));
 	return rv;
 }
 
@@ -258,8 +258,8 @@ static struct mu_par mus_putpixel(struct musl *m, int argc, struct mu_par argv[]
 static struct mu_par mus_line(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
 	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
-	bm_line(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
-		mu_par_num(m, 2, argc, argv),mu_par_num(m, 3, argc, argv));
+	bm_line(bmp, mu_par_int(m, 0, argc, argv), mu_par_int(m, 1, argc, argv),
+		mu_par_int(m, 2, argc, argv),mu_par_int(m, 3, argc, argv));
 	return rv;
 }
 
@@ -269,8 +269,8 @@ static struct mu_par mus_line(struct musl *m, int argc, struct mu_par argv[]) {
 static struct mu_par mus_rect(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
 	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
-	bm_rect(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
-		mu_par_num(m, 2, argc, argv),mu_par_num(m, 3, argc, argv));
+	bm_rect(bmp, mu_par_int(m, 0, argc, argv), mu_par_int(m, 1, argc, argv),
+		mu_par_int(m, 2, argc, argv),mu_par_int(m, 3, argc, argv));
 	return rv;
 }
 
@@ -280,8 +280,8 @@ static struct mu_par mus_rect(struct musl *m, int argc, struct mu_par argv[]) {
 static struct mu_par mus_fillrect(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
 	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
-	bm_fillrect(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
-		mu_par_num(m, 2, argc, argv),mu_par_num(m, 3, argc, argv));
+	bm_fillrect(bmp, mu_par_int(m, 0, argc, argv), mu_par_int(m, 1, argc, argv),
+		mu_par_int(m, 2, argc, argv),mu_par_int(m, 3, argc, argv));
 	return rv;
 }
 
@@ -291,8 +291,8 @@ static struct mu_par mus_fillrect(struct musl *m, int argc, struct mu_par argv[]
 static struct mu_par mus_circle(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
 	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
-	bm_circle(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
-		mu_par_num(m, 2, argc, argv));
+	bm_circle(bmp, mu_par_int(m, 0, argc, argv), mu_par_int(m, 1, argc, argv),
+		mu_par_int(m, 2, argc, argv));
 	return rv;
 }
 
@@ -302,8 +302,8 @@ static struct mu_par mus_circle(struct musl *m, int argc, struct mu_par argv[]) 
 static struct mu_par mus_fillcircle(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
 	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
-	bm_fillcircle(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
-		mu_par_num(m, 2, argc, argv));
+	bm_fillcircle(bmp, mu_par_int(m, 0, argc, argv), mu_par_int(m, 1, argc, argv),
+		mu_par_int(m, 2, argc, argv));
 	return rv;
 }
 
@@ -313,8 +313,8 @@ static struct mu_par mus_fillcircle(struct musl *m, int argc, struct mu_par argv
 static struct mu_par mus_ellipse(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
 	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
-	bm_ellipse(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
-		mu_par_num(m, 2, argc, argv),mu_par_num(m, 3, argc, argv));
+	bm_ellipse(bmp, mu_par_int(m, 0, argc, argv), mu_par_int(m, 1, argc, argv),
+		mu_par_int(m, 2, argc, argv),mu_par_int(m, 3, argc, argv));
 	return rv;
 }
 
@@ -324,8 +324,8 @@ static struct mu_par mus_ellipse(struct musl *m, int argc, struct mu_par argv[])
 static struct mu_par mus_roundrect(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
 	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
-	bm_roundrect(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
-		mu_par_num(m, 2, argc, argv),mu_par_num(m, 3, argc, argv),mu_par_num(m, 4, argc, argv));
+	bm_roundrect(bmp, mu_par_int(m, 0, argc, argv), mu_par_int(m, 1, argc, argv),
+		mu_par_int(m, 2, argc, argv),mu_par_int(m, 3, argc, argv),mu_par_int(m, 4, argc, argv));
 	return rv;
 }
 
@@ -335,8 +335,8 @@ static struct mu_par mus_roundrect(struct musl *m, int argc, struct mu_par argv[
 static struct mu_par mus_fillroundrect(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
 	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
-	bm_fillroundrect(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
-		mu_par_num(m, 2, argc, argv),mu_par_num(m, 3, argc, argv),mu_par_num(m, 4, argc, argv));
+	bm_fillroundrect(bmp, mu_par_int(m, 0, argc, argv), mu_par_int(m, 1, argc, argv),
+		mu_par_int(m, 2, argc, argv),mu_par_int(m, 3, argc, argv),mu_par_int(m, 4, argc, argv));
 	return rv;
 }
 
@@ -346,9 +346,9 @@ static struct mu_par mus_fillroundrect(struct musl *m, int argc, struct mu_par a
 static struct mu_par mus_curve(struct musl *m, int argc, struct mu_par argv[]) {
 	struct mu_par rv = {mu_int, {0}};
 	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
-	bm_bezier3(bmp, mu_par_num(m, 0, argc, argv), mu_par_num(m, 1, argc, argv),
-		mu_par_num(m, 2, argc, argv),mu_par_num(m, 3, argc, argv),
-		mu_par_num(m, 4, argc, argv),mu_par_num(m, 5, argc, argv));
+	bm_bezier3(bmp, mu_par_int(m, 0, argc, argv), mu_par_int(m, 1, argc, argv),
+		mu_par_int(m, 2, argc, argv),mu_par_int(m, 3, argc, argv),
+		mu_par_int(m, 4, argc, argv),mu_par_int(m, 5, argc, argv));
 	return rv;
 }
 
@@ -415,8 +415,8 @@ static struct mu_par mus_blit(struct musl *m, int argc, struct mu_par argv[]) {
 	const char *filename = mu_par_str(m, 0, argc, argv);
 	struct bitmap *src = re_get_bmp(filename);
 	struct bitmap *bmp = ((struct mu_data*)mu_get_data(m))->bmp;
-	int dx = mu_par_num(m, 1, argc, argv),
-		dy = mu_par_num(m, 2, argc, argv),
+	int dx = mu_par_int(m, 1, argc, argv),
+		dy = mu_par_int(m, 2, argc, argv),
 		sx, sy, w, h;
 		
 	if(!src) {
@@ -424,10 +424,10 @@ static struct mu_par mus_blit(struct musl *m, int argc, struct mu_par argv[]) {
 	}
 	assert(bmp);
 	
-	sx = argc > 3 ? mu_par_num(m, 3, argc, argv) : 0;
-	sy = argc > 4 ? mu_par_num(m, 4, argc, argv) : 0;
-	w = argc > 5 ? mu_par_num(m, 5, argc, argv) : src->w;
-	h = argc > 6 ? mu_par_num(m, 6, argc, argv) : src->h;
+	sx = argc > 3 ? mu_par_int(m, 3, argc, argv) : 0;
+	sy = argc > 4 ? mu_par_int(m, 4, argc, argv) : 0;
+	w = argc > 5 ? mu_par_int(m, 5, argc, argv) : src->w;
+	h = argc > 6 ? mu_par_int(m, 6, argc, argv) : src->h;
 	
 	bm_maskedblit(bmp, dx, dy, src, sx, sy, w, h);
 	

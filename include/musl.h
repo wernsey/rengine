@@ -8,8 +8,8 @@
  *# other applications in order to provide a scripting interface.\n
  *# About terminology:\n
  *{
- ** The {/interpreter/} is contained in the struct musl.
- *# It is executed by the {{~~mu_run()}} function.
+ ** The {/interpreter/} is contained in the {{struct ~~musl}}.
+ *# It is created with the {{~~mu_create()}} function.
  ** A {/script/} is a string of text containing Musl code that
  *# is evaluated by {{~~mu_run()}} on an interpreter.
  ** The interpreter contains {/variables/}. Multiple scripts can
@@ -39,7 +39,10 @@ extern "C"
 #endif
 	
 /*@ struct ##musl
- *# {*Musl*} interpreter structure 
+ *# The {*Musl*} structure that contains the state of the interpreter.\n
+ *# It is created with {{~~mu_create()}}.\n
+ *# A script is run on the interpreter with {{~~mu_run()}}.\n
+ *# The structure is destroyed with {{~~mu_cleanup()}}.
  */
 struct musl;
 
@@ -56,6 +59,11 @@ char *mu_readfile(const char *fname);
  *# It will return {{NULL}} if a {{malloc()}} failed.
  */
 struct musl *mu_create();
+
+/*@ void ##mu_cleanup(struct musl *m)
+ *# Deallocates an interpreter.
+ */
+void mu_cleanup(struct musl *m);
 
 /*@ int ##mu_run(struct musl *m, const char *script)
  *# Runs a script through an interpreter structure.\n
@@ -88,11 +96,6 @@ int mu_gosub(struct musl *m, const char *label);
  *# an END statement.
  */
 void mu_halt(struct musl *m);
-
-/*@ void ##mu_cleanup(struct musl *m)
- *# Deallocates an interpreter.
- */
-void mu_cleanup(struct musl *m);
 
 /*@ enum ##mu_ptype {mu_int, mu_str}
  *# Type of function parameter/return value.
@@ -164,12 +167,12 @@ const char *mu_error_text(struct musl *m);
  */
 int mu_cur_line(struct musl *m);
 
-/*@ int ##mu_par_num(struct musl *m, int n)
+/*@ int ##mu_par_int(struct musl *m, int n)
  *# Gets the {{n}}'th parameter of a function as a number.\n
  *# Only call it from {{~~mu_func()}} external functions because 
  *# it uses {{~~mu_throw()}} on errors.
  */
-int mu_par_num(struct musl *m, int n, int argc, struct mu_par argv[]);
+int mu_par_int(struct musl *m, int n, int argc, struct mu_par argv[]);
 
 /*@ const char *##mu_par_str(struct musl *m, int n)
  *# Gets the {{n}}'th parameter of a function as a string.\n
