@@ -383,6 +383,30 @@ static int bmp_height(lua_State *L) {
 	return 1;
 }
 
+/*@ R,G,B = BmpObj:getColor([x,y])
+ *# Gets the [[color|Colors]] used as mask by the bitmap.\n
+ *# If the {{x,y}} parameters are supplied, the color of the
+ *# pixel at {{x,y}} is returned.
+ */
+static int bmp_getcolor(lua_State *L) {
+	int r,g,b;
+	struct bitmap **bp = luaL_checkudata(L,1, "BmpObj");
+	if(lua_gettop(L) == 3) {
+		int x = luaL_checkint(L,2);
+		int y = luaL_checkint(L,3);
+		if(x < 0) x = 0;
+		if(x >= (*bp)->w) x = (*bp)->w - 1;
+		if(y < 0) y = 0;
+		if(y >= (*bp)->h) y = (*bp)->h - 1;		
+		bm_picker(*bp, x, y);
+	}
+	bm_get_color(*bp, &r, &g, &b);
+	lua_pushinteger(L, r);
+	lua_pushinteger(L, g);
+	lua_pushinteger(L, b);
+	return 3;
+}
+
 static void bmp_obj_meta(lua_State *L) {
 	/* Create the metatable for MyObj */
 	luaL_newmetatable(L, "BmpObj");
@@ -396,6 +420,8 @@ static void bmp_obj_meta(lua_State *L) {
 	lua_setfield(L, -2, "width");
 	lua_pushcfunction(L, bmp_height);
 	lua_setfield(L, -2, "height");
+	lua_pushcfunction(L, bmp_getcolor);
+	lua_setfield(L, -2, "getColor");
 	
 	lua_pushcfunction(L, bmp_tostring);
 	lua_setfield(L, -2, "__tostring");	
@@ -449,8 +475,8 @@ static int render_map(lua_State *L) {
 	}
 	
 	if(lua_gettop(L) > 2) {
-		sx = luaL_checkint(L,1);
-		sy = luaL_checkint(L,2);
+		sx = luaL_checkint(L,2);
+		sy = luaL_checkint(L,3);
 	}
 	
 	map_render(sd->map, sd->bmp, layer, sx, sy);
@@ -650,20 +676,45 @@ sd->bmp is not yet set when the script is first executed in the state's initiali
 function (lus_init()).
 */
 
-/*@ G.setColor(color)
- *# Sets the [[color|Colors]] used to draw the graphics primitives.
+/*@ G.setColor("color"), G.setColor(R, G, B), G.setColor()
+ *# Sets the [[color|Colors]] used to draw the graphics primitives\n
+ *# {{G.setColor("color")}} sets the color to the specified string value.\n
+ *# {{G.setColor(R, G, B)}} sets the color to the specified R, G, B values.
+ *# R,G,B values must be in the range [0..255].\n
+ *# {{G.setColor()}} sets the color to the foreground specified in the styles.
  */
 static int gr_setcolor(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
 	if(!sd->bmp)
 		luaL_error(L, "Call to graphics function outside of a screen update");	
-	if(lua_gettop(L) > 0) {
+	if(lua_gettop(L) == 3) {
+		int R = luaL_checkinteger(L,1);
+		int G = luaL_checkinteger(L,2);
+		int B = luaL_checkinteger(L,3);		
+		bm_set_color(sd->bmp, R, G, B);
+	} else if(lua_gettop(L) == 1) {
 		const char *c = luaL_checkstring(L,1);
 		bm_set_color_s(sd->bmp, c);
-	} else {
-		bm_set_color_s(sd->bmp, get_style(sd->state, "forEGrouND"));
-	}
+	} else if(lua_gettop(L) == 0) {
+		bm_set_color_s(sd->bmp, get_style(sd->state, "foreground"));
+	} else
+		luaL_error(L, "Invalid parameters to G.setColor()");	
 	return 0;
+}
+
+/*@ R,G,B = G.getColor()
+ *# Gets the [[color|Colors]] used to draw the graphics primitives.\n
+ */
+static int gr_getcolor(lua_State *L) {
+	int r,g,b;
+	struct lustate_data *sd = get_state_data(L);
+	if(!sd->bmp)
+		luaL_error(L, "Call to graphics function outside of a screen update");
+	bm_get_color(sd->bmp, &r, &g, &b);
+	lua_pushinteger(L, r);
+	lua_pushinteger(L, g);
+	lua_pushinteger(L, b);
+	return 3;
 }
 
 /*@ G.clip(x0,y0, x1,y1)
@@ -951,6 +1002,7 @@ static int gr_blit(lua_State *L) {
 
 static const luaL_Reg graphics_funcs[] = {
   {"setColor",      gr_setcolor},
+  {"getColor",      gr_getcolor},
   {"clip", 			gr_clip},
   {"unclip", 		gr_unclip},
   {"pixel",         gr_putpixel},
@@ -1019,7 +1071,7 @@ static const luaL_Reg keyboard_funcs[] = {
  *}
  */
 
-/*@ Mouse.position()
+/*@ x,y = Mouse.position()
  *# Returns the {{x,y}} position of the mouse.
  *X local x,y = Mouse.position();
  */
