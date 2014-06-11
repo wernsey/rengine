@@ -757,6 +757,9 @@ void bm_unclip(struct bitmap *b) {
 
 void bm_blit(struct bitmap *dst, int dx, int dy, struct bitmap *src, int sx, int sy, int w, int h) {
 	int x,y, i, j;
+	
+	
+	/* URGENT FIXME: This does not take into account if sx or sy is out of bounds... */
 
 	if(dx < dst->clip.x0) {
 		int delta = dst->clip.x0 - dx;
@@ -1003,13 +1006,7 @@ struct bitmap *bm_resample(const struct bitmap *in, int nw, int nh) {
 	return out;
 }
 
-void bm_set_color(struct bitmap *bm, int r, int g, int b) {
-	if(r < 0) r = 0;
-	if(r > 255) r = 255;
-	if(g < 0) g = 0;
-	if(g > 255) g = 255;
-	if(b < 0) b = 0;
-	if(b > 255) b = 255;
+void bm_set_color(struct bitmap *bm, unsigned char r, unsigned char g, unsigned char b) {
 	bm->r = r;
 	bm->g = g;
 	bm->b = b;

@@ -38,7 +38,7 @@ struct bitmap {
 	unsigned char *data;
 		
 	/* Color for the pen, of the canvas */
-	int r,g,b,a;
+	unsigned char r,g,b,a;
 	
 	/* XBM font. See font.xbm */
 	const unsigned char *font;
@@ -143,10 +143,10 @@ unsigned char bm_getb(struct bitmap *b, int x, int y);
  */
 unsigned char bm_geta(struct bitmap *b, int x, int y);
 
-/*@ void bm_set_color(struct bitmap *bc, int r, int g, int b)
+/*@ void bm_set_color(struct bitmap *bm, unsigned char r, unsigned char g, unsigned char b)
  *# Sets the colour of the pen to (r,g,b)
  */
-void bm_set_color(struct bitmap *bm, int r, int g, int b);
+void bm_set_color(struct bitmap *bm, unsigned char r, unsigned char g, unsigned char b);
 
 /*@ void bm_set_alpha(struct bitmap *bm, int a)
  *# Sets the alpha value of the pen to {{a}}
