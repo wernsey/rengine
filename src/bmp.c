@@ -566,7 +566,9 @@ static struct bitmap *bm_load_jpg_fp(FILE *f) {
 	
 	jpeg_read_header(&cinfo, TRUE);
 	
-	cinfo.out_color_space = JCS_BG_RGB;
+	/* FIXME: How do I ensure that the colour that comes out is RGB?
+	* cinfo.out_color_space = JCS_BG_RGB;
+	*/
 	
 	bmp = bm_create(cinfo.image_width, cinfo.image_height);
 	if(!bmp) {
@@ -940,7 +942,6 @@ void bm_maskedblit(struct bitmap *dst, int dx, int dy, struct bitmap *src, int s
 	}
 }
 
-// bm_blit_ex(b2, 35, 25, 60, 80, b, -10, -20, 30, 40,0);
 void bm_blit_ex(struct bitmap *dst, int dx, int dy, int dw, int dh, struct bitmap *src, int sx, int sy, int sw, int sh, int mask) {
 	int x, y, ssx;
 	int ynum = 0;
