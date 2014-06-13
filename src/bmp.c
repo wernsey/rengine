@@ -758,14 +758,23 @@ void bm_unclip(struct bitmap *b) {
 void bm_blit(struct bitmap *dst, int dx, int dy, struct bitmap *src, int sx, int sy, int w, int h) {
 	int x,y, i, j;
 	
+	if(sx < 0) {
+		int delta = -sx;
+		sx = 0;
+		dx += delta;
+		w -= delta;
+	}
 	
-	/* URGENT FIXME: This does not take into account if sx or sy is out of bounds... */
-
 	if(dx < dst->clip.x0) {
 		int delta = dst->clip.x0 - dx;
 		sx += delta;
 		w -= delta;
 		dx = dst->clip.x0;
+	}
+
+	if(sx + w > src->w) {
+		int delta = sx + w - src->w;
+		w -= delta;
 	}
 	
 	if(dx + w > dst->clip.x1) {
@@ -773,11 +782,23 @@ void bm_blit(struct bitmap *dst, int dx, int dy, struct bitmap *src, int sx, int
 		w -= delta;
 	}
 
+	if(sy < 0) {
+		int delta = -sy;
+		sy = 0;
+		dy += delta;
+		h -= delta;
+	}
+	
 	if(dy < dst->clip.y0) {
 		int delta = dst->clip.y0 - dy;
 		sy += delta;
 		h -= delta;
 		dy = dst->clip.y0;
+	}
+	
+	if(sy + h > src->h) {
+		int delta = sy + h - src->h;
+		h -= delta;
 	}
 	
 	if(dy + h > dst->clip.y1) {
@@ -790,6 +811,10 @@ void bm_blit(struct bitmap *dst, int dx, int dy, struct bitmap *src, int sx, int
 	if(dx >= dst->clip.x1 || dx + w < dst->clip.x0)
 		return;
 	if(dy >= dst->clip.y1 || dy + h < dst->clip.y0)
+		return;
+	if(sx >= src->w || sx + w < 0)
+		return;
+	if(sy >= src->h || sy + h < 0)
 		return;
 	
 	if(sx + w > src->w) {
@@ -825,11 +850,23 @@ void bm_blit(struct bitmap *dst, int dx, int dy, struct bitmap *src, int sx, int
 void bm_maskedblit(struct bitmap *dst, int dx, int dy, struct bitmap *src, int sx, int sy, int w, int h) {
 	int x,y, i, j;
 
+	if(sx < 0) {
+		int delta = -sx;
+		sx = 0;
+		dx += delta;
+		w -= delta;
+	}
+	
 	if(dx < dst->clip.x0) {
 		int delta = dst->clip.x0 - dx;
 		sx += delta;
 		w -= delta;
 		dx = dst->clip.x0;
+	}
+
+	if(sx + w > src->w) {
+		int delta = sx + w - src->w;
+		w -= delta;
 	}
 	
 	if(dx + w > dst->clip.x1) {
@@ -837,11 +874,23 @@ void bm_maskedblit(struct bitmap *dst, int dx, int dy, struct bitmap *src, int s
 		w -= delta;
 	}
 
+	if(sy < 0) {
+		int delta = -sy;
+		sy = 0;
+		dy += delta;
+		h -= delta;
+	}
+	
 	if(dy < dst->clip.y0) {
 		int delta = dst->clip.y0 - dy;
 		sy += delta;
 		h -= delta;
 		dy = dst->clip.y0;
+	}
+	
+	if(sy + h > src->h) {
+		int delta = sy + h - src->h;
+		h -= delta;
 	}
 	
 	if(dy + h > dst->clip.y1) {
@@ -854,6 +903,10 @@ void bm_maskedblit(struct bitmap *dst, int dx, int dy, struct bitmap *src, int s
 	if(dx >= dst->clip.x1 || dx + w < dst->clip.x0)
 		return;
 	if(dy >= dst->clip.y1 || dy + h < dst->clip.y0)
+		return;
+	if(sx >= src->w || sx + w < 0)
+		return;
+	if(sy >= src->h || sy + h < 0)
 		return;
 	
 	if(sx + w > src->w) {
@@ -887,9 +940,9 @@ void bm_maskedblit(struct bitmap *dst, int dx, int dy, struct bitmap *src, int s
 	}
 }
 
+// bm_blit_ex(b2, 35, 25, 60, 80, b, -10, -20, 30, 40,0);
 void bm_blit_ex(struct bitmap *dst, int dx, int dy, int dw, int dh, struct bitmap *src, int sx, int sy, int sw, int sh, int mask) {
-	int x, y;
-	int ssx = sx; 
+	int x, y, ssx;
 	int ynum = 0;
 	
 	if(sw == dw && sh == dh) {
@@ -899,6 +952,56 @@ void bm_blit_ex(struct bitmap *dst, int dx, int dy, int dw, int dh, struct bitma
 			bm_blit(dst, dx, dy, src, sx, sy, dw, dh);
 		}
 		return;
+	}
+	
+	/* Clip the bitmaps */
+	if(sx < 0) {
+		int delta = -sx;
+		sx = 0;
+		dx += delta * dw / sw;
+		dw -= delta * dw / sw;
+		sw -= delta;
+	}	
+	if(dx < dst->clip.x0) {
+		int delta = dst->clip.x0 - dx;
+		sx += delta * sw / dw;
+		dw -= delta;
+		dx = dst->clip.x0;
+		sw -= delta * sw / dw;
+	}
+	if(sx + sw > src->w) {
+		int delta = sx + sw - src->w;
+		dw -= delta * dw / sw;
+		sw -= delta;
+	}	
+	if(dx + dw > dst->clip.x1) {
+		int delta = dx + dw - dst->clip.x1;
+		sw -= delta * sw / dw;
+		dw -= delta;
+	}
+	if(sy < 0) {
+		int delta = -sy;
+		sy = 0;
+		dy += delta * dh / sh;
+		dh -= delta * dh / sh;
+		sh -= delta;
+	}	
+	if(dy < dst->clip.y0) {
+		int delta = dst->clip.y0 - dy;
+		sy += delta * sh / dh;
+		sh -= delta * sh / dh;
+		dh -= delta;
+		dy = dst->clip.y0;
+	}	
+	if(sy + sh > src->h) {
+		int delta = sy + sh - src->h;
+		dh -= delta * dh / sh;
+		sh -= delta;
+	}	
+	if(dy + dh > dst->clip.y1) {
+		int delta = dy + dh - dst->clip.y1;
+		sh -= delta * sh / dh;
+		dh -= delta;
 	}
 	
 	if(sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0)
@@ -917,6 +1020,7 @@ void bm_blit_ex(struct bitmap *dst, int dx, int dy, int dw, int dh, struct bitma
 		http://www.drdobbs.com/image-scaling-with-bresenham/184405045
 		http://www.compuphase.com/graphic/scale.htm	
 	*/	
+	ssx = sx; 
 	for(y = dy; y < dy + dh; y++){
 		int xnum = 0;			
 		sx = ssx;			
@@ -929,7 +1033,7 @@ void bm_blit_ex(struct bitmap *dst, int dx, int dy, int dw, int dh, struct bitma
 			if(sx >= src->w || x >= dst->clip.x1)
 				break;
 			
-			/* FIXME: The clipping can probably be better */
+			/* TODO: Is the clipping above sufficient to remove this "if"? */
 			if(x >= dst->clip.x0 && x < dst->clip.x1 && y >= dst->clip.y0 && y < dst->clip.y1
 				&& sx >= 0 && sx < src->w && sy >= 0 && sy < src->h) {
 				int r = BM_GETR(src, sx, sy),
