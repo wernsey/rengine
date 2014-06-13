@@ -19,6 +19,7 @@ you may not want to import a bunch of third party libraries.
 #endif
 #ifdef USEJPG
 #	include <jpeglib.h>
+#	include <setjmp.h>
 #endif
 
 #include "bmp.h"
@@ -134,13 +135,10 @@ struct bitmap *bm_create(int w, int h) {
 struct bitmap *bm_load(const char *filename) {	
 	struct bitmap *bmp;
 	FILE *f = fopen(filename, "rb");
-	if(!f) {
+	if(!f)
 		return NULL;
-	}
-	bmp = bm_load_fp(f);
-	
-	fclose(f);
-	
+	bmp = bm_load_fp(f);	
+	fclose(f);	
 	return bmp;
 }
 
@@ -551,24 +549,35 @@ done:
 #endif
 
 #ifdef USEJPG
+struct jpg_err_handler {
+	struct jpeg_error_mgr pub;
+	jmp_buf jbuf;
+};
+
+static void jpg_on_error(j_common_ptr cinfo) {
+	struct jpg_err_handler *err = (struct jpg_err_handler *) cinfo->err;
+	longjmp(err->jbuf, 1);
+}
+
 static struct bitmap *bm_load_jpg_fp(FILE *f) {
 	struct jpeg_decompress_struct cinfo;
-	struct jpeg_error_mgr jerr;
+	struct jpg_err_handler jerr;
 	struct bitmap *bmp = NULL;
 	int i, j, row_stride;
 	unsigned char *data;
 	JSAMPROW row_pointer[1];
 		
-	cinfo.err = jpeg_std_error(&jerr);
-	jpeg_create_decompress(&cinfo);
-	
+	cinfo.err = jpeg_std_error(&jerr.pub);
+	jerr.pub.error_exit = jpg_on_error;
+	if(setjmp(jerr.jbuf)) {
+		jpeg_destroy_decompress(&cinfo);
+		return NULL;
+	}
+	jpeg_create_decompress(&cinfo);	
 	jpeg_stdio_src(&cinfo, f);
 	
-	jpeg_read_header(&cinfo, TRUE);
-	
-	/* FIXME: How do I ensure that the colour that comes out is RGB?
-	* cinfo.out_color_space = JCS_BG_RGB;
-	*/
+	jpeg_read_header(&cinfo, TRUE);	
+	cinfo.out_color_space = JCS_RGB;
 	
 	bmp = bm_create(cinfo.image_width, cinfo.image_height);
 	if(!bmp) {
@@ -600,19 +609,24 @@ static struct bitmap *bm_load_jpg_fp(FILE *f) {
 }
 static int bm_save_jpg(struct bitmap *b, const char *fname) {
 	struct jpeg_compress_struct cinfo;
-	struct jpeg_error_mgr jerr;
+	struct jpg_err_handler jerr;
 	FILE *f;
 	int i, j;
 	JSAMPROW row_pointer[1];
 	int row_stride;
 	unsigned char *data;
 	
-	cinfo.err = jpeg_std_error(&jerr);
-	jpeg_create_compress(&cinfo);
-	
 	if(!(f = fopen(fname, "wb"))) {
 		return 0;
 	}
+	
+	cinfo.err = jpeg_std_error(&jerr.pub);
+	jerr.pub.error_exit = jpg_on_error;
+	if(setjmp(jerr.jbuf)) {
+		jpeg_destroy_compress(&cinfo);
+		return 0;
+	}
+	jpeg_create_compress(&cinfo);
 	jpeg_stdio_dest(&cinfo, f);
 	
 	cinfo.image_width = b->w;
@@ -635,9 +649,9 @@ static int bm_save_jpg(struct bitmap *b, const char *fname) {
 	jpeg_start_compress(&cinfo, TRUE);
 	for(j = 0; j < b->h; j++) {
 		for(i = 0; i < b->w; i++) {
-			data[i*3+2] = BM_GETR(b, i, j);
+			data[i*3+0] = BM_GETR(b, i, j);
 			data[i*3+1] = BM_GETG(b, i, j);
-			data[i*3+0] = BM_GETB(b, i, j);
+			data[i*3+2] = BM_GETB(b, i, j);
 		}
 		row_pointer[0] = data;
 		jpeg_write_scanlines(&cinfo, row_pointer, 1);
