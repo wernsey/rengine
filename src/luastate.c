@@ -968,12 +968,15 @@ static int gr_textdims(lua_State *L) {
 	return 2;
 }
 
-/*@ G.blit(bmp, dx, dy, [sx], [sy], [w], [h])
- *# Draws an instance {{bmp}} of {{BmpObj}} to the screen at {{dx, dy}}.
- *# {{sx,sy}} specify the source x,y position and {{w,h}} specifies the
- *# width and height of the source to draw.
- *# {{sx,sy}} defaults to {{0,0}} and {{w,h}} defaults to the entire 
- *# source bitmap.
+/*@ G.blit(bmp, dx, dy, [sx, sy, [dw, dh, [sw, sh]]])
+ *# Draws an instance {{bmp}} of {{BmpObj}} to the screen at {{dx, dy}}.\n
+ *# {{sx,sy}} specify the source x,y position and {{dw,dh}} specifies the
+ *# width and height of the destination area to draw.\n
+ *# {{sx,sy}} defaults to {{0,0}} and {{dw,dh}} defaults to the entire 
+ *# source bitmap.\n
+ *# If {{sw,sh}} is specified, the bitmap is scaled so that the area on the 
+ *# source bitmap from {{sx,sy}} with dimensions {{sw,sh}} is drawn onto the
+ *# screen at {{dx,dy}} with dimensions {{dw, dh}}.
  */
 static int gr_blit(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
@@ -986,16 +989,21 @@ static int gr_blit(lua_State *L) {
 	
 	int sx = 0, sy = 0, w = (*bp)->w, h = (*bp)->h;
 	
-	if(lua_gettop(L) >= 4)
+	if(lua_gettop(L) > 4) {
 		sx = luaL_checkinteger(L, 4);
-	if(lua_gettop(L) >= 5)
 		sy = luaL_checkinteger(L, 5);
-	if(lua_gettop(L) >= 6)
+	}
+	if(lua_gettop(L) > 6) {
 		w = luaL_checkinteger(L, 6);
-	if(lua_gettop(L) >= 7)
 		h = luaL_checkinteger(L, 7);
-	
-	bm_maskedblit(sd->bmp, dx, dy, *bp, sx, sy, w, h);
+	}
+	if(lua_gettop(L) > 8) {
+		int sw = luaL_checkinteger(L, 8);
+		int sh = luaL_checkinteger(L, 9);
+		bm_blit_ex(sd->bmp, dx, dy, w, h, *bp, sx, sy, sw, sh, 1);
+	} else {
+		bm_maskedblit(sd->bmp, dx, dy, *bp, sx, sy, w, h);
+	}
 	
 	return 0;
 }
