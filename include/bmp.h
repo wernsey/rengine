@@ -94,7 +94,6 @@ int bm_save(struct bitmap *b, const char *fname);
 /*@ struct bitmap *bm_copy(struct bitmap *b)
  *# Creates a duplicate of the bitmap structure 
  */
-/* THIS FUNCTION IS NOT PROPERLY TESTED YET */
 struct bitmap *bm_copy(struct bitmap *b);
 
 /*@ void bm_flip_vertical(struct bitmap *b)
@@ -242,9 +241,14 @@ void bm_maskedblit(struct bitmap *dst, int dx, int dy, struct bitmap *src, int s
 void bm_blit_ex(struct bitmap *dst, int dx, int dy, int dw, int dh, struct bitmap *src, int sx, int sy, int sw, int sh, int mask);
 
 /*@ void bm_smooth(struct bitmap *b)
- *# Smoothes the bitmap by essentially applying a 3x3 median filter.
+ *# Smoothes the bitmap by essentially applying a 5x5 Gaussian filter.
  */
 void bm_smooth(struct bitmap *b);
+
+/*@ void bm_apply_kernel(struct bitmap *b, int dim, float kernel)
+ *# Applies a {{dim}} x {{dim}} kernel to the image.
+ */
+void bm_apply_kernel(struct bitmap *b, int dim, float kernel[]);
 
 /*@ struct bitmap *bm_resample(const struct bitmap *in, int nw, int nh)
  *# Creates a new bitmap of dimensions nw*nh that is a scaled

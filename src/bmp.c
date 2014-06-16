@@ -1078,23 +1078,83 @@ void bm_smooth(struct bitmap *b) {
 	struct bitmap *tmp = bm_create(b->w, b->h);
 	unsigned char *t = b->data;
 	int x, y;
+	
+	/* http://prideout.net/archive/bloom/ */
+	int kernel[] = {1,4,6,4,1};
+	
 	assert(b->clip.y0 < b->clip.y1);
 	assert(b->clip.x0 < b->clip.x1);
+	
 	for(y = 0; y < b->h; y++)
 		for(x = 0; x < b->w; x++) {			
-			int p, q, c = 0, R = 0, G = 0, B = 0, A = 0;
-			for(p = x-1; p < x+1; p++)
-				for(q = y-1; q < y+1; q++) {
-					if(p < 0 || p >= b->w || q < 0 || q >= b->h)
-						continue;
-					R += BM_GETR(b,p,q);
-					G += BM_GETG(b,p,q);
-					B += BM_GETB(b,p,q);
-					A += BM_GETA(b,p,q);
-					c++;					
-				}
+			int p, k, c = 0;
+			float R = 0, G = 0, B = 0, A = 0;
+			for(p = x-2, k = 0; p < x+2; p++, k++) {
+				if(p < 0 || p >= b->w)
+					continue;
+				R += kernel[k] * BM_GETR(b,p,y);
+				G += kernel[k] * BM_GETG(b,p,y);
+				B += kernel[k] * BM_GETB(b,p,y);
+				A += kernel[k] * BM_GETA(b,p,y);
+				c += kernel[k];
+			}
 			BM_SET(tmp, x, y, R/c, G/c, B/c, A/c);
 		}
+	
+	for(y = 0; y < b->h; y++)
+		for(x = 0; x < b->w; x++) {			
+			int p, k, c = 0;
+			float R = 0, G = 0, B = 0, A = 0;
+			for(p = y-2, k = 0; p < y+2; p++, k++) {
+				if(p < 0 || p >= b->h)
+					continue;
+				R += kernel[k] * BM_GETR(tmp,x,p);
+				G += kernel[k] * BM_GETG(tmp,x,p);
+				B += kernel[k] * BM_GETB(tmp,x,p);
+				A += kernel[k] * BM_GETA(tmp,x,p);
+				c += kernel[k];
+			}
+			BM_SET(tmp, x, y, R/c, G/c, B/c, A/c);
+		}
+	
+	b->data = tmp->data;
+	tmp->data = t;
+	bm_free(tmp);
+}
+
+void bm_apply_kernel(struct bitmap *b, int dim, float kernel[]) {
+	struct bitmap *tmp = bm_create(b->w, b->h);
+	unsigned char *t = b->data;
+	int x, y;	
+	int kf = dim >> 1;
+	
+	assert(b->clip.y0 < b->clip.y1);
+	assert(b->clip.x0 < b->clip.x1);
+	
+	for(y = 0; y < b->h; y++) {
+		for(x = 0; x < b->w; x++) {			
+			int p, q, u, v;
+			float R = 0, G = 0, B = 0, A = 0, c = 0;
+			for(p = x-kf, u = 0; p <= x+kf; p++, u++) {
+				if(p < 0 || p >= b->w)
+					continue;
+				for(q = y-kf, v = 0; q <= y+kf; q++, v++) {
+					if(q < 0 || q >= b->h)
+						continue;				
+					R += kernel[u + v * dim] * BM_GETR(b,p,q);
+					G += kernel[u + v * dim] * BM_GETG(b,p,q);
+					B += kernel[u + v * dim] * BM_GETB(b,p,q);
+					A += kernel[u + v * dim] * BM_GETA(b,p,q);
+					c += kernel[u + v * dim];
+				}
+			}
+			R /= c; if(R > 255) R = 255;if(R < 0) R = 0;
+			G /= c; if(G > 255) G = 255;if(G < 0) G = 0;
+			B /= c; if(B > 255) B = 255;if(B < 0) B = 0;
+			A /= c; if(A > 255) A = 255;if(A < 0) A = 0;
+			BM_SET(tmp, x, y, R, G, B, A);
+		}
+	}
 	
 	b->data = tmp->data;
 	tmp->data = t;
