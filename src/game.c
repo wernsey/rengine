@@ -52,9 +52,6 @@ SDL_Renderer *ren = NULL;
 SDL_Texture *tex = NULL;
 
 int quit = 0;
-
-static int fullscreen = 0,
-	resizable = 0, borderless = 0;
 	
 /* FIXME: Get the filter mode working again.
 filter = GL_NEAREST;
@@ -77,8 +74,8 @@ char initial_dir[256];
 
 /* Functions *************************************************/
 
-int init(const char *appTitle, int virt_width, int virt_height) {
-	int flags = SDL_WINDOW_SHOWN;
+int init(const char *appTitle, int virt_width, int virt_height, int flags) {
+	flags |= SDL_WINDOW_SHOWN;
 	
 	rlog("Creating Window.");
 	
@@ -87,14 +84,7 @@ int init(const char *appTitle, int virt_width, int virt_height) {
 		return 1;
 	}
 	atexit(SDL_Quit);
-	
-	if(!fullscreen) {
-		if(resizable)
-			flags |= SDL_WINDOW_RESIZABLE;
-		else if(borderless)
-			flags |= SDL_WINDOW_BORDERLESS;
-	}
-	
+		
 	win = SDL_CreateWindow(appTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, screenWidth, screenHeight, flags);	
 	if(!win) {
 		rerror("SDL_CreateWindow: %s", SDL_GetError());
@@ -128,18 +118,11 @@ int handleSpecialKeys(SDL_Scancode key) {
 		quit = 1;
 		return 1;
 	} else if (key == SDL_SCANCODE_F11) {
-		if(!fullscreen) {		
-			if(SDL_SetWindowFullscreen(win, SDL_WINDOW_FULLSCREEN_DESKTOP) < 0) {
+		if(!(SDL_GetWindowFlags(win) & SDL_WINDOW_FULLSCREEN_DESKTOP)) {		
+			if(SDL_SetWindowFullscreen(win, SDL_WINDOW_FULLSCREEN_DESKTOP) < 0)
 				rerror("Unable to set window to fullscreen: %s", SDL_GetError());
-			} else {
-				fullscreen = !fullscreen;
-			}
-		} else {	
-			if(SDL_SetWindowFullscreen(win, 0) < 0) {
-				rerror("Unable to set window to windowed: %s", SDL_GetError());
-			} else {
-				fullscreen = !fullscreen;
-			}
+		} else if(SDL_SetWindowFullscreen(win, 0) < 0) {
+			rerror("Unable to set window to windowed: %s", SDL_GetError());
 		}
 		return 1;
 	} else if(key == SDL_SCANCODE_F12) {
@@ -259,6 +242,8 @@ int main(int argc, char *argv[]) {
 	int virt_width = VIRT_WIDTH,
 		virt_height = VIRT_HEIGHT;
 	
+	int fullscreen = 0, resizable = 0, borderless = 0;
+	
 	const char *appTitle = DEFAULT_APP_TITLE;
 	
 	const char *game_dir = NULL;
@@ -346,9 +331,9 @@ int main(int argc, char *argv[]) {
 			screenWidth = atoi(ini_get(game_ini, "screen", "width", PARAM(SCREEN_WIDTH)));
 			screenHeight = atoi(ini_get(game_ini, "screen", "height", PARAM(SCREEN_HEIGHT)));	
 			screenBpp = atoi(ini_get(game_ini, "screen", "bpp", PARAM(SCREEN_BPP)));	
-			resizable = atoi(ini_get(game_ini, "screen", "resizable", "0"));	
-			borderless = atoi(ini_get(game_ini, "screen", "borderless", "0"));	
-			fullscreen = atoi(ini_get(game_ini, "screen", "fullscreen", "0"));	
+			resizable = atoi(ini_get(game_ini, "screen", "resizable", "0")) ? SDL_WINDOW_RESIZABLE : 0;	
+			borderless = atoi(ini_get(game_ini, "screen", "borderless", "0")) ? SDL_WINDOW_BORDERLESS : 0;	
+			fullscreen = atoi(ini_get(game_ini, "screen", "fullscreen", "0")) ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0;	
 			fps = atoi(ini_get(game_ini, "screen", "fps", PARAM(DEFAULT_FPS)));
 			if(fps <= 0)
 				fps = DEFAULT_FPS;
@@ -383,7 +368,7 @@ start_demo:
 	
 	rlog("Initialising...");
 		
-	if(!init(appTitle, virt_width, virt_height)) {
+	if(!init(appTitle, virt_width, virt_height, fullscreen | borderless | resizable)) {
 		return 1;
 	}
 	
@@ -392,14 +377,6 @@ start_demo:
 	frameStart = SDL_GetTicks();	
 	
 	rlog("Event loop starting...");
-
-	/* If I used SDL_WINDOW_FULLSCREEN in SDL_CreateWindow() it 
-	had some strange problems when you shutdown the engine. */
-	if(fullscreen) {
-		if(SDL_SetWindowFullscreen(win, SDL_WINDOW_FULLSCREEN_DESKTOP) < 0) {
-			rerror("Unable to set window to fullscreen: %s", SDL_GetError());
-		} 
-	}
 	
 	while(!quit) {
 		gs = current_state();
@@ -418,13 +395,7 @@ start_demo:
 	gs = current_state();
 	if(gs && gs->deinit)
 		gs->deinit(gs);	
-	
-	/*
-	if(fullscreen && SDL_SetWindowFullscreen(win, 0) < 0) {
-		fprintf(rlog_file, "rerror: Unable to reset window to windowed: %s\n", SDL_GetError());
-		fflush(rlog_file);
-	}*/
-	
+		
 	bm_free(bmp);
 		
 	SDL_DestroyTexture(tex);
