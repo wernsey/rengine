@@ -27,7 +27,6 @@
 
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
-#define SCREEN_BPP 24
 
 #define VIRT_WIDTH 320
 #define VIRT_HEIGHT 240
@@ -43,8 +42,7 @@
 /* Globals *************************************************/
 
 static int screenWidth = SCREEN_WIDTH, 
-	screenHeight = SCREEN_HEIGHT, 
-	screenBpp = SCREEN_BPP;
+	screenHeight = SCREEN_HEIGHT;
 int fps = DEFAULT_FPS;
 
 SDL_Window *win = NULL;
@@ -329,8 +327,7 @@ int main(int argc, char *argv[]) {
 			appTitle = ini_get(game_ini, "init", "appTitle", "Rengine");
 			
 			screenWidth = atoi(ini_get(game_ini, "screen", "width", PARAM(SCREEN_WIDTH)));
-			screenHeight = atoi(ini_get(game_ini, "screen", "height", PARAM(SCREEN_HEIGHT)));	
-			screenBpp = atoi(ini_get(game_ini, "screen", "bpp", PARAM(SCREEN_BPP)));	
+			screenHeight = atoi(ini_get(game_ini, "screen", "height", PARAM(SCREEN_HEIGHT)));
 			resizable = atoi(ini_get(game_ini, "screen", "resizable", "0")) ? SDL_WINDOW_RESIZABLE : 0;	
 			borderless = atoi(ini_get(game_ini, "screen", "borderless", "0")) ? SDL_WINDOW_BORDERLESS : 0;	
 			fullscreen = atoi(ini_get(game_ini, "screen", "fullscreen", "0")) ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0;	
