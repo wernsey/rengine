@@ -958,73 +958,8 @@ void bm_maskedblit(struct bitmap *dst, int dx, int dy, struct bitmap *src, int s
 
 void bm_blit_ex(struct bitmap *dst, int dx, int dy, int dw, int dh, struct bitmap *src, int sx, int sy, int sw, int sh, int mask) {
 	int x, y, ssx;
-	int ynum = 0;
-	
-	if(sw == dw && sh == dh) {
-		if(mask) {
-			bm_maskedblit(dst, dx, dy, src, sx, sy, dw, dh);
-		} else {
-			bm_blit(dst, dx, dy, src, sx, sy, dw, dh);
-		}
-		return;
-	}
-	
-	/* Clip the bitmaps */
-	if(sx < 0) {
-		int delta = -sx;
-		sx = 0;
-		dx += delta * dw / sw;
-		dw -= delta * dw / sw;
-		sw -= delta;
-	}	
-	if(dx < dst->clip.x0) {
-		int delta = dst->clip.x0 - dx;
-		sx += delta * sw / dw;
-		dw -= delta;
-		dx = dst->clip.x0;
-		sw -= delta * sw / dw;
-	}
-	if(sx + sw > src->w) {
-		int delta = sx + sw - src->w;
-		dw -= delta * dw / sw;
-		sw -= delta;
-	}	
-	if(dx + dw > dst->clip.x1) {
-		int delta = dx + dw - dst->clip.x1;
-		sw -= delta * sw / dw;
-		dw -= delta;
-	}
-	if(sy < 0) {
-		int delta = -sy;
-		sy = 0;
-		dy += delta * dh / sh;
-		dh -= delta * dh / sh;
-		sh -= delta;
-	}	
-	if(dy < dst->clip.y0) {
-		int delta = dst->clip.y0 - dy;
-		sy += delta * sh / dh;
-		sh -= delta * sh / dh;
-		dh -= delta;
-		dy = dst->clip.y0;
-	}	
-	if(sy + sh > src->h) {
-		int delta = sy + sh - src->h;
-		dh -= delta * dh / sh;
-		sh -= delta;
-	}	
-	if(dy + dh > dst->clip.y1) {
-		int delta = dy + dh - dst->clip.y1;
-		sh -= delta * sh / dh;
-		dh -= delta;
-	}
-	
-	if(sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0)
-		return;
-	if(dx >= dst->clip.x1 || dx + dw < dst->clip.x0)
-		return;
-	if(dy >= dst->clip.y1 || dy + dh < dst->clip.y0)
-		return;
+	int ynum = 0;	
+	int xnum = 0;
 	
 	/*
 	Uses Bresenham's algoritm to implement a simple scaling while blitting.
@@ -1034,38 +969,75 @@ void bm_blit_ex(struct bitmap *dst, int dx, int dy, int dw, int dh, struct bitma
 	Or see these links:
 		http://www.drdobbs.com/image-scaling-with-bresenham/184405045
 		http://www.compuphase.com/graphic/scale.htm	
-	*/	
-	ssx = sx; 
-	for(y = dy; y < dy + dh; y++){
-		int xnum = 0;			
-		sx = ssx;			
-		
+	*/
+	
+	if(sw == dw && sh == dh) {
+		/* Special cases, no scaling */
+		if(mask) {
+			bm_maskedblit(dst, dx, dy, src, sx, sy, dw, dh);
+		} else {
+			bm_blit(dst, dx, dy, src, sx, sy, dw, dh);
+		}
+		return;
+	}
+	
+	if(sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0)
+		return;
+	
+	/* Clip on the Y */
+	y = dy;
+	while(y < dst->clip.y0 || sy < 0) {
+		ynum += sh;
+		while(ynum > dh) {
+			ynum -= dh;
+			sy++;
+		}
+		y++;
+	}
+	if(dy >= dst->clip.y1 || dy + dh < dst->clip.y0)
+		return;
+	
+	/* Clip on the X */
+	x = dx;
+	while(x < dst->clip.x0 || sx < 0) {
+		xnum += sw;
+		while(xnum > dw) {
+			xnum -= dw;
+			sx++;
+		}
+		x++;
+	}
+	dx = x;
+	
+	if(dx >= dst->clip.x1 || dx + dw < dst->clip.x0)
+		return;
+	
+	ssx = sx; /* Save sx for the next row */
+	for(; y < dy + dh; y++){		
 		if(sy >= src->h || y >= dst->clip.y1)
 			break;
+		xnum = 0;			
+		sx = ssx;
 		
-		for(x = dx; x < dx + dw; x++) {
-			
+		assert(y >= dst->clip.y0 && sy >= 0);
+		for(x = dx; x < dx + dw; x++) {			
 			if(sx >= src->w || x >= dst->clip.x1)
 				break;
+			assert(x >= dst->clip.x0 && sx >= 0);
 			
-			/* TODO: Is the clipping above sufficient to remove this "if"? */
-			if(x >= dst->clip.x0 && x < dst->clip.x1 && y >= dst->clip.y0 && y < dst->clip.y1
-				&& sx >= 0 && sx < src->w && sy >= 0 && sy < src->h) {
-				int r = BM_GETR(src, sx, sy),
-					g = BM_GETG(src, sx, sy),
-					b = BM_GETB(src, sx, sy),
-					a = BM_GETA(src, sx, sy);
-				if(!mask || r != src->r || g != src->g || b != src->b)
-					BM_SET(dst, x, y, r, g, b, a);
-			}
-			
+			int r = BM_GETR(src, sx, sy),
+				g = BM_GETG(src, sx, sy),
+				b = BM_GETB(src, sx, sy),
+				a = BM_GETA(src, sx, sy);
+			if(!mask || r != src->r || g != src->g || b != src->b)
+				BM_SET(dst, x, y, r, g, b, a);
+					
 			xnum += sw;
 			while(xnum > dw) {
 				xnum -= dw;
 				sx++;
 			}
 		}
-		
 		ynum += sh;
 		while(ynum > dh) {
 			ynum -= dh;
