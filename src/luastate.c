@@ -355,6 +355,21 @@ static int gc_bmp_obj(lua_State *L) {
 	return 0;
 }
 
+/*@ BmpObj:clone()
+ *# Returns a copy of the `BmpObj` instance.
+ */
+static int bmp_clone(lua_State *L) {	
+	struct bitmap **bp = luaL_checkudata(L,1, "BmpObj");
+	struct bitmap *b = *bp;
+	struct bitmap *clone = re_clone_bmp(b, tmpnam(NULL));
+	if(!clone)
+		luaL_error(L, "Unable to clone bitmap");
+	bp = lua_newuserdata(L, sizeof *bp);	
+	luaL_setmetatable(L, "BmpObj");
+	*bp = clone;
+	return 1;
+}
+
 /*@ BmpObj:setMask(color)
  *# Sets the color used as a mask when the bitmap is drawn to the screen.
  */
@@ -381,6 +396,30 @@ static int bmp_height(lua_State *L) {
 	struct bitmap **bp = luaL_checkudata(L,1, "BmpObj");
 	lua_pushinteger(L, (*bp)->h);
 	return 1;
+}
+
+/*@ BmpObj:adjust(R,G,B, [A]), BmpObj:adjust(v)  
+ *# Adjusts the color of the bitmap by multiplying the RGB value of each pixel 
+ *# in the bitmap with the factors R, G, B and A.\n
+ *# If A is not specified, it is taken as 1.0 (leaving the alpha channel unchanged).\n
+ *# If only one parameter {{v}} is specified, {{v}} is used for the R, G and B values.
+ *# In this case, the alpha channel is also treated as 1.0.
+ */
+static int bmp_adjust(lua_State *L) {	
+	struct bitmap **bp = luaL_checkudata(L,1, "BmpObj");
+	if(lua_gettop(L) == 2) {
+		float v = luaL_checknumber(L,2);
+		bm_adjust_rgba(*bp, v, v, v, 1.0f);
+	} else if(lua_gettop(L) >= 4) {
+		float R, G, B, A = 1.0;
+		R = luaL_checknumber(L,2);
+		G = luaL_checknumber(L,3);
+		B = luaL_checknumber(L,4);
+		if(lua_gettop(L) > 4)
+			A = luaL_checknumber(L,5);
+		bm_adjust_rgba(*bp, R, G, B, A);
+	}
+	return 0;
 }
 
 /*@ R,G,B = BmpObj:getColor([x,y])
@@ -414,6 +453,8 @@ static void bmp_obj_meta(lua_State *L) {
 	lua_setfield(L, -2, "__index"); /* BmpObj.__index = BmpObj */
 	
 	/* Add methods */
+	lua_pushcfunction(L, bmp_clone);
+	lua_setfield(L, -2, "clone");
 	lua_pushcfunction(L, bmp_set_mask);
 	lua_setfield(L, -2, "setMask");
 	lua_pushcfunction(L, bmp_width);
@@ -422,6 +463,8 @@ static void bmp_obj_meta(lua_State *L) {
 	lua_setfield(L, -2, "height");
 	lua_pushcfunction(L, bmp_getcolor);
 	lua_setfield(L, -2, "getColor");
+	lua_pushcfunction(L, bmp_adjust);
+	lua_setfield(L, -2, "adjust");
 	
 	lua_pushcfunction(L, bmp_tostring);
 	lua_setfield(L, -2, "__tostring");	
