@@ -188,6 +188,19 @@ struct bitmap *re_get_bmp(const char *filename) {
 	return bmp;
 }
 
+struct bitmap *re_clone_bmp(struct bitmap *b, const char *newname) {
+	struct resource_cache *rc = re_cache;	
+	struct bitmap *clone = ht_find(rc->bmp_cache, newname);
+	if(clone) {
+		rerror("Attempt to clone bitmap with an existing name %s", newname);
+		return NULL;
+	}
+	clone = bm_copy(b);
+	ht_insert(re_cache->bmp_cache, newname, clone);
+	rlog("Cached cloned bitmap as '%s'", newname);
+	return clone;
+}
+
 Mix_Chunk *re_get_wav(const char *filename) {
 	Mix_Chunk *chunk = NULL;
 	
