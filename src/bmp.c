@@ -1169,6 +1169,18 @@ void bm_set_alpha(struct bitmap *bm, int a) {
 	bm->a = a;
 }
 
+void bm_adjust_rgba(struct bitmap *bm, float rf, float gf, float bf, float af) {
+	int x, y;
+	for(y = 0; y < bm->h; y++)
+		for(x = 0; x < bm->w; x++) {
+			float R = BM_GETR(bm,x,y);
+			float G = BM_GETG(bm,x,y);
+			float B = BM_GETB(bm,x,y);
+			float A = BM_GETA(bm,x,y);
+			BM_SET(bm, x, y, rf * R, gf * G, bf * B, af * A);
+		}
+}
+
 /* Lookup table for bm_color_atoi() 
  * This list is based on the HTML and X11 colors on the
  * Wikipedia's list of web colors

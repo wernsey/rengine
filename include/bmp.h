@@ -152,6 +152,11 @@ void bm_set_color(struct bitmap *bm, unsigned char r, unsigned char g, unsigned 
  */
 void bm_set_alpha(struct bitmap *bm, int a);
 
+/*@ void bm_adjust_rgba(struct bitmap *bm, float rf, float gf, float bf, float af)
+ *# Multiplies the RGBA values of each pixel in the bitmap with {{rf,gf,bf,af}}
+ */
+void bm_adjust_rgba(struct bitmap *bm, float rf, float gf, float bf, float af);
+
 /*@ void bm_set_color_s(struct bitmap *bm, const char *text)
  *# Sets the colour of the pen to a colour represented by text.
  *# The text can be in the HTML format, like #RRGGBB or one of
