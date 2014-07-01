@@ -14,11 +14,11 @@
 #include <assert.h>
 
 #ifdef WIN32
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #include <SDL_mixer.h>
 #else
-#include <SDL/SDL.h>
-#include <SDL/SDL_mixer.h>
+#include <SDL2/SDL.h>
+#include <SDL_mixer.h>
 #endif
 
 #include "bmp.h"

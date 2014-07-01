@@ -7,6 +7,7 @@ files into my executable.
 */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h> 
 
 #define BUFFER_SIZE	1024
@@ -100,7 +101,8 @@ int main(int argc, char *argv[]) {
 		fprintf(outfile, ",\n  0x00};\n");
 	} else
 		fprintf(outfile, "};\n");
-	fprintf(outfile, "size_t %s_len = %u;\n", var_name, len);
+	/* http://stackoverflow.com/a/2125854/115589 */
+	fprintf(outfile, "size_t %s_len = %zd;\n", var_name, len);
 	
 	free(var_name);
 	fclose(infile);

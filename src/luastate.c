@@ -14,16 +14,19 @@
 #include <string.h>
 #include <assert.h>
 
-#include <lua.h>
-#include <lauxlib.h>
-#include <lualib.h>
 
 #ifdef WIN32
 #include <SDL.h>
 #include <SDL_mixer.h>
+#include <lua.h>
+#include <lauxlib.h>
+#include <lualib.h>
 #else
-#include <SDL/SDL.h>
-#include <SDL/SDL_mixer.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_mixer.h>
+#include <lua5.2/lua.h>
+#include <lua5.2/lauxlib.h>
+#include <lua5.2/lualib.h>
 #endif
 
 #include "bmp.h"
@@ -361,7 +364,10 @@ static int gc_bmp_obj(lua_State *L) {
 static int bmp_clone(lua_State *L) {	
 	struct bitmap **bp = luaL_checkudata(L,1, "BmpObj");
 	struct bitmap *b = *bp;
-	struct bitmap *clone = re_clone_bmp(b, tmpnam(NULL));
+	char buffer[32];
+	static int nextnum = 1;
+	snprintf(buffer, sizeof buffer, "clone%d", nextnum++);
+	struct bitmap *clone = re_clone_bmp(b, buffer);
 	if(!clone)
 		luaL_error(L, "Unable to clone bitmap");
 	bp = lua_newuserdata(L, sizeof *bp);	
