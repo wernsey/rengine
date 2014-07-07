@@ -257,6 +257,8 @@ int main(int argc, char *argv[]) {
 	
 	SDL_version compiled, linked;
 	
+	log_init(rlog_filename);	
+	
 	while((opt = getopt(argc, argv, "p:g:l:d?")) != -1) {
 		switch(opt) {
 			case 'p': {
@@ -278,8 +280,6 @@ int main(int argc, char *argv[]) {
 			}
 		}
 	}
-	
-	log_init(rlog_filename);	
 	
 	if(!getcwd(initial_dir, sizeof initial_dir)) {
 		rerror("error in getcwd(): %s", strerror(errno));

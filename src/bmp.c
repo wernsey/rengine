@@ -680,6 +680,7 @@ struct bitmap *bm_copy(struct bitmap *b) {
 }
 
 void bm_free(struct bitmap *b) {
+	if(!b) return;
 	if(b->data) free(b->data);
 	free(b);
 }
