@@ -19,6 +19,12 @@ NOTE: On Windows, I use MinGW which provides
 #include "pak.h"
 #include "utils.h"
 
+#ifdef WIN32
+#   define MKDIR(x,y) mkdir(x)
+#else
+#   define MKDIR    mkdir 
+#endif
+
 int inc_hidden = 0; /* Include hidden files in PAK. Default no */
 
 void usage(const char *name) {
@@ -90,7 +96,7 @@ int mkdir_tree(const char *path) {
 		strncat(buffer, p, s);
 		s -= strlen(p);
 		
-		if(mkdir(buffer, 0777) && errno != EEXIST) {
+		if(MKDIR(buffer, 0777) && errno != EEXIST) {
 			fprintf(stderr, "error: mkdir(%s): %s\n", buffer, strerror(errno));
 			return -1;
 		}

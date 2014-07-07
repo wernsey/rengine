@@ -102,8 +102,12 @@ int main(int argc, char *argv[]) {
 	} else
 		fprintf(outfile, "};\n");
 	/* http://stackoverflow.com/a/2125854/115589 */
-	fprintf(outfile, "size_t %s_len = %zd;\n", var_name, len);
-	
+#ifdef WIN32
+	fprintf(outfile, "size_t %s_len = %u;\n", var_name, len);
+#else
+    fprintf(outfile, "size_t %s_len = %zd;\n", var_name, len);
+#endif
+
 	free(var_name);
 	fclose(infile);
 	if(outfile != stdout) {
