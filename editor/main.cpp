@@ -2,6 +2,8 @@
 #include <FL/Fl_File_Chooser.H>
 #include <FL/Fl_Color_Chooser.H>
 
+#include <errno.h>
+
 #ifndef _WIN32
 #include <unistd.h>
 #endif
@@ -83,7 +85,9 @@ void open_cb(Fl_Menu_* w, void*) {
 		strncpy(file_dir, filepath, dir_end - filepath);
 		file_dir[dir_end - filepath] = '\0';
 		rlog("Changing working directory to %s", file_dir);
-		chdir(file_dir);		
+		if(chdir(file_dir)) {
+			rerror("chdir: %s\n", strerror(errno));
+		}		
 		if(!getcwd(file_dir, sizeof file_dir)) {
 			rerror("getcwd: %s\n", strerror(errno));
 		}
@@ -175,14 +179,18 @@ void chdir_cb(Fl_Menu_* w, void*) {
 	// FIXME: Do we change directories with a map being edited?
 	// You need to take the "New Map" option into account as well.
 	char cwd[128];	
-	getcwd(cwd, sizeof cwd);	
+	if(!getcwd(cwd, sizeof cwd)) {
+		rerror("getcwd: %s\n", strerror(errno));
+	}
 	const char *dir = fl_dir_chooser("Choose Working Directory", cwd, 0);
 	if(dir) {
 		rlog("Changing working directory to %s", dir);
 		char buffer[128];
 		snprintf(buffer, sizeof buffer, "Editor - %s", dir);
 		main_window->label(buffer);
-		chdir(dir);
+		if(chdir(dir)) {
+			rerror("chdir: %s\n", strerror(errno));
+		}
 	}
 }
 

@@ -90,7 +90,7 @@ int mkdir_tree(const char *path) {
 		strncat(buffer, p, s);
 		s -= strlen(p);
 		
-		if(mkdir(buffer) && errno != EEXIST) {
+		if(mkdir(buffer, 0777) && errno != EEXIST) {
 			fprintf(stderr, "error: mkdir(%s): %s\n", buffer, strerror(errno));
 			return -1;
 		}

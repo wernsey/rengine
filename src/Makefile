@@ -19,20 +19,20 @@ endif
 INCLUDE_PATH = -I /usr/local/include -I ../include -I ..
 
 CFLAGS += `sdl2-config --cflags` $(INCLUDE_PATH) -DUSEPNG -DUSEJPG
-LFLAGS += -llua -lSDL2_mixer -lpng -lz -ljpeg
+LFLAGS += -lSDL2_mixer -lpng -lz -ljpeg
 
 # Different executables, and -lopengl32 is required for Windows
 ifeq ($(OS),Windows_NT)
 GAME_BIN = ../bin/game.exe
 PAKR_BIN = ../bin/pakr.exe
 BACE_BIN = ../bin/bace.exe
-LFLAGS += `sdl2-config --libs` -lopengl32
+LFLAGS += `sdl2-config --libs` -lopengl32 -llua
 RES = rengine.res
 else
 GAME_BIN = ../bin/game
 PAKR_BIN = ../bin/pakr
 BACE_BIN = ../bin/bace
-LFLAGS += `sdl2-config --libs` -lGL
+LFLAGS += `sdl2-config --libs` -lGL -llua5.2
 RES = 
 endif
 
@@ -49,7 +49,7 @@ FONTS = fonts/bold.xbm fonts/circuit.xbm fonts/hand.xbm fonts/normal.xbm \
 
 OBJECTS=$(SOURCES:.c=.o)
 
-all: $(EXECUTABLES)
+all: ../bin $(EXECUTABLES)
 
 debug:
 	make "BUILD=debug"

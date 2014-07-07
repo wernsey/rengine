@@ -405,7 +405,9 @@ start_demo:
 	
 	re_clean_up();
 	
-	chdir(initial_dir); /* We're fairly confident it has to exist. */
+	if(chdir(initial_dir)) {
+		rerror("chdir(%s): %s", initial_dir, strerror(errno));
+	}
 	gdb_save("dump.db"); /* For testing the game database fuunctionality. Remove later. */
 	
 	gdb_close();

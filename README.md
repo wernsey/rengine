@@ -56,6 +56,12 @@ http://www.libsdl.org/projects/SDL_mixer/
 http://www.fltk.org
 
 On Linux systems, these libraries can be found in your package manager.
+For example, on Ubuntu 14.04, the following should suffice:
+
+    $ sudo apt-get install libsdl2-dev liblua5.2-dev \
+               zlib1g-dev libpng12-dev libjpeg-dev \
+               libsdl2-mixer-dev libogg-dev libvorbis-dev \
+               libfltk1.3-dev 
 
 On Windows, Rengine is built with [MinGW](http://mingw.org/). See the
 webpages of the packages mentioned above for details on how to compile
