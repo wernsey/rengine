@@ -67,6 +67,8 @@ int mouse_x = 0, mouse_y = 0;
 int mouse_btns = 0, mouse_clck = 0;
 
 char keys[SDL_NUM_SCANCODES];
+char keys_up[SDL_NUM_SCANCODES];
+char keys_down[SDL_NUM_SCANCODES];
 
 char initial_dir[256];
 
@@ -154,7 +156,7 @@ void render() {
 void advanceFrame() {				
 	SDL_Event event;	
 	Uint32 end;
-	int new_btns;
+	int new_btns, i;
 		
 	render();
 		
@@ -173,7 +175,12 @@ void advanceFrame() {
 	mouse_btns = new_btns;
 	
 	mouse_x = screen_to_virt_x(mouse_x);
-	mouse_y = screen_to_virt_y(mouse_y);	
+	mouse_y = screen_to_virt_y(mouse_y);
+    
+    for(i = 0; i < SDL_NUM_SCANCODES; i++) {
+	   keys_up[i] = 0;
+       keys_down[i] = 0;
+	}
 	
 	while(SDL_PollEvent(&event)) {
 		if(event.type == SDL_QUIT) {
@@ -187,12 +194,14 @@ void advanceFrame() {
 				/* Not a special key: */
 				assert(index < SDL_NUM_SCANCODES);			
 				keys[index] = 1;
+                keys_down[index] = 1;
 			}
 			
 		} else if(event.type == SDL_KEYUP) {
 			int index = event.key.keysym.scancode;			
 			assert(index < SDL_NUM_SCANCODES);			
-			keys[index] = 0;						
+			keys[index] = 0;
+            keys_up[index] = 1;		
 		} else if(event.type == SDL_MOUSEBUTTONDOWN) {		
 		} else if(event.type == SDL_WINDOWEVENT) {
 			switch(event.window.event) {

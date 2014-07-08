@@ -68,6 +68,7 @@ const char *get_style(struct game_state *s, const char *name) {
 static void apply_styles(struct game_state *s) {	
 	set_style(s, "foreground", "white");
 	set_style(s, "background", "black");
+	set_style(s, "highlight-color", "yellow");
 	
 	set_style_gt0(s, "margin", "1");
 	set_style_gt0(s, "padding", "1");

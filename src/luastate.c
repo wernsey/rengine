@@ -301,13 +301,23 @@ static int l_changeState(lua_State *L) {
 	return 0;
 }
 
-/*@ Game.getStyle(style)
+/*@ Game.getStyle(style, [default])
  *# Retrieves a specific [[Style]] from the [[game.ini]] file.
  */
 static int l_getstyle(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
 	const char * s = luaL_checkstring(L,1);
-	lua_pushstring(L, get_style(sd->state, s));
+    const char * v = get_style(sd->state, s);
+    if(v) {
+        lua_pushstring(L, v);
+    } else {
+        if(lua_gettop(L) > 1) {
+            lua_pushstring(L, luaL_checkstring(L,2));
+        } else {
+            lua_pushstring(L, "");
+        }
+    }
+	
 	return 1;
 }
 
@@ -1102,6 +1112,29 @@ static int in_kbhit(lua_State *L) {
 	return 1;
 }
 
+/*@ Keyboard.pressed(key)
+ *# Checks whether a key has been pressed during the last frame.
+ *# The parameter {{key}} is the name of specific key.
+ *# See http://wiki.libsdl.org/SDL_Scancode for the names of all the possible keys.
+ */
+static int in_keypressed(lua_State *L) {	
+    const char *name = luaL_checkstring(L, 1);
+    /* TODO: Wouldn't passing an invalid key cause a segfault? */
+    lua_pushboolean(L, keys_down[SDL_GetScancodeFromName(name)]);
+	return 1;
+}
+
+/*@ Keyboard.released(key)
+ *# Checks whether a key has been released during the last frame.
+ *# The parameter {{key}} is the name of specific key.
+ *# See http://wiki.libsdl.org/SDL_Scancode for the names of all the possible keys.
+ */
+static int in_keyreleased(lua_State *L) {	
+    const char *name = luaL_checkstring(L, 1);
+    lua_pushboolean(L, keys_up[SDL_GetScancodeFromName(name)]);
+	return 1;
+}
+
 /*@ Keyboard.reset()
  *# Resets the keyboard input.
  */
@@ -1113,6 +1146,8 @@ static int in_reset_keys(lua_State *L) {
 static const luaL_Reg keyboard_funcs[] = {
   {"down",   in_kbhit},
   {"reset",  in_reset_keys},
+  {"pressed",  in_keypressed},
+  {"released",  in_keyreleased},
   {0, 0}
 };
 
