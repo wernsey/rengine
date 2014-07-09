@@ -4,10 +4,8 @@
 
 #ifdef WIN32
 #include <SDL2/SDL.h>
-#include <SDL_mixer.h>
 #else
 #include <SDL2/SDL.h>
-#include <SDL_mixer.h>
 #endif
 
 #include "ini.h"
@@ -65,10 +63,9 @@ const char *get_style(struct game_state *s, const char *name) {
 	return v;
 }
 
-static void apply_styles(struct game_state *s) {	
+static void apply_styles(struct game_state *s) {
 	set_style(s, "foreground", "white");
 	set_style(s, "background", "black");
-	set_style(s, "highlight-color", "yellow");
 	
 	set_style_gt0(s, "margin", "1");
 	set_style_gt0(s, "padding", "1");
@@ -85,7 +82,7 @@ static void apply_styles(struct game_state *s) {
 	set_style(s, "image", NULL);
 	set_style(s, "image-align", "top");
 	set_style(s, "image-mask", NULL);
-	set_style_gt0(s, "image-margin", "0");
+	set_style_gt0(s, "image-margin", "0");    
 }
 
 static void draw_border(struct game_state *s, struct bitmap *bmp) {
@@ -461,8 +458,27 @@ int change_state(struct game_state *next) {
 	}	
 	game_states[state_top] = next;	
 	if(game_states[state_top]){		
+        
 		game_states[state_top]->styles = ht_create(0);
 		apply_styles(game_states[state_top]);
+        
+#if 0
+        {
+            const char *show_cursor_local = ini_get(game_ini, next->name, "show-cursor", NULL);
+            if(show_cursor_local) {
+                int show = !!atoi(show_cursor_local);
+                rlog("SDL_ShowCursor: %d", show);
+                if(SDL_ShowCursor(show) < 0) {
+                    rerror("SDL_ShowCursor: %s", SDL_GetError());
+                }
+            } else {
+                /* Use the global value */
+                if(SDL_ShowCursor(show_cursor) < 0) {
+                    rerror("SDL_ShowCursor: %s", SDL_GetError());
+                }
+            }
+        }
+#endif        
 		if(game_states[state_top]->init && !game_states[state_top]->init(game_states[state_top])) {
 			rerror("Initialising new state");
 			return 0;

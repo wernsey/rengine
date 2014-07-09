@@ -11,6 +11,22 @@ Docs says `SDL_UpdateTexture()` be slow. Do something different.
 
 ## Game
 
+Allow the using of bitmap cursors.
+
+
+`SDL_ShowCursor()` should also be exposed to Lua, so that the cursor can
+be enabled when entering GUIs and then disabled again afterwards.
+
+**FIXME** I couldn't get this working. `SDL_ShowCursor()` just didn't work, and
+I can't explain why:
+
+The cursor should be toggleable on a per-state basis. You may 
+want to display the cursor in menus, but not in the game proper.
+The global `show-cursor` in the `mouse` section of `game.ini` should control 
+whether or not the cursor is shown, but then every state should also have a 
+`show-cursor` configuration.
+
+
 ~~The scheme of pushing/popping states has some implications on the
 save game system. And on the sprite system I intend to add later.~~
 

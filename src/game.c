@@ -41,45 +41,58 @@
 
 /* Globals *************************************************/
 
+/* Set quit to 1 from anywhere to break out of the main loop */
+int quit = 0;
+
+/* The width/height of the window (in windowed mode) */
 static int screenWidth = SCREEN_WIDTH, 
 	screenHeight = SCREEN_HEIGHT;
+
+/* The desired frame rate */
 int fps = DEFAULT_FPS;
 
+/* The dimensions of the virtual screen */
 int virt_width = VIRT_WIDTH,
     virt_height = VIRT_HEIGHT;
 
-SDL_Window *win = NULL;
-SDL_Renderer *ren = NULL;
-SDL_Texture *tex = NULL;
+/* SDL globals */
+static SDL_Window *win = NULL;
+static SDL_Renderer *ren = NULL;
+static SDL_Texture *tex = NULL;
+
+/* The start time of the current animation frame */
+static Uint32 frameStart;
 
 unsigned int frame_counter = 0;
 
-int quit = 0;
-	
-/* FIXME: Get the filter mode working again.
-filter = GL_NEAREST;
-*/
+/* The filter (nearest or linear) to use when rendering the virtual screen */
+static const char *filter = "0";
 
+/* The bitmap on which all drawing occurs. 
+It is rendered to `tex` once per frame */
 static struct bitmap *bmp = NULL;
 
+/* The game.ini configuration file */
 struct ini_file *game_ini = NULL;
-
-static Uint32 frameStart;
 
 struct game_state *get_demo_state(const char *name); /* demo.c */
 
+/* The mouse state */
+int show_cursor = 1;
 int mouse_x = 0, mouse_y = 0;
 int mouse_btns = 0, mouse_clck = 0;
 
-char keys[SDL_NUM_SCANCODES];
-char keys_up[SDL_NUM_SCANCODES];
-char keys_down[SDL_NUM_SCANCODES];
+/* The state of the keyboard */
+char keys[SDL_NUM_SCANCODES];       /* keys that are currently down */
+char keys_down[SDL_NUM_SCANCODES];  /* keys pressed during the last frame */
+char keys_up[SDL_NUM_SCANCODES];    /* keys released during the last frame  */
 
+/* The starting directory */
 char initial_dir[256];
 
 /* Functions *************************************************/
 
-int init(const char *appTitle, int virt_width, int virt_height, int flags) {
+int init(const char *appTitle, int flags) {
 	flags |= SDL_WINDOW_SHOWN;
 	
 	rlog("Creating Window.");
@@ -101,9 +114,15 @@ int init(const char *appTitle, int virt_width, int virt_height, int flags) {
 		rerror("SDL_CreateRenderer: %s", SDL_GetError());
 		return 0;
 	}	
+    
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, filter);
 	
 	rlog("Window Created.");
 	
+    if(SDL_ShowCursor(show_cursor) < 0) {
+        rerror("SDL_ShowCursor: %s", SDL_GetError());
+    }
+
 	bmp = bm_create(virt_width, virt_height);
 	
 	tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING, bmp->w, bmp->h);
@@ -349,13 +368,13 @@ int main(int argc, char *argv[]) {
 			if(fps <= 0)
 				fps = DEFAULT_FPS;
 			
-			/* FIXME: In the SDL 1.2 version of Rengine, you used to be able to configure this:
-			filter = !my_stricmp(ini_get(game_ini, "screen", "filter", "nearest"), "linear")? GL_LINEAR: GL_NEAREST;
-			*/
+			filter = !my_stricmp(ini_get(game_ini, "screen", "filter", "nearest"), "linear")? "1": "0";
 				
 			virt_width = atoi(ini_get(game_ini, "virtual", "width", PARAM(VIRT_WIDTH)));
 			virt_height = atoi(ini_get(game_ini, "virtual", "height", PARAM(VIRT_HEIGHT)));
 			
+            show_cursor = atoi(ini_get(game_ini, "mouse", "show-cursor", PARAM(1)))? 1 : 0;
+            
 			startstate = ini_get(game_ini, "init", "startstate", NULL);
 			if(startstate) {
 				if(!set_state(startstate)) {
@@ -379,7 +398,7 @@ start_demo:
 	
 	rlog("Initialising...");
 		
-	if(!init(appTitle, virt_width, virt_height, fullscreen | borderless | resizable)) {
+	if(!init(appTitle, fullscreen | borderless | resizable)) {
 		return 1;
 	}
 	
