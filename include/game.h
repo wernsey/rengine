@@ -1,5 +1,6 @@
 extern int quit;
 
+extern int virt_width, virt_height;
 extern int fps;
 
 extern struct ini_file *game_ini;
@@ -24,5 +25,6 @@ extern char keys_up[];
 void reset_keys();
 int kb_hit();
 
+extern unsigned int frame_counter;
 void advanceFrame();
 

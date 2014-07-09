@@ -726,6 +726,7 @@ static void cell_obj_meta(lua_State *L) {
  ** {{G.FPS}} - The configured frames per second of the game (see [[game.ini]]).
  ** {{G.SCREEN_WIDTH}} - The configured width of the screen.
  ** {{G.SCREEN_HEIGHT}} - The configured height of the screen.
+ ** {{G.frameCounter}} - A counter that gets incremented on every frame. It may be useful for certain kinds of animations.
  *}
  */
 
@@ -1742,8 +1743,8 @@ static int lus_init(struct game_state *s) {
 	/* The graphics object G gives you access to all the 2D drawing functions */
 	luaL_newlib(L, graphics_funcs);
 	SET_TABLE_INT_VAL("FPS", fps);
-	SET_TABLE_INT_VAL("SCREEN_WIDTH", 0);
-	SET_TABLE_INT_VAL("SCREEN_HEIGHT", 0);
+	SET_TABLE_INT_VAL("SCREEN_WIDTH", virt_width);
+	SET_TABLE_INT_VAL("SCREEN_HEIGHT", virt_height);
 	lua_setglobal(L, "G");
 	
 	/* The input object Input gives you access to the keyboard and mouse. */
@@ -1821,12 +1822,12 @@ static int lus_update(struct game_state *s, struct bitmap *bmp) {
 		return 0;
 	}
 	lua_pop(L, 1);
+    
+    lua_getglobal (L, "G");
+	SET_TABLE_INT_VAL("frameCounter", frame_counter);
+	lua_pop(L, 1);
 	
 	sd->bmp = bmp;
-	
-	lua_getglobal (L, "G");
-	SET_TABLE_INT_VAL("SCREEN_WIDTH", bmp->w);
-	SET_TABLE_INT_VAL("SCREEN_HEIGHT", bmp->h);
 	
 	/* TODO: Maybe background colour metadata in the map file? */
 	bm_set_color_s(bmp, "black");

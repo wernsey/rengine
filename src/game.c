@@ -45,9 +45,14 @@ static int screenWidth = SCREEN_WIDTH,
 	screenHeight = SCREEN_HEIGHT;
 int fps = DEFAULT_FPS;
 
+int virt_width = VIRT_WIDTH,
+    virt_height = VIRT_HEIGHT;
+
 SDL_Window *win = NULL;
 SDL_Renderer *ren = NULL;
 SDL_Texture *tex = NULL;
+
+unsigned int frame_counter = 0;
 
 int quit = 0;
 	
@@ -157,6 +162,8 @@ void advanceFrame() {
 	SDL_Event event;	
 	Uint32 end;
 	int new_btns, i;
+    
+    frame_counter++;
 		
 	render();
 		
@@ -246,8 +253,6 @@ void usage(const char *name) {
 
 int main(int argc, char *argv[]) {
 	int opt;
-	int virt_width = VIRT_WIDTH,
-		virt_height = VIRT_HEIGHT;
 	
 	int fullscreen = 0, resizable = 0, borderless = 0;
 	
