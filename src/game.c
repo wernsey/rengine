@@ -152,6 +152,10 @@ int handleSpecialKeys(SDL_Scancode key) {
 	return 0;
 }
 
+struct bitmap *get_screen() {
+    return bmp;
+}
+
 int screen_to_virt_x(int in) {
 	return in * bmp->w / screenWidth;
 }
@@ -204,6 +208,7 @@ void advanceFrame() {
         mouse_x = screen_to_virt_x(mouse_x);
         mouse_y = screen_to_virt_y(mouse_y);
     } else { 
+        /* Ignore the mouse if the cursor is gone */
         new_btns = 0;
         mouse_clck = 0; 
         mouse_btns = 0;

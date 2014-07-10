@@ -3,6 +3,8 @@ extern int quit;
 extern int virt_width, virt_height;
 extern int fps;
 
+struct bitmap *get_screen();
+
 extern struct ini_file *game_ini;
 
 extern int show_cursor;

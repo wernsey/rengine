@@ -717,9 +717,6 @@ static void cell_obj_meta(lua_State *L) {
 
 /*1 G
  *# {{G}} is the Graphics object that allows you to draw primitives on the screen. \n
- *# You can only call these functions when the screen is being drawn. That's to say, you can only call then inside 
- *# functions registered through {{onUpdate()}}
- *# If you call them elsewhere, you will get the error {/"Call to graphics function outside of a screen update"/}
  *# 
  *# These fields are also available:
  *{
@@ -730,12 +727,6 @@ static void cell_obj_meta(lua_State *L) {
  *}
  */
 
-/* 
-The "Call to graphics function outside of a screen update" error happens because
-sd->bmp is not yet set when the script is first executed in the state's initialisation
-function (lus_init()).
-*/
-
 /*@ G.setColor("color"), G.setColor(R, G, B), G.setColor()
  *# Sets the [[color|Colors]] used to draw the graphics primitives\n
  *# {{G.setColor("color")}} sets the color to the specified string value.\n
@@ -745,8 +736,7 @@ function (lus_init()).
  */
 static int gr_setcolor(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
-	if(!sd->bmp)
-		luaL_error(L, "Call to graphics function outside of a screen update");	
+	assert(sd->bmp);	
 	if(lua_gettop(L) == 3) {
 		int R = luaL_checkinteger(L,1);
 		int G = luaL_checkinteger(L,2);
@@ -768,8 +758,7 @@ static int gr_setcolor(lua_State *L) {
 static int gr_getcolor(lua_State *L) {
 	int r,g,b;
 	struct lustate_data *sd = get_state_data(L);
-	if(!sd->bmp)
-		luaL_error(L, "Call to graphics function outside of a screen update");
+	assert(sd->bmp);
 	bm_get_color(sd->bmp, &r, &g, &b);
 	lua_pushinteger(L, r);
 	lua_pushinteger(L, g);
@@ -782,8 +771,7 @@ static int gr_getcolor(lua_State *L) {
  */
 static int gr_clip(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
-	if(!sd->bmp)
-		luaL_error(L, "Call to graphics function outside of a screen update");	
+	assert(sd->bmp);	
 	int x0 = luaL_checkinteger(L,1);
 	int y0 = luaL_checkinteger(L,2);
 	int x1 = luaL_checkinteger(L,3);
@@ -797,8 +785,7 @@ static int gr_clip(lua_State *L) {
  */
 static int gr_unclip(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
-	if(!sd->bmp)
-		luaL_error(L, "Call to graphics function outside of a screen update");
+	assert(sd->bmp);
 	bm_unclip(sd->bmp);
 	return 0;
 }
@@ -807,8 +794,7 @@ static int gr_unclip(lua_State *L) {
  */
 static int gr_putpixel(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
-	if(!sd->bmp)
-		luaL_error(L, "Call to graphics function outside of a screen update");
+	assert(sd->bmp);
 	int x = luaL_checkint(L,1);
 	int y = luaL_checkint(L,2);
 	bm_putpixel(sd->bmp, x, y);
@@ -820,9 +806,7 @@ static int gr_putpixel(lua_State *L) {
  */
 static int gr_line(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
-	if(!sd->bmp)
-		luaL_error(L, "Call to graphics function outside of a screen update");
-	
+	assert(sd->bmp);
 	int x0 = luaL_checkint(L,1);
 	int y0 = luaL_checkint(L,2);
 	int x1 = luaL_checkint(L,3);
@@ -836,8 +820,7 @@ static int gr_line(lua_State *L) {
  */
 static int gr_rect(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
-	if(!sd->bmp)
-		luaL_error(L, "Call to graphics function outside of a screen update");
+	assert(sd->bmp);
 	int x0 = luaL_checkint(L,1);
 	int y0 = luaL_checkint(L,2);
 	int x1 = luaL_checkint(L,3);
@@ -851,8 +834,7 @@ static int gr_rect(lua_State *L) {
  */
 static int gr_fillrect(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
-	if(!sd->bmp)
-		luaL_error(L, "Call to graphics function outside of a screen update");
+	assert(sd->bmp);
 	int x0 = luaL_checkint(L,1);
 	int y0 = luaL_checkint(L,2);
 	int x1 = luaL_checkint(L,3);
@@ -866,8 +848,7 @@ static int gr_fillrect(lua_State *L) {
  */
 static int gr_circle(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
-	if(!sd->bmp)
-		luaL_error(L, "Call to graphics function outside of a screen update");
+	assert(sd->bmp);
 	int x = luaL_checkint(L,1);
 	int y = luaL_checkint(L,2);
 	int r = luaL_checkint(L,3);
@@ -880,8 +861,7 @@ static int gr_circle(lua_State *L) {
  */
 static int gr_fillcircle(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
-	if(!sd->bmp)
-		luaL_error(L, "Call to graphics function outside of a screen update");
+	assert(sd->bmp);
 	int x = luaL_checkint(L,1);
 	int y = luaL_checkint(L,2);
 	int r = luaL_checkint(L,3);
@@ -894,8 +874,7 @@ static int gr_fillcircle(lua_State *L) {
  */
 static int gr_ellipse(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
-	if(!sd->bmp)
-		luaL_error(L, "Call to graphics function outside of a screen update");
+	assert(sd->bmp);
 	int x0 = luaL_checkint(L,1);
 	int y0 = luaL_checkint(L,2);
 	int x1 = luaL_checkint(L,3);
@@ -910,8 +889,7 @@ static int gr_ellipse(lua_State *L) {
  */
 static int gr_roundrect(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
-	if(!sd->bmp)
-		luaL_error(L, "Call to graphics function outside of a screen update");
+	assert(sd->bmp);
 	int x0 = luaL_checkint(L,1);
 	int y0 = luaL_checkint(L,2);
 	int x1 = luaL_checkint(L,3);
@@ -927,8 +905,7 @@ static int gr_roundrect(lua_State *L) {
  */
 static int gr_fillroundrect(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
-	if(!sd->bmp)
-		luaL_error(L, "Call to graphics function outside of a screen update");
+	assert(sd->bmp);
 	int x0 = luaL_checkint(L,1);
 	int y0 = luaL_checkint(L,2);
 	int x1 = luaL_checkint(L,3);
@@ -945,8 +922,7 @@ static int gr_fillroundrect(lua_State *L) {
  */
 static int gr_bezier3(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
-	if(!sd->bmp)
-		luaL_error(L, "Call to graphics function outside of a screen update");
+	assert(sd->bmp);
 	int x0 = luaL_checkint(L,1);
 	int y0 = luaL_checkint(L,2);
 	int x1 = luaL_checkint(L,3);
@@ -965,8 +941,7 @@ static int gr_bezier3(lua_State *L) {
  */
 static int gr_lerp(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
-	if(!sd->bmp)
-		luaL_error(L, "Call to graphics function outside of a screen update");
+	assert(sd->bmp);
 	const char *c1 = luaL_checkstring(L,1);
 	const char *c2 = luaL_checkstring(L,2);
 	lua_Number v = luaL_checknumber(L,3);	
@@ -982,8 +957,7 @@ static int gr_lerp(lua_State *L) {
  */
 static int gr_setfont(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
-	if(!sd->bmp)
-		luaL_error(L, "Call to graphics function outside of a screen update");
+	assert(sd->bmp);
 	enum bm_fonts font;	
 	if(lua_gettop(L) > 0) {
 		const char *name = luaL_checkstring(L,1);
@@ -1000,8 +974,7 @@ static int gr_setfont(lua_State *L) {
  */
 static int gr_print(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
-	if(!sd->bmp)
-		luaL_error(L, "Call to graphics function outside of a screen update");
+	assert(sd->bmp);
 	int x = luaL_checkinteger(L, 1);
 	int y = luaL_checkinteger(L, 2);
 	const char *s = luaL_checkstring(L, 3);
@@ -1018,8 +991,7 @@ static int gr_print(lua_State *L) {
  */
 static int gr_textdims(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
-	if(!sd->bmp)
-		luaL_error(L, "Call to graphics function outside of a screen update");
+	assert(sd->bmp);
 	const char *s = luaL_checkstring(L, 1);
 	
 	lua_pushinteger(L, bm_text_width(sd->bmp, s));
@@ -1040,8 +1012,7 @@ static int gr_textdims(lua_State *L) {
  */
 static int gr_blit(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
-	if(!sd->bmp)
-		luaL_error(L, "Call to graphics function outside of a screen update");
+	assert(sd->bmp);
 	struct bitmap **bp = luaL_checkudata(L, 1, "BmpObj");
 	
 	int dx = luaL_checkinteger(L, 2);
@@ -1711,8 +1682,10 @@ static int lus_init(struct game_state *s) {
 	sd->atexit_fcn = NULL;	
 	
 	sd->n_timeout = 0;
-	sd->map = NULL;
-	sd->bmp = NULL;
+	
+    sd->bmp = get_screen();
+	
+    sd->map = NULL;
 		
 	sd->change_state = 0;
 	sd->next_state = NULL;
@@ -1848,8 +1821,6 @@ static int lus_update(struct game_state *s, struct bitmap *bmp) {
     lua_getglobal (L, "G");
 	SET_TABLE_INT_VAL("frameCounter", frame_counter);
 	lua_pop(L, 1);
-	
-	sd->bmp = bmp;
 	
 	/* TODO: Maybe background colour metadata in the map file? */
 	bm_set_color_s(bmp, "black");

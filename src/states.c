@@ -465,7 +465,6 @@ int change_state(struct game_state *next) {
         if(show_cursor_local) {
             show = !!atoi(show_cursor_local);
         }
-        rlog("SDL_ShowCursor(%d)", show);
         if(SDL_ShowCursor(show) < 0) {
             rerror("SDL_ShowCursor: %s", SDL_GetError());
         }
