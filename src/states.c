@@ -28,10 +28,6 @@ a linked list, like the one in resources.c
 static struct game_state *game_states[MAX_NESTED_STATES];
 static int state_top = 0;
 
-/*****************************************************/
-
-static struct game_state *get_state(const char *name);
-
 /* Styles ********************************************/
 
 static void set_style(struct game_state *s, const char *name, const char *def) {
@@ -458,27 +454,22 @@ int change_state(struct game_state *next) {
 	}	
 	game_states[state_top] = next;	
 	if(game_states[state_top]){		
-        
+        const char *show_cursor_local;
+        int show;
+            
 		game_states[state_top]->styles = ht_create(0);
 		apply_styles(game_states[state_top]);
         
-#if 0
-        {
-            const char *show_cursor_local = ini_get(game_ini, next->name, "show-cursor", NULL);
-            if(show_cursor_local) {
-                int show = !!atoi(show_cursor_local);
-                rlog("SDL_ShowCursor: %d", show);
-                if(SDL_ShowCursor(show) < 0) {
-                    rerror("SDL_ShowCursor: %s", SDL_GetError());
-                }
-            } else {
-                /* Use the global value */
-                if(SDL_ShowCursor(show_cursor) < 0) {
-                    rerror("SDL_ShowCursor: %s", SDL_GetError());
-                }
-            }
+        show_cursor_local = ini_get(game_ini, next->name, "show-cursor", NULL);
+        show = show_cursor;
+        if(show_cursor_local) {
+            show = !!atoi(show_cursor_local);
         }
-#endif        
+        rlog("SDL_ShowCursor(%d)", show);
+        if(SDL_ShowCursor(show) < 0) {
+            rerror("SDL_ShowCursor: %s", SDL_GetError());
+        }
+
 		if(game_states[state_top]->init && !game_states[state_top]->init(game_states[state_top])) {
 			rerror("Initialising new state");
 			return 0;
@@ -513,7 +504,7 @@ int pop_state(struct game_state *next) {
 }
 #endif
 
-static struct game_state *get_state(const char *name) {
+struct game_state *get_state(const char *name) {
 	const char *type;
 	
 	struct game_state *next = NULL;

@@ -1194,10 +1194,32 @@ static int in_mouseclick(lua_State *L) {
 	return 1;
 }
 
+/*@ Mouse.cursor([show])
+ *# Gets/Sets the visibility of the mouse cursor.
+ *# If {{show}} is specified, the visibility of the cursor will be set.
+ *# It returns whether the cursor is visible or not.
+ */
+static int in_mousecursor(lua_State *L) {
+    int show;
+    if(lua_gettop(L) > 0) {
+        show = lua_toboolean(L, 1);
+        if(SDL_ShowCursor(show) < 0) {
+            rerror("SDL_ShowCursor: %s", SDL_GetError());
+        }
+    }
+    show = SDL_ShowCursor(-1);
+    if(show < 0) {
+        rerror("SDL_ShowCursor: %s", SDL_GetError());
+    }
+    lua_pushboolean(L, show);
+	return 1;
+}
+
 static const luaL_Reg mouse_funcs[] = {
   {"position",  in_mousepos},
   {"down",  in_mousedown},
   {"click",  in_mouseclick},
+  {"cursor",  in_mousecursor},
   {0, 0}
 };
 

@@ -25,6 +25,7 @@ int push_state(struct game_state *next);
 int pop_state(struct game_state *next);
 #endif
 
+struct game_state *get_state(const char *name);
 int set_state(const char *name);
 
 void states_initialize();

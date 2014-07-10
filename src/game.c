@@ -96,13 +96,7 @@ int init(const char *appTitle, int flags) {
 	flags |= SDL_WINDOW_SHOWN;
 	
 	rlog("Creating Window.");
-	
-	if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_AUDIO) < 0) {
-		rerror("SDL_Init: %s", SDL_GetError());
-		return 1;
-	}
-	atexit(SDL_Quit);
-		
+			
 	win = SDL_CreateWindow(appTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, screenWidth, screenHeight, flags);	
 	if(!win) {
 		rerror("SDL_CreateWindow: %s", SDL_GetError());
@@ -180,7 +174,7 @@ void render() {
 void advanceFrame() {				
 	SDL_Event event;	
 	Uint32 end;
-	int new_btns, i;
+	int new_btns, i, cursor;
     
     frame_counter++;
 		
@@ -194,14 +188,28 @@ void advanceFrame() {
 	
 	frameStart = SDL_GetTicks();
 	
-	new_btns = SDL_GetMouseState(&mouse_x, &mouse_y);
-	
-	/* clicked = buttons that were down last frame and aren't down anymore */
-	mouse_clck = mouse_btns & ~new_btns; 
-	mouse_btns = new_btns;
-	
-	mouse_x = screen_to_virt_x(mouse_x);
-	mouse_y = screen_to_virt_y(mouse_y);
+    cursor = SDL_ShowCursor(-1);
+    if(cursor < 0) {
+        rerror("SDL_ShowCursor: %s", SDL_GetError());
+        cursor = 0;
+    }
+    
+    if(cursor > 0) {    
+        new_btns = SDL_GetMouseState(&mouse_x, &mouse_y);
+        
+        /* clicked = buttons that were down in the previous frame and aren't down anymore */
+        mouse_clck = mouse_btns & ~new_btns; 
+        mouse_btns = new_btns;
+        
+        mouse_x = screen_to_virt_x(mouse_x);
+        mouse_y = screen_to_virt_y(mouse_y);
+    } else { 
+        new_btns = 0;
+        mouse_clck = 0; 
+        mouse_btns = 0;
+        mouse_x = -1;
+        mouse_y = -1;
+    }
     
     for(i = 0; i < SDL_NUM_SCANCODES; i++) {
 	   keys_up[i] = 0;
@@ -291,6 +299,12 @@ int main(int argc, char *argv[]) {
 	SDL_version compiled, linked;
 	
 	log_init(rlog_filename);	
+    
+	if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_AUDIO) < 0) {
+		rerror("SDL_Init: %s", SDL_GetError());
+		return 1;
+	}
+	atexit(SDL_Quit);
 	
 	while((opt = getopt(argc, argv, "p:g:l:d?")) != -1) {
 		switch(opt) {
@@ -377,8 +391,9 @@ int main(int argc, char *argv[]) {
             
 			startstate = ini_get(game_ini, "init", "startstate", NULL);
 			if(startstate) {
-				if(!set_state(startstate)) {
-					rerror("Unable to set initial state: %s", startstate);
+                gs = get_state(startstate);
+				if(!gs) {
+					rerror("Unable to get initial state: %s", startstate);
 					quit = 1;
 				}
 			} else {
@@ -392,8 +407,7 @@ int main(int argc, char *argv[]) {
 	} else {
 start_demo:
 		rlog("Starting demo mode");
-		if(!change_state(get_demo_state("demo")))
-			return 1;
+		gs = get_demo_state("demo");
 	}
 	
 	rlog("Initialising...");
@@ -402,9 +416,13 @@ start_demo:
 		return 1;
 	}
 	
-	SDL_Log("Test rlog message");
-	
-	frameStart = SDL_GetTicks();	
+	rlog("Entering initial state...");
+    if(!change_state(gs)) {
+        rlog("Quiting, because of earlier problems with the initial state");
+        return 1;
+    }
+    
+    frameStart = SDL_GetTicks();	
 	
 	rlog("Event loop starting...");
 	
