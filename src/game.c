@@ -132,7 +132,7 @@ int init(const char *appTitle, int flags) {
 }
 
 int handleSpecialKeys(SDL_Scancode key) {
-	if(key == SDL_SCANCODE_ESCAPE) {
+	if(key == SDL_SCANCODE_ESCAPE && (keys[SDL_SCANCODE_LSHIFT] || keys[SDL_SCANCODE_RSHIFT])) {
 		quit = 1;
 		return 1;
 	} else if (key == SDL_SCANCODE_F11) {
@@ -199,14 +199,15 @@ void advanceFrame() {
     }
     
     if(cursor > 0) {    
-        new_btns = SDL_GetMouseState(&mouse_x, &mouse_y);
+        int mx, my;
+        new_btns = SDL_GetMouseState(&mx, &my);
         
         /* clicked = buttons that were down in the previous frame and aren't down anymore */
         mouse_clck = mouse_btns & ~new_btns; 
         mouse_btns = new_btns;
         
-        mouse_x = screen_to_virt_x(mouse_x);
-        mouse_y = screen_to_virt_y(mouse_y);
+        mouse_x = screen_to_virt_x(mx);
+        mouse_y = screen_to_virt_y(my);
     } else { 
         /* Ignore the mouse if the cursor is gone */
         new_btns = 0;
@@ -241,7 +242,10 @@ void advanceFrame() {
 			assert(index < SDL_NUM_SCANCODES);			
 			keys[index] = 0;
             keys_up[index] = 1;		
-		} else if(event.type == SDL_MOUSEBUTTONDOWN) {		
+		/*} else if(event.type == SDL_MOUSEBUTTONDOWN) {		
+		} else if(event.type == SDL_MOUSEMOTION) {	
+            mouse_x = screen_to_virt_x(event.motion.x);
+            mouse_y = screen_to_virt_y(event.motion.y);*/
 		} else if(event.type == SDL_WINDOWEVENT) {
 			switch(event.window.event) {
 			case SDL_WINDOWEVENT_RESIZED:
@@ -474,3 +478,16 @@ start_demo:
 	
 	return 0;
 }
+
+const char *about_text = 
+"Rengine: Copyright (c) 2013 Werner Stoop\n"
+"Rengine is based in part on the work of these projects:\n"
+"SDL and SDL_mixer (c) 1997-2013 Sam Lantinga\n"
+"Lua (c) 1994–2014 Lua.org, PUC-Rio\n"
+"libogg and libvorbis (c) 2002-2008 Xiph.org Foundation\n"
+"libpng (c) Contributing Authors and Group 42, Inc.\n"
+"zlib (c) 1995-2013 Jean-loup Gailly and Mark Adler\n"
+"libjpeg (c) 1991-2014, Thomas G. Lane, Guido Vollbeding\n"
+"FLTK project (http://www.fltk.org)"
+;
+

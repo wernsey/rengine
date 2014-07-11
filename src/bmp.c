@@ -1979,6 +1979,8 @@ int bm_text_width(struct bitmap *b, const char *s) {
 			if(len > max_len)
 				max_len = len;
 			len = 0;
+		} else if(*s == '\t') {
+			len+=4;
 		} else if(isprint(*s)) {
 			len++;
 		}
@@ -2030,7 +2032,7 @@ void bm_puts(struct bitmap *b, int x, int y, const char *text) {
 			 * but it doesn't really make sense because
 			 * this isn't exactly a character based terminal.
 			 */
-			x += b->font_spacing;
+			x += 4 * b->font_spacing;
 		} else if(text[0] == '\r') {
 			/* why would anyone find this useful? */
 			x = xs;

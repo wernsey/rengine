@@ -31,3 +31,5 @@ int kb_hit();
 extern unsigned int frame_counter;
 void advanceFrame();
 
+const char *about_text;
+

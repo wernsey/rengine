@@ -14,6 +14,7 @@ BEGIN {
 }
 
 /\/\*/ { comment = 1; }
+/--\[\[/ { comment = 2; }
 
 /\*1/ { if(!comment) next; s = substr($0, index($0, "*1") + 2); print "# " filter(s); next;}
 /\*2/ { if(!comment) next; s = substr($0, index($0, "*2") + 2); print "## " filter(s); next;}
@@ -34,7 +35,8 @@ BEGIN {
 /\*-/ { if(!comment) next; print "***"; next;}
 /\*=/ { if(!comment) next; print "***"; next;}
 
-/\*\// { comment=0; }
+/\*\// { if(comment == 1) comment=0; }
+/\]\]/ { if(comment == 2) comment=0; }
 
 END { }
 

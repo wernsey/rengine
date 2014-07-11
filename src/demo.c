@@ -1,7 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <SDL_mixer.h>
+#ifdef WIN32
+#include <SDL2/SDL.h>
+#else
+#include <SDL2/SDL.h>
+#endif
 
 #include "bmp.h"
 #include "states.h"
@@ -44,12 +48,19 @@ static int dem_update(struct game_state *s, struct bitmap *bmp) {
 	bm_line(bmp, 0, 40, 40, 0);
 	bm_fill(bmp, 35, 0);
 	
+    bm_std_font(bmp, BM_FONT_NORMAL);
 	bm_set_color_s(bmp, "grey");
 	bm_printfs(bmp, 72, 37, 2, "Rengine");
 	bm_set_color_s(bmp, "white");
 	bm_printfs(bmp, 70, 35, 2, "Rengine");
 	
+    bm_std_font(bmp, BM_FONT_SMALL);
+    bm_puts(bmp, 10, 160, about_text);
+    
 	bm_maskedblit(bmp, (bmp->w - dummy->w)>>1, (bmp->h - dummy->h)>>1, dummy, 0, 0, dummy->w, dummy->h);
+    
+    if(keys[SDL_SCANCODE_ESCAPE]) quit = 1;
+    
 	return 1;
 }
 

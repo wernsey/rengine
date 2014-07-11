@@ -321,9 +321,13 @@ static int l_getstyle(lua_State *L) {
  *# `false`, otherwise your application won't quit when the user closes the window.\n
  */
 static int l_advanceFrame(lua_State *L) {	
+    static int times = 0;
 	process_timeouts(L);
 	advanceFrame();
 	lua_pushboolean(L, !quit);
+    if(quit && ++times > 10) {
+        luaL_error(L, "Application ignored repeat requests to terminate");
+    }
 	return 1;
 }
 

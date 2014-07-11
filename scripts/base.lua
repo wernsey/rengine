@@ -1,3 +1,8 @@
+--[[
+*# The functions in this section are basic utility functions written in Lua
+*# and available to all Lua scripts.
+]]
+
 --[[ 
 Poofs! some functions I don't want accessible to user created
 scripts;
@@ -16,8 +21,17 @@ setfenv = nil;
 module = nil;
 
 --[[
-For Object Oriented Programming
-From Chapter 12 of Game Coding Complete (4th Ed)
+*@ function class(baseClass, body)
+*# For Object Oriented Programming, from Chapter 12 of Game Coding Complete (4th Ed).
+*# Constructs a class object.\n
+*# for example, a 2 dimensional Vector class can be constructed like so
+*X Vector = class(nil, {x = 0, y = 0})
+*# Then a instance of Vector can be created like so:
+*X local v = Vector:Create{x = 3, y = 4}
+*# You can add methods to the example vector class like so:
+*X function Vector:len() return math.sqrt(self.x * self.x + self.y * self.y) end
+*# and call it like so:
+*X log("Vector length: " .. v:len())
 ]]
 function class(baseClass, body)
 	local ret = body or {};
@@ -54,9 +68,11 @@ function class(baseClass, body)
 end;
 
 --[[
-Serializes an object {{o}} to a string.
-Based on the one in section 12.1.1 of the PIL book http://www.lua.org/pil/12.1.1.html
-It does not serialize tables with cycles.
+*@ function serialize(o)
+*# Serializes an object {{o}} to a string.
+*# Based on the one in section 12.1.1 of the PIL book http://www.lua.org/pil/12.1.1.html
+*# It does not serialize tables with cycles.
+*X local str = serialize({x = 5, y = 6})
 ]]
 function serialize(o)
 	if type(o) == "number" then
@@ -75,8 +91,10 @@ function serialize(o)
 end;
 
 --[[
-Deserializes an object pr
-http://www.lua.org/pil/8.html
+*@ function deserialize(s)
+*# Deserializes an object previously serialized with {{serialize(o)}}.
+*# http://www.lua.org/pil/8.html
+*X local v = deserialize(str)
 ]]
 function deserialize(s)
 	local f = assert(loadstring("do return " .. s .. " end"))
