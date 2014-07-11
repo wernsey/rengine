@@ -1580,6 +1580,27 @@ void bm_fillrect(struct bitmap *b, int x0, int y0, int x1, int y1) {
 	}	
 }
 
+void bm_dithrect(struct bitmap *b, int x0, int y0, int x1, int y1) {
+	int x,y;
+	if(x1 < x0) {
+		x = x0;
+		x0 = x1;
+		x1 = x;
+	}
+	if(y1 < y0) {
+		y = y0;
+		y0 = y1;
+		y1 = y;
+	}
+	for(y = MAX(y0, b->clip.y0); y < MIN(y1 + 1, b->clip.y1); y++) {		
+		for(x = MAX(x0, b->clip.x0); x < MIN(x1 + 1, b->clip.x1); x++) {
+            if((x + y) % 2) continue;
+			assert(y >= 0 && y < b->h && x >= 0 && x < b->w);
+			BM_SET(b, x, y, b->r, b->g, b->b, b->a);
+		}
+	}	
+}
+
 void bm_circle(struct bitmap *b, int x0, int y0, int r) {
 	int x = -r;
 	int y = 0;

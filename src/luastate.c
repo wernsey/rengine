@@ -266,24 +266,6 @@ static int l_atExit(lua_State *L) {
 
 struct callback_function *atexit_fcn, *last_atexit_fcn;
 
-/*@ advanceFrame()
- *# Low-level function to advance the animation frame on the screen.\n
- *# It flips the back buffer, retrieves user inputs and processes system 
- *# events.\n
- *# In general you should not call this function directly, since Rengine
- *# does the above automatically. This function is provided for the special
- *# case where you need a Lua script to run in a loop, and during each 
- *# iteration update the screen and get new user input.\n
- *# An example of such a case is drwaing a GUI completely in a Lua script.\n
- *# It does not clear the screen - you'll need to do that yourself.
- *# Timeouts set through {{setTimeout()}} will also be processed.
- */
-static int l_advanceFrame(lua_State *L) {	
-	process_timeouts(L);
-	advanceFrame();
-	return 0;
-}
-
 /*1 Game object
  *# Functions in the {{Game}} scope
  */
@@ -321,9 +303,34 @@ static int l_getstyle(lua_State *L) {
 	return 1;
 }
 
+/*@ Game.advanceFrame()
+ *# Low-level function to advance the animation frame on the screen.\n
+ *# It flips the back buffer, retrieves user inputs and processes system 
+ *# events.\n
+ *# In general you should not call this function directly, since Rengine
+ *# does the above automatically. This function is provided for the special
+ *# case where you need a Lua script to run in a loop, and during each 
+ *# iteration update the screen and get new user input.\n
+ *# An example of such a case is drwaing a GUI in a Lua script
+ *# and handling the event loop of the GUI in Lua itself.\n
+ *# It does not clear the screen - you'll need to do that yourself.\n
+ *# Callbacks registered through {{onUpdate()}} will {/not/} be processed.
+ *# Timeouts set through {{setTimeout()}} will be processed, however.\n
+ *# It returns false if the user wants to quit. 
+ *# If you use such an event loop, you should break when the function returns 
+ *# `false`, otherwise your application won't quit when the user closes the window.\n
+ */
+static int l_advanceFrame(lua_State *L) {	
+	process_timeouts(L);
+	advanceFrame();
+	lua_pushboolean(L, !quit);
+	return 1;
+}
+
 static const luaL_Reg game_funcs[] = {
   {"changeState",     l_changeState},
   {"getStyle",        l_getstyle},
+  {"advanceFrame",    l_advanceFrame},
   {0, 0}
 };
 
@@ -843,6 +850,20 @@ static int gr_fillrect(lua_State *L) {
 	return 0;
 }
 
+/*@ G.dithRect(x0, y0, x1, y1)
+ *# Draws a dithered rectangle from {{x0,y0}} to {{x1,y1}}
+ */
+static int gr_dithrect(lua_State *L) {
+	struct lustate_data *sd = get_state_data(L);
+	assert(sd->bmp);
+	int x0 = luaL_checkint(L,1);
+	int y0 = luaL_checkint(L,2);
+	int x1 = luaL_checkint(L,3);
+	int y1 = luaL_checkint(L,4);
+	bm_dithrect(sd->bmp, x0, y0, x1, y1);
+	return 0;
+}
+
 /*@ G.circle(x, y, r)
  *# Draws a circle centered at {{x,y}} with radius {{r}}
  */
@@ -1048,6 +1069,7 @@ static const luaL_Reg graphics_funcs[] = {
   {"line",          gr_line},
   {"rect",          gr_rect},
   {"fillRect",      gr_fillrect},
+  {"dithRect",      gr_dithrect},
   {"circle",        gr_circle},
   {"fillCircle",    gr_fillcircle},
   {"ellipse",    	gr_ellipse},
@@ -1729,7 +1751,6 @@ static int lus_init(struct game_state *s) {
 	GLOBAL_FUNCTION("onUpdate", l_onUpdate);
 	GLOBAL_FUNCTION("atExit", l_atExit);
 	GLOBAL_FUNCTION("import", l_import);
-	GLOBAL_FUNCTION("advanceFrame", l_advanceFrame);
 	
 	luaL_newlib(L, game_funcs);
 	/* Register some Lua variables. */	

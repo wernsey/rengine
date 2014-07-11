@@ -302,6 +302,11 @@ void bm_rect(struct bitmap *b, int x0, int y0, int x1, int y1);
  */
 void bm_fillrect(struct bitmap *b, int x0, int y0, int x1, int y1);
 
+/*@ void bm_dithrect(struct bitmap *b, int x0, int y0, int x1, int y1)
+ *# Draws a dithered rectangle from <x0,y0> to <x1,y1> using the pen colour
+ */
+void bm_dithrect(struct bitmap *b, int x0, int y0, int x1, int y1);
+
 /*@ void bm_circle(struct bitmap *b, int x0, int y0, int r)
  *# Draws a circle of radius {{r}} centered at <x,y> using the pen colour
  */
