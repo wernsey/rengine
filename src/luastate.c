@@ -791,6 +791,19 @@ static int gr_clip(lua_State *L) {
 	return 0;
 }
 
+/*@ x0,y0, x1,y1 = G.getClip()
+ *# Gets the current clipping rectangle for drawing primitives.
+ */
+static int gr_getclip(lua_State *L) {
+	struct lustate_data *sd = get_state_data(L);
+	assert(sd->bmp);
+    lua_pushinteger(L, sd->bmp->clip.x0);
+    lua_pushinteger(L, sd->bmp->clip.y0);
+    lua_pushinteger(L, sd->bmp->clip.x1);
+    lua_pushinteger(L, sd->bmp->clip.y1);
+	return 4;
+}
+
 /*@ G.unclip()
  *# Resets the clipping rectangle when drawing primitives.
  */
@@ -1068,6 +1081,7 @@ static const luaL_Reg graphics_funcs[] = {
   {"setColor",      gr_setcolor},
   {"getColor",      gr_getcolor},
   {"clip", 			gr_clip},
+  {"getClip", 		gr_getclip},
   {"unclip", 		gr_unclip},
   {"pixel",         gr_putpixel},
   {"line",          gr_line},

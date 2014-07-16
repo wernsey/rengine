@@ -58,6 +58,11 @@ function.
 `bmp.c` is also still missing a `bm_fillellipse()` function. It is not
 high on my list of priorities.
 
+There are some inconsistencies in how function parameters are applied. For
+example, in bm_rect() the x1,y1 parameters are inclusive, while in bm_clip() 
+the x1,y1 parameters are exclusive. I'm thinking that the clipping parameters
+should be made inclusive, but it is a bigger change.
+
 ## Resources
 
 Wrt. the PAK file module, the ZIP file format turns out to be
