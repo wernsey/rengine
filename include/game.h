@@ -28,6 +28,8 @@ extern char keys_up[];
 void reset_keys();
 int kb_hit();
 
+extern char initial_dir[];
+
 extern unsigned int frame_counter;
 void advanceFrame();
 

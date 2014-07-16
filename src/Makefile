@@ -111,7 +111,8 @@ tileset.o: tileset.c ../include/bmp.h ../include/tileset.h \
  ../include/resources.h ../include/lexer.h ../include/json.h \
  ../include/utils.h ../include/log.h
 utils.o: utils.c
-gamedb.o: gamedb.c ../include/gamedb.h ../include/ini.h ../include/states.h
+gamedb.o: gamedb.c ../include/gamedb.h ../include/ini.h ../include/states.h \
+  ../include/game.h
 sound.o: sound.c ../include/resources.h ../include/log.h
 paths.o: paths.c ../include/utils.h
 

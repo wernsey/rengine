@@ -45,7 +45,7 @@
 int quit = 0;
 
 /* The width/height of the window (in windowed mode) */
-static int screenWidth = SCREEN_WIDTH, 
+static int screenWidth = SCREEN_WIDTH,
 	screenHeight = SCREEN_HEIGHT;
 
 /* The desired frame rate */
@@ -68,7 +68,7 @@ unsigned int frame_counter = 0;
 /* The filter (nearest or linear) to use when rendering the virtual screen */
 static const char *filter = "0";
 
-/* The bitmap on which all drawing occurs. 
+/* The bitmap on which all drawing occurs.
 It is rendered to `tex` once per frame */
 static struct bitmap *bmp = NULL;
 
@@ -94,40 +94,40 @@ char initial_dir[256];
 
 int init(const char *appTitle, int flags) {
 	flags |= SDL_WINDOW_SHOWN;
-	
+
 	rlog("Creating Window.");
-			
-	win = SDL_CreateWindow(appTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, screenWidth, screenHeight, flags);	
+
+	win = SDL_CreateWindow(appTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, screenWidth, screenHeight, flags);
 	if(!win) {
 		rerror("SDL_CreateWindow: %s", SDL_GetError());
 		return 0;
 	}
-	
+
 	ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 	if(!ren) {
 		rerror("SDL_CreateRenderer: %s", SDL_GetError());
 		return 0;
-	}	
-    
+	}
+
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, filter);
-	
+
 	rlog("Window Created.");
-	
+
     if(SDL_ShowCursor(show_cursor) < 0) {
         rerror("SDL_ShowCursor: %s", SDL_GetError());
     }
 
 	bmp = bm_create(virt_width, virt_height);
-	
+
 	tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING, bmp->w, bmp->h);
 	if(!tex) {
 		rerror("SDL_CreateTexture: %s", SDL_GetError());
 		return 0;
 	}
 	rlog("Texture Created.");
-	
+
 	reset_keys();
-	
+
 	return 1;
 }
 
@@ -136,7 +136,7 @@ int handleSpecialKeys(SDL_Scancode key) {
 		quit = 1;
 		return 1;
 	} else if (key == SDL_SCANCODE_F11) {
-		if(!(SDL_GetWindowFlags(win) & SDL_WINDOW_FULLSCREEN_DESKTOP)) {		
+		if(!(SDL_GetWindowFlags(win) & SDL_WINDOW_FULLSCREEN_DESKTOP)) {
 			if(SDL_SetWindowFullscreen(win, SDL_WINDOW_FULLSCREEN_DESKTOP) < 0)
 				rerror("Unable to set window to fullscreen: %s", SDL_GetError());
 		} else if(SDL_SetWindowFullscreen(win, 0) < 0) {
@@ -144,7 +144,8 @@ int handleSpecialKeys(SDL_Scancode key) {
 		}
 		return 1;
 	} else if(key == SDL_SCANCODE_F12) {
-		const char *filename = "save.png";
+        char filename[256];
+        snprintf(filename, sizeof filename, "%s/save.png", initial_dir);
 		bm_save(bmp, filename);
 		rlog("Screenshot saved as %s", filename);
 		return 1;
@@ -172,78 +173,78 @@ void render() {
 	SDL_RenderPresent(ren);
 }
 
-/* advanceFrame() is kept separate so that it 
+/* advanceFrame() is kept separate so that it
  * can be exposed to the scripting system later
  */
-void advanceFrame() {				
-	SDL_Event event;	
+void advanceFrame() {
+	SDL_Event event;
 	Uint32 end;
 	int new_btns, i, cursor;
-    
+
     frame_counter++;
-		
+
 	render();
-		
+
 	end = SDL_GetTicks();
 	assert(end > frameStart);
-	
+
 	if(end - frameStart < 1000/fps)
 		SDL_Delay(1000/fps - (end - frameStart));
-	
+
 	frameStart = SDL_GetTicks();
-	
+
     cursor = SDL_ShowCursor(-1);
     if(cursor < 0) {
         rerror("SDL_ShowCursor: %s", SDL_GetError());
         cursor = 0;
     }
-    
-    if(cursor > 0) {    
+
+    if(cursor > 0) {
         int mx, my;
         new_btns = SDL_GetMouseState(&mx, &my);
-        
+
         /* clicked = buttons that were down in the previous frame and aren't down anymore */
-        mouse_clck = mouse_btns & ~new_btns; 
+        mouse_clck = mouse_btns & ~new_btns;
         mouse_btns = new_btns;
-        
+
         mouse_x = screen_to_virt_x(mx);
         mouse_y = screen_to_virt_y(my);
-    } else { 
+    } else {
         /* Ignore the mouse if the cursor is gone */
         new_btns = 0;
-        mouse_clck = 0; 
+        mouse_clck = 0;
         mouse_btns = 0;
         mouse_x = -1;
         mouse_y = -1;
     }
-    
+
     for(i = 0; i < SDL_NUM_SCANCODES; i++) {
 	   keys_up[i] = 0;
        keys_down[i] = 0;
 	}
-	
+
 	while(SDL_PollEvent(&event)) {
 		if(event.type == SDL_QUIT) {
 			quit = 1;
 		} else if(event.type == SDL_KEYDOWN) {
 			/* FIXME: Descision whether to stick with scancodes or keycodes? */
-			int index = event.key.keysym.scancode;			
-			
+			int index = event.key.keysym.scancode;
+
 			/* Special Keys: F11, F12 and Esc */
 			if(!handleSpecialKeys(event.key.keysym.scancode)) {
 				/* Not a special key: */
-				assert(index < SDL_NUM_SCANCODES);			
+				assert(index < SDL_NUM_SCANCODES);
 				keys[index] = 1;
                 keys_down[index] = 1;
 			}
-			
+
 		} else if(event.type == SDL_KEYUP) {
-			int index = event.key.keysym.scancode;			
-			assert(index < SDL_NUM_SCANCODES);			
+			int index = event.key.keysym.scancode;
+			assert(index < SDL_NUM_SCANCODES);
 			keys[index] = 0;
-            keys_up[index] = 1;		
-		/*} else if(event.type == SDL_MOUSEBUTTONDOWN) {		
-		} else if(event.type == SDL_MOUSEMOTION) {	
+            keys_up[index] = 1;
+		/*} else if(event.type == SDL_MOUSEBUTTONDOWN) {
+		} else if(event.type == SDL_MOUSEMOTION) {
             mouse_x = screen_to_virt_x(event.motion.x);
             mouse_y = screen_to_virt_y(event.motion.y);*/
 		} else if(event.type == SDL_WINDOWEVENT) {
@@ -259,7 +260,7 @@ void advanceFrame() {
 	}
 }
 
-void reset_keys() {	
+void reset_keys() {
 	int i;
 	for(i = 0; i < SDL_NUM_SCANCODES; i++) {
 		keys[i] = 0;
@@ -271,12 +272,12 @@ int kb_hit() {
 	for(i = 1; i < SDL_NUM_SCANCODES; i++) {
 		if(keys[i])
 			return i;
-	} 
+	}
 	return 0;
 }
 
 void usage(const char *name) {
-	/* Unfortunately this doesn't work in Windows. 
+	/* Unfortunately this doesn't work in Windows.
 	MinGW does give you a stderr.txt though.
 	*/
 	fprintf(stderr, "Usage: %s [options]\n", name);
@@ -289,32 +290,32 @@ void usage(const char *name) {
 
 int main(int argc, char *argv[]) {
 	int opt;
-	
+
 	int fullscreen = 0, resizable = 0, borderless = 0;
-	
+
 	const char *appTitle = DEFAULT_APP_TITLE;
-	
+
 	const char *game_dir = NULL;
-	const char *pak_filename = "game.pak"; 
-		
+	const char *pak_filename = "game.pak";
+
 	const char *rlog_filename = "rengine.log";
-	
+
 	const char *startstate;
-	
-	struct game_state *gs;
-	
+
+	struct game_state *gs = NULL;
+
 	int demo = 0;
-	
+
 	SDL_version compiled, linked;
-	
-	log_init(rlog_filename);	
-    
+
+	log_init(rlog_filename);
+
 	if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_AUDIO) < 0) {
 		rerror("SDL_Init: %s", SDL_GetError());
 		return 1;
 	}
 	atexit(SDL_Quit);
-	
+
 	while((opt = getopt(argc, argv, "p:g:l:d?")) != -1) {
 		switch(opt) {
 			case 'p': {
@@ -336,13 +337,13 @@ int main(int argc, char *argv[]) {
 			}
 		}
 	}
-	
+
 	if(!getcwd(initial_dir, sizeof initial_dir)) {
 		rerror("error in getcwd(): %s", strerror(errno));
 		return 1;
 	}
 	rlog("Running engine from %s", initial_dir);
-	
+
 	if(!gdb_new()) {
 		rerror("Unable to create Game Database");
 		return 1;
@@ -357,7 +358,7 @@ int main(int argc, char *argv[]) {
 	/* Don't quite know how to use this in Windows yet.
 	SDL_LogSetAllPriority(SDL_rlog_PRIORITY_WARN);
 	SDL_Log("Testing Log capability.");
-	*/	
+	*/
 	SDL_VERSION(&compiled);
 	SDL_GetVersion(&linked);
 	rlog("SDL version %d.%d.%d (compile)", compiled.major, compiled.minor, compiled.patch);
@@ -365,7 +366,7 @@ int main(int argc, char *argv[]) {
 
 	if(!demo) {
 		if(pak_filename) {
-			rlog("Loading game PAK file: %s", pak_filename);	
+			rlog("Loading game PAK file: %s", pak_filename);
 			if(!rs_read_pak(pak_filename)) {
 				rerror("Unable to open PAK file '%s'; Playing demo mode.", pak_filename);
 				goto start_demo;
@@ -373,41 +374,41 @@ int main(int argc, char *argv[]) {
 		} else {
 			rlog("Not using a PAK file. Using '%s' instead.", game_dir);
 			if(chdir(game_dir)) {
-				rerror("Unable to change to '%s': %s", game_dir, strerror(errno));				
+				rerror("Unable to change to '%s': %s", game_dir, strerror(errno));
 				return 1;
 			}
-		}		
-		
+		}
+
 		game_ini = re_get_ini(GAME_INI);
-		if(game_ini) {	
+		if(game_ini) {
 			appTitle = ini_get(game_ini, "init", "appTitle", "Rengine");
-			
+
 			screenWidth = atoi(ini_get(game_ini, "screen", "width", PARAM(SCREEN_WIDTH)));
 			screenHeight = atoi(ini_get(game_ini, "screen", "height", PARAM(SCREEN_HEIGHT)));
-			resizable = atoi(ini_get(game_ini, "screen", "resizable", "0")) ? SDL_WINDOW_RESIZABLE : 0;	
-			borderless = atoi(ini_get(game_ini, "screen", "borderless", "0")) ? SDL_WINDOW_BORDERLESS : 0;	
-			fullscreen = atoi(ini_get(game_ini, "screen", "fullscreen", "0")) ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0;	
+			resizable = atoi(ini_get(game_ini, "screen", "resizable", "0")) ? SDL_WINDOW_RESIZABLE : 0;
+			borderless = atoi(ini_get(game_ini, "screen", "borderless", "0")) ? SDL_WINDOW_BORDERLESS : 0;
+			fullscreen = atoi(ini_get(game_ini, "screen", "fullscreen", "0")) ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0;
 			fps = atoi(ini_get(game_ini, "screen", "fps", PARAM(DEFAULT_FPS)));
 			if(fps <= 0)
 				fps = DEFAULT_FPS;
-			
+
 			filter = !my_stricmp(ini_get(game_ini, "screen", "filter", "nearest"), "linear")? "1": "0";
-				
+
 			virt_width = atoi(ini_get(game_ini, "virtual", "width", PARAM(VIRT_WIDTH)));
 			virt_height = atoi(ini_get(game_ini, "virtual", "height", PARAM(VIRT_HEIGHT)));
-			
+
             show_cursor = atoi(ini_get(game_ini, "mouse", "show-cursor", PARAM(1)))? 1 : 0;
-            
+
 			startstate = ini_get(game_ini, "init", "startstate", NULL);
 			if(startstate) {
                 gs = get_state(startstate);
 				if(!gs) {
 					rerror("Unable to get initial state: %s", startstate);
-					quit = 1;
+					return 1;
 				}
 			} else {
 				rerror("No initial state in %s", GAME_INI);
-				quit = 1;
+				return 1;
 			}
 		} else {
 			rerror("Unable to load %s", GAME_INI);
@@ -418,72 +419,70 @@ start_demo:
 		rlog("Starting demo mode");
 		gs = get_demo_state("demo");
 	}
-	
+
 	rlog("Initialising...");
-		
+
 	if(!init(appTitle, fullscreen | borderless | resizable)) {
 		return 1;
 	}
-	
+
+    assert(gs);
 	rlog("Entering initial state...");
     if(!change_state(gs)) {
         rlog("Quiting, because of earlier problems with the initial state");
         return 1;
     }
-    
-    frameStart = SDL_GetTicks();	
-	
+
+    frameStart = SDL_GetTicks();
+
 	rlog("Event loop starting...");
-	
+
 	while(!quit) {
 		gs = current_state();
 		if(!gs) {
 			break;
 		}
-		
-		if(gs->update) 
-			gs->update(gs, bmp);	
-		
+
+		if(gs->update)
+			gs->update(gs, bmp);
+
 		advanceFrame();
 	}
-	
+
 	rlog("Event loop stopped.");
-	
+
 	gs = current_state();
 	if(gs && gs->deinit)
-		gs->deinit(gs);	
-		
+		gs->deinit(gs);
+
 	bm_free(bmp);
-		
+
 	SDL_DestroyTexture(tex);
 	SDL_DestroyRenderer(ren);
 	SDL_DestroyWindow(win);
-	
+
 	SDL_Quit();
-	
+
 	ini_free(game_ini);
-	
+
 	re_clean_up();
-	
-	if(chdir(initial_dir)) {
-		rerror("chdir(%s): %s", initial_dir, strerror(errno));
-	}
-	gdb_save("dump.db"); /* For testing the game database fuunctionality. Remove later. */
-	
+
+	gdb_save("dump.db"); /* For testing the game database functionality. Remove later. */
+
 	gdb_close();
 	snd_deinit();
 	rlog("Engine shut down.");
-	
+
 	log_deinit();
-	
+
 	return 0;
 }
 
-const char *about_text = 
+const char *about_text =
 "Rengine: Copyright (c) 2013 Werner Stoop\n"
 "Rengine is based in part on the work of these projects:\n"
 "SDL and SDL_mixer (c) 1997-2013 Sam Lantinga\n"
-"Lua (c) 1994–2014 Lua.org, PUC-Rio\n"
+"Lua (c) 1994Ö²014 Lua.org, PUC-Rio\n"
 "libogg and libvorbis (c) 2002-2008 Xiph.org Foundation\n"
 "libpng (c) Contributing Authors and Group 42, Inc.\n"
 "zlib (c) 1995-2013 Jean-loup Gailly and Mark Adler\n"

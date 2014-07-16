@@ -10,8 +10,10 @@ has, whether he's completed a sub-quest and so on.
 #include <stdlib.h>
 #include <assert.h>
 
+#include "game.h"
 #include "ini.h"
 #include "log.h"
+
 struct bitmap; /* states.h needs to know about this */
 #include "states.h"
 #include "gamedb.h"
@@ -31,10 +33,12 @@ void gdb_close() {
 }
 
 int gdb_save(const char *filename) {
+    char buffer[256];
+    snprintf(buffer, sizeof buffer, "%s/%s", initial_dir, filename);
 	assert(gamedb);
-	int result = ini_write(gamedb, filename);
+	int result = ini_write(gamedb, buffer);
 	if(result != 1) {
-		rerror("Unable to save Game database: %s", ini_errstr(result));
+		rerror("Unable to save Game DataBase: %s", ini_errstr(result));
 		return 0;
 	}
 	return 1;
