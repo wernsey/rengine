@@ -482,7 +482,7 @@ const char *about_text =
 "Rengine: Copyright (c) 2013 Werner Stoop\n"
 "Rengine is based in part on the work of these projects:\n"
 "SDL and SDL_mixer (c) 1997-2013 Sam Lantinga\n"
-"Lua (c) 1994ֲ014 Lua.org, PUC-Rio\n"
+"Lua (c) 1994 Lua.org, PUC-Rio\n"
 "libogg and libvorbis (c) 2002-2008 Xiph.org Foundation\n"
 "libpng (c) Contributing Authors and Group 42, Inc.\n"
 "zlib (c) 1995-2013 Jean-loup Gailly and Mark Adler\n"
