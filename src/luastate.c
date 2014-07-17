@@ -1107,17 +1107,21 @@ static const luaL_Reg graphics_funcs[] = {
 
 /*@ Keyboard.down([key])
  *# Checks whether a key is down on the keyboard.
- *# The parameter {{key}} is the name of specific key.
+ *# The parameter {{key}} can be either a scancode or the name of specific key.
  *# See http://wiki.libsdl.org/SDL_Scancode for the names of all the possible keys.
  *# If {{key}} is omitted, the function returns true if _any_ key is down.
  */
-static int in_keydown(lua_State *L) {	
+static int kb_keydown(lua_State *L) {	
 	if(lua_gettop(L) > 0) {
-		const char *name = luaL_checkstring(L, 1);
-		/* Names of the keys are listed on
-			http://wiki.libsdl.org/SDL_Scancode
-		*/
-		lua_pushboolean(L, keys[SDL_GetScancodeFromName(name)]);
+		if(lua_type(L, 1) == LUA_TSTRING) {
+			const char *name = luaL_checkstring(L, 1);
+			lua_pushboolean(L, keys[SDL_GetScancodeFromName(name)]);
+		} else {
+			int code = luaL_checkinteger(L, 1);
+			if(code < 0 || code >= SDL_NUM_SCANCODES)
+				luaL_error(L, "invalid scancode (%d)", code);
+			lua_pushboolean(L, keys[code]);
+		}
 	} else {
 		lua_pushboolean(L, kb_hit());
 	}	
@@ -1130,7 +1134,7 @@ static int in_keydown(lua_State *L) {
  *# of the key that was pressed.
  *# See http://wiki.libsdl.org/SDL_Scancode for the names of all the possible keys.
  */
-static int in_keypressed(lua_State *L) {
+static int kb_keypressed(lua_State *L) {
 	if(kb_hit()) {
 		int scancode = readkey();
 		lua_pushstring(L, SDL_GetScancodeName(scancode));
@@ -1139,18 +1143,38 @@ static int in_keypressed(lua_State *L) {
 	return 1;
 }
 
+/*@ Keyboard.fromName(name)
+ *# Returns the scan code of a key name.
+ */
+static int kb_fromname(lua_State *L) {
+	const char *name = luaL_checkstring(L, 1);
+	lua_pushinteger(L, SDL_GetScancodeFromName(name));
+	return 1;
+}
+
+/*@ Keyboard.nameScancode(code)
+ *# Returns the name of a particular scancode.
+ */
+static int kb_fromscancode(lua_State *L) {
+	int code = luaL_checkinteger(L, 1);
+	lua_pushstring(L, SDL_GetScancodeName(code));
+	return 1;
+}
+
 /*@ Keyboard.reset()
  *# Resets the keyboard input.
  */
-static int in_reset_keys(lua_State *L) {	
+static int kb_reset_keys(lua_State *L) {	
 	reset_keys();
 	return 0;
 }
 
 static const luaL_Reg keyboard_funcs[] = {
-  {"down",   in_keydown},
-  {"reset",  in_reset_keys},
-  {"pressed",  in_keypressed},
+  {"down",   kb_keydown},
+  {"pressed",  kb_keypressed},
+  {"fromName",  kb_fromname},
+  {"nameScancode",  kb_fromscancode},
+  {"reset",  kb_reset_keys},
   {0, 0}
 };
 
