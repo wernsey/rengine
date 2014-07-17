@@ -1,3 +1,4 @@
+#! /usr/bin/awk -f 
 # Generates Markdown from comments in source code for the wiki on GitHub
 #
 # To use the script, invoke it like so:
