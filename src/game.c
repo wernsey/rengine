@@ -84,8 +84,6 @@ int mouse_btns = 0, mouse_clck = 0;
 
 /* The state of the keyboard */
 char keys[SDL_NUM_SCANCODES];       /* keys that are currently down */
-char keys_down[SDL_NUM_SCANCODES];  /* keys pressed during the last frame */
-char keys_up[SDL_NUM_SCANCODES];    /* keys released during the last frame  */
 
 /* The starting directory */
 char initial_dir[256];
@@ -173,13 +171,23 @@ void render() {
 	SDL_RenderPresent(ren);
 }
 
+static SDL_Scancode last_key = SDL_SCANCODE_UNKNOWN;
+
+int kb_hit() {
+	return last_key != SDL_SCANCODE_UNKNOWN;
+}
+
+int readkey() {
+	return last_key;
+}
+
 /* advanceFrame() is kept separate so that it
  * can be exposed to the scripting system later
  */
 void advanceFrame() {
 	SDL_Event event;
 	Uint32 end;
-	int new_btns, i, cursor;
+	int new_btns, cursor;
 
     frame_counter++;
 
@@ -217,11 +225,8 @@ void advanceFrame() {
         mouse_x = -1;
         mouse_y = -1;
     }
-
-    for(i = 0; i < SDL_NUM_SCANCODES; i++) {
-	   keys_up[i] = 0;
-       keys_down[i] = 0;
-	}
+	
+	last_key = SDL_SCANCODE_UNKNOWN;
 
 	while(SDL_PollEvent(&event)) {
 		if(event.type == SDL_QUIT) {
@@ -235,14 +240,13 @@ void advanceFrame() {
 				/* Not a special key: */
 				assert(index < SDL_NUM_SCANCODES);
 				keys[index] = 1;
-                keys_down[index] = 1;
+                last_key = index;
 			}
 
 		} else if(event.type == SDL_KEYUP) {
 			int index = event.key.keysym.scancode;
 			assert(index < SDL_NUM_SCANCODES);
 			keys[index] = 0;
-            keys_up[index] = 1;
 		/*} else if(event.type == SDL_MOUSEBUTTONDOWN) {
 		} else if(event.type == SDL_MOUSEMOTION) {
             mouse_x = screen_to_virt_x(event.motion.x);
@@ -265,15 +269,6 @@ void reset_keys() {
 	for(i = 0; i < SDL_NUM_SCANCODES; i++) {
 		keys[i] = 0;
 	}
-}
-
-int kb_hit() {
-	int i;
-	for(i = 1; i < SDL_NUM_SCANCODES; i++) {
-		if(keys[i])
-			return i;
-	}
-	return 0;
 }
 
 void usage(const char *name) {

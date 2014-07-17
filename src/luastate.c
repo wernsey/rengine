@@ -1111,7 +1111,7 @@ static const luaL_Reg graphics_funcs[] = {
  *# See http://wiki.libsdl.org/SDL_Scancode for the names of all the possible keys.
  *# If {{key}} is omitted, the function returns true if _any_ key is down.
  */
-static int in_kbhit(lua_State *L) {	
+static int in_keydown(lua_State *L) {	
 	if(lua_gettop(L) > 0) {
 		const char *name = luaL_checkstring(L, 1);
 		/* Names of the keys are listed on
@@ -1124,26 +1124,18 @@ static int in_kbhit(lua_State *L) {
 	return 1;
 }
 
-/*@ Keyboard.pressed(key)
- *# Checks whether a key has been pressed during the last frame.
- *# The parameter {{key}} is the name of specific key.
+/*@ Keyboard.pressed()
+ *# Checks whether any key has been pressed during the last frame.\n
+ *# It returns `nil` if no keys were pressed, otherwise it return the name 
+ *# of the key that was pressed.
  *# See http://wiki.libsdl.org/SDL_Scancode for the names of all the possible keys.
  */
-static int in_keypressed(lua_State *L) {	
-    const char *name = luaL_checkstring(L, 1);
-    /* TODO: Wouldn't passing an invalid key cause a segfault? */
-    lua_pushboolean(L, keys_down[SDL_GetScancodeFromName(name)]);
-	return 1;
-}
-
-/*@ Keyboard.released(key)
- *# Checks whether a key has been released during the last frame.
- *# The parameter {{key}} is the name of specific key.
- *# See http://wiki.libsdl.org/SDL_Scancode for the names of all the possible keys.
- */
-static int in_keyreleased(lua_State *L) {	
-    const char *name = luaL_checkstring(L, 1);
-    lua_pushboolean(L, keys_up[SDL_GetScancodeFromName(name)]);
+static int in_keypressed(lua_State *L) {
+	if(kb_hit()) {
+		int scancode = readkey();
+		lua_pushstring(L, SDL_GetScancodeName(scancode));
+	} else
+		lua_pushnil(L);
 	return 1;
 }
 
@@ -1156,10 +1148,9 @@ static int in_reset_keys(lua_State *L) {
 }
 
 static const luaL_Reg keyboard_funcs[] = {
-  {"down",   in_kbhit},
+  {"down",   in_keydown},
   {"reset",  in_reset_keys},
   {"pressed",  in_keypressed},
-  {"released",  in_keyreleased},
   {0, 0}
 };
 
@@ -1667,7 +1658,7 @@ static const luaL_Reg sandbox_libs[] = {
   {LUA_STRLIBNAME, luaopen_string},
   {LUA_BITLIBNAME, luaopen_bit32},
   {LUA_MATHLIBNAME, luaopen_math},
-  /*{LUA_DBLIBNAME, luaopen_debug},*/
+  {LUA_DBLIBNAME, luaopen_debug},
   {NULL, NULL}
 };
 
@@ -1831,6 +1822,12 @@ static int lus_init(struct game_state *s) {
 	if(lua_pcall(L, 0, 0, 0)) {
 		rerror("Unable to execute script %s (state %s).", script_file, s->name);
 		sublog("lua", "%s", lua_tostring(L, -1));
+		/*
+		Wouldn't it be nice to be able to print a stack trace here.
+		See http://stackoverflow.com/a/12256526/115589
+		(couldn't get it working though)
+		traceback(L);
+		*/
 		return 0;
 	}
 		

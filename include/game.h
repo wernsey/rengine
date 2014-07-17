@@ -14,20 +14,17 @@ extern int mouse_btns, mouse_clck;
 /* keys[] tracks the state of the entire keyboard */
 extern char keys[];
 
-/* keys_down[] and keys_up[] tracks whether a key was 
-    pressed or released within the last frame.
-    They're useful for "debouncing" the keyboard for
-    menus and so on (suppose you have to press Esc to get to
-    a menu and Esc again to exit the menu, then you don't want
-    the menu to flicker because the user held the key for more
-    than one frame).
-*/
-extern char keys_down[];
-extern char keys_up[];
-
 void reset_keys();
+
+/* Returns true if a key was pressed during the last frame */
 int kb_hit();
 
+/* Returns the specific SDL_Scancode of the key that was pressed during the
+last frame (if kb_hit() returned true), SDL_SCANCODE_UNKNOWN otherwise */
+int readkey();
+
+/* Stores the directory from which the application was run
+	(for storing saved games and screenshots in the correct directory) */
 extern char initial_dir[];
 
 extern unsigned int frame_counter;
