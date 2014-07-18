@@ -1648,17 +1648,20 @@ Based on the discussion at http://stackoverflow.com/a/966778/115589
 I've copied the code from Lua's linit.c and removed the functions
 deemed unsafe.
 */
+#define ALLOW_UNSAFE 0
 static const luaL_Reg sandbox_libs[] = {
   {"_G", luaopen_base},
-  /*{LUA_LOADLIBNAME, luaopen_package}, */
   {LUA_COLIBNAME, luaopen_coroutine},
   {LUA_TABLIBNAME, luaopen_table},
-  /*{LUA_IOLIBNAME, luaopen_io},*/
-  /*{LUA_OSLIBNAME, luaopen_os},*/
   {LUA_STRLIBNAME, luaopen_string},
   {LUA_BITLIBNAME, luaopen_bit32},
   {LUA_MATHLIBNAME, luaopen_math},
+#if ALLOW_UNSAFE
+  {LUA_LOADLIBNAME, luaopen_package},
+  {LUA_IOLIBNAME, luaopen_io},
+  {LUA_OSLIBNAME, luaopen_os},
   {LUA_DBLIBNAME, luaopen_debug},
+#endif
   {NULL, NULL}
 };
 
@@ -1668,6 +1671,17 @@ void open_sandbox_libs (lua_State *L) {
 		luaL_requiref(L, lib->name, lib->func, 1);
 		lua_pop(L, 1);  /* remove lib */
 	}
+}
+
+/*
+I've tried these, but they didn't work for me
+http://stackoverflow.com/a/12256526/115589
+http://zeuxcg.org/2010/11/07/lua-callstack-with-c-debugger/
+http://stackoverflow.com/a/18177386/115589
+*/
+static int lua_stacktrace(lua_State *L) {
+    /* rlog("Doing Lua Stack Trace"); */
+    return 1;
 }
 
 static int lus_init(struct game_state *s) {
@@ -1821,13 +1835,15 @@ static int lus_init(struct game_state *s) {
 	rlog("Running script %s", script_file);	
 	if(lua_pcall(L, 0, 0, 0)) {
 		rerror("Unable to execute script %s (state %s).", script_file, s->name);
-		sublog("lua", "%s", lua_tostring(L, -1));
+		sublog("Lua", "%s", lua_tostring(L, -1));
 		/*
 		Wouldn't it be nice to be able to print a stack trace here.
 		See http://stackoverflow.com/a/12256526/115589
-		(couldn't get it working though)
-		traceback(L);
+        http://zeuxcg.org/2010/11/07/lua-callstack-with-c-debugger/
+        There is also a nice looking debugger (fully implemented in Lua)
+        here: https://github.com/slembcke/debugger.lua/blob/master/debugger.lua
 		*/
+        lua_stacktrace(L);
 		return 0;
 	}
 		
@@ -1872,7 +1888,8 @@ static int lus_update(struct game_state *s, struct bitmap *bmp) {
 		/* Call it */
 		if(lua_pcall(L, 0, 0, 0)) {
 			rerror("Unable to execute onUpdate() callback (%d)", fn->ref);
-			sublog("lua", "%s", lua_tostring(L, -1));
+			sublog("Lua", "%s", lua_tostring(L, -1));
+            lua_stacktrace(L);
 			/* Should we remove it maybe? */
 		}
 		
@@ -1915,7 +1932,7 @@ static int lus_deinit(struct game_state *s) {
 				lua_rawgeti(L, LUA_REGISTRYINDEX, fn->ref);
 				if(lua_pcall(L, 0, 0, 0)) {
 					rerror("Unable to execute atExit() callback (%d)", fn->ref);
-					sublog("lua", "%s", lua_tostring(L, -1));
+					sublog("Lua", "%s", lua_tostring(L, -1));
 				}
 				fn = fn->next;
 				free(old);
