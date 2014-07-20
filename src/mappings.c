@@ -4,11 +4,14 @@
 #	include <SDL2/SDL.h>
 #endif
 
-int scancode_to_ascii(int code, int shift) {
+int scancode_to_ascii(int code, int shift, int  caps) {
 	/* Sorry: This assumes an American keyboard layout.
-	I'm not sure what the best way would be */
+	I'm not sure what the best way would be to handle this,
+	but I have neither the experience nor the equipment 
+	necessary to make it work with other keyboard layout. */
+	
 	if(code >= SDL_SCANCODE_A && code <= SDL_SCANCODE_Z) {
-		if(shift)			
+		if(shift ^ caps)			
 			return code - SDL_SCANCODE_A + 'A';
 		return code - SDL_SCANCODE_A + 'a';
 	}
