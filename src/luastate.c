@@ -327,7 +327,12 @@ static int l_advanceFrame(lua_State *L) {
 	lua_pushboolean(L, !quit);
     if(quit && ++times > 10) {
         luaL_error(L, "Application ignored repeat requests to terminate");
-    }
+    }	
+    lua_getglobal (L, "G");
+	lua_pushstring(L, "frameCounter"); 
+	lua_pushinteger(L, frame_counter); 
+	lua_rawset(L, -3);
+	lua_pop(L, 1);
 	return 1;
 }
 
@@ -1143,6 +1148,26 @@ static int kb_keypressed(lua_State *L) {
 	return 1;
 }
 
+/*@ Keyboard.readAscii()
+ *# Reads the ASCII value of the last key that was pressed.\n
+ *# It returns `nil` if no key was pressed, and an empty string if
+ *# the key's value couldn't be converted to ASCII.
+ */
+static int kb_readAscii(lua_State *L) {
+	if(kb_hit()) {
+		int scancode = readkey();
+		char string[] = {0,0};
+		int shift = keys[SDL_SCANCODE_LSHIFT] || keys[SDL_SCANCODE_RSHIFT];
+		int mod = SDL_GetModState();
+		int caps = mod & KMOD_CAPS ? 1 : 0;
+		string[0] = scancode_to_ascii(scancode, shift, caps);
+		lua_pushstring(L, string);
+	} else
+		lua_pushnil(L);
+	return 1;
+}
+
+
 /*@ Keyboard.fromName(name)
  *# Returns the scan code of a key name.
  */
@@ -1172,6 +1197,7 @@ static int kb_reset_keys(lua_State *L) {
 static const luaL_Reg keyboard_funcs[] = {
   {"down",   kb_keydown},
   {"pressed",  kb_keypressed},
+  {"readAscii",  kb_readAscii},
   {"fromName",  kb_fromname},
   {"nameScancode",  kb_fromscancode},
   {"reset",  kb_reset_keys},
@@ -1808,6 +1834,7 @@ static int lus_init(struct game_state *s) {
 	SET_TABLE_INT_VAL("FPS", fps);
 	SET_TABLE_INT_VAL("SCREEN_WIDTH", virt_width);
 	SET_TABLE_INT_VAL("SCREEN_HEIGHT", virt_height);
+	SET_TABLE_INT_VAL("frameCounter", frame_counter);
 	lua_setglobal(L, "G");
 	
 	/* The input object Input gives you access to the keyboard and mouse. */

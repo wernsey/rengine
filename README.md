@@ -63,6 +63,25 @@ For example, on Ubuntu 14.04, the following should suffice:
                libsdl2-mixer-dev libogg-dev libvorbis-dev \
                libfltk1.3-dev 
 
+Since SDL2 is relatively new, it may not be available in your 
+package manager, and you may have to compile SDL2 and SDL2_mixer yourself
+(I know that SDL2 is not available in Debian _Wheezy_, for instance). 
+In this case, first install the abovementioned packages that are 
+available, then for both those libraries download the sources and run
+  
+   ./configure
+   make
+   sudo make install
+
+If you've compiled SDL yourself and Rengine complains about `No such audio device`
+then you need to install `libasound2-dev` like so
+
+    $ sudo apt-get install libasound2-dev
+
+and recompile SDL2 (`libpulse-dev` may also work - Haven't tried it - more 
+info [here](http://www.gamedev.net/topic/646010-sdl2-mixer-no-such-audio-device-solved/)).
+
+
 On Windows, Rengine is built with [MinGW](http://mingw.org/). See the
 webpages of the packages mentioned above for details on how to compile
 them under Windows.

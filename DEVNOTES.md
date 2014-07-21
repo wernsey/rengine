@@ -9,6 +9,11 @@ and TODOs in here.
 
 Docs says `SDL_UpdateTexture()` be slow. Do something different.
 
+FIXME: I should rather use `SDL_GetKeyboardState()` to get the state of
+the keys, rather than my own solution. Shouldn't be too difficult.
+
+See here: http://wiki.libsdl.org/SDL_GetKeyboardState
+
 ## Game
 
 Allow the using of bitmap cursors.

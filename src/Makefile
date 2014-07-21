@@ -41,7 +41,7 @@ EXECUTABLES = $(GAME_BIN) $(PAKR_BIN)
 SOURCES= bmp.c game.c ini.c utils.c pak.c \
 	states.c demo.c resources.c musl.c mustate.c hash.c \
 	lexer.c tileset.c map.c json.c luastate.c log.c \
-	gamedb.c sound.c paths.c \
+	gamedb.c sound.c paths.c mappings.c \
 	base.x.c
 
 FONTS = fonts/bold.xbm fonts/circuit.xbm fonts/hand.xbm fonts/normal.xbm \

@@ -30,5 +30,8 @@ extern char initial_dir[];
 extern unsigned int frame_counter;
 void advanceFrame();
 
+/* Converts a keyboard scancode to an ASCII cheracter. */
+int scancode_to_ascii(int code, int shift, int caps);
+
 const char *about_text;
 
