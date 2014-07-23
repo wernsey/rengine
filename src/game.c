@@ -7,10 +7,10 @@
 
 #ifdef WIN32
 #include <SDL2/SDL.h>
-#include <SDL_mixer.h>
+#include <SDL2/SDL_mixer.h>
 #else
 #include <SDL2/SDL.h>
-#include <SDL_mixer.h>
+#include <SDL2/SDL_mixer.h>
 #endif
 
 #include "bmp.h"

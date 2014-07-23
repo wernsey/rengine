@@ -16,8 +16,8 @@
 
 
 #ifdef WIN32
-#include <SDL.h>
-#include <SDL_mixer.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_mixer.h>
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>
@@ -326,7 +326,7 @@ static int l_advanceFrame(lua_State *L) {
 	advanceFrame();
 	lua_pushboolean(L, !quit);
     if(quit && ++times > 10) {
-        luaL_error(L, "Application ignored repeat requests to terminate");
+        luaL_error(L, "Script ignored repeated requests to terminate");
     }
 	return 1;
 }
