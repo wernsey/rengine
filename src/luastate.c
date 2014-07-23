@@ -38,10 +38,8 @@
 #include "utils.h"
 #include "log.h"
 #include "gamedb.h"
-
 #include "resources.h"
-
-#define MAX_TIMEOUTS 20
+#include "luastate.h"
 
 /*
 These are the Lua scripts in the ../scripts/ directory.
@@ -52,38 +50,9 @@ a variety of built in Lua code.
 extern const char base_lua[];
 extern size_t base_lua_len;
 
-/* Don't tamper with this variable from your Lua scripts. */
-#define STATE_DATA_VAR	"___state_data"
-
-struct callback_function {
-	int ref;
-	struct callback_function *next;
-};
-
-struct lustate_data {
-	
-	struct game_state *state;
-	
-	struct bitmap *bmp;
-	struct map *map;	
-
-	struct _timeout_element {
-		int fun;
-		int time;
-		Uint32 start;
-	} timeout[MAX_TIMEOUTS];
-	int n_timeout;
-	
-	struct callback_function *update_fcn, *last_fcn;	
-	struct callback_function *atexit_fcn;
-	
-	int change_state;
-	char *next_state;
-};
-
 /* LUA FUNCTIONS */
 
-static struct lustate_data *get_state_data(lua_State *L) {
+struct lustate_data *get_state_data(lua_State *L) {
 	struct lustate_data *sd;
 	lua_getglobal(L, STATE_DATA_VAR);
 	if(!lua_islightuserdata(L, -1)) {
@@ -162,7 +131,7 @@ static int l_set_timeout(lua_State *L) {
 	return 0;
 }
 
-static void process_timeouts(lua_State *L) {
+void process_timeouts(lua_State *L) {
 	struct lustate_data *sd;
 	int i = 0;
 	
@@ -266,82 +235,8 @@ static int l_atExit(lua_State *L) {
 
 struct callback_function *atexit_fcn, *last_atexit_fcn;
 
-/*1 Game object
- *# Functions in the {{Game}} scope
- */
-
-/*@ Game.changeState(newstate)
- *# Changes the game's [[state|State Machine]] to the state identified by {{newstate}}
- */
-static int l_changeState(lua_State *L) {
-	const char *next_state = luaL_checkstring(L, -1);
-	struct lustate_data *sd = get_state_data(L);
-	
-	sd->next_state = strdup(next_state);
-	sd->change_state = 1;
-	
-	return 0;
-}
-
-/*@ Game.getStyle(style, [default])
- *# Retrieves a specific [[Style]] from the [[game.ini]] file.
- */
-static int l_getstyle(lua_State *L) {
-	struct lustate_data *sd = get_state_data(L);
-	const char * s = luaL_checkstring(L,1);
-    const char * v = get_style(sd->state, s);
-    if(v) {
-        lua_pushstring(L, v);
-    } else {
-        if(lua_gettop(L) > 1) {
-            lua_pushstring(L, luaL_checkstring(L,2));
-        } else {
-            lua_pushstring(L, "");
-        }
-    }
-	
-	return 1;
-}
-
-/*@ Game.advanceFrame()
- *# Low-level function to advance the animation frame on the screen.\n
- *# It flips the back buffer, retrieves user inputs and processes system 
- *# events.\n
- *# In general you should not call this function directly, since Rengine
- *# does the above automatically. This function is provided for the special
- *# case where you need a Lua script to run in a loop, and during each 
- *# iteration update the screen and get new user input.\n
- *# An example of such a case is drwaing a GUI in a Lua script
- *# and handling the event loop of the GUI in Lua itself.\n
- *# It does not clear the screen - you'll need to do that yourself.\n
- *# Callbacks registered through {{onUpdate()}} will {/not/} be processed.
- *# Timeouts set through {{setTimeout()}} will be processed, however.\n
- *# It returns false if the user wants to quit. 
- *# If you use such an event loop, you should break when the function returns 
- *# `false`, otherwise your application won't quit when the user closes the window.\n
- */
-static int l_advanceFrame(lua_State *L) {	
-    static int times = 0;
-	process_timeouts(L);
-	advanceFrame();
-	lua_pushboolean(L, !quit);
-    if(quit && ++times > 10) {
-        luaL_error(L, "Application ignored repeat requests to terminate");
-    }	
-    lua_getglobal (L, "G");
-	lua_pushstring(L, "frameCounter"); 
-	lua_pushinteger(L, frame_counter); 
-	lua_rawset(L, -3);
-	lua_pop(L, 1);
-	return 1;
-}
-
-static const luaL_Reg game_funcs[] = {
-  {"changeState",     l_changeState},
-  {"getStyle",        l_getstyle},
-  {"advanceFrame",    l_advanceFrame},
-  {0, 0}
-};
+/* Declared in src/lua/ls_game.c */
+void register_game_functions(lua_State *L);
 
 /*1 BmpObj
  *# The Bitmap object encapsulates a bitmap in the engine.
@@ -508,228 +403,7 @@ static void bmp_obj_meta(lua_State *L) {
 	lua_setglobal(L, "Bmp");
 }
 
-/*1 Map
- *# The Map object provides access to the Map through
- *# a variety of functions.
- *#
- *# These fields are also available:
- *{
- ** {{Map.BACKGROUND}} - Constant for the Map's background layer. See {{Map.render()}}
- ** {{Map.CENTER}} - Constant for the Map's center layer. See {{Map.render()}}
- ** {{Map.FOREGROUND}} - Constant for the Map's foreground layer. See {{Map.render()}}
- ** {{Map.ROWS}} - The number of rows in the map.
- ** {{Map.COLS}} - The number of columns in the map.
- ** {{Map.TILE_WIDTH}} - The width (in pixels) of the cells on the map.
- ** {{Map.TILE_HEIGHT}} - The height (in pixels) of the cells on the map.
- *}
- *# The {{Map}} object is only available if the {{map}}
- *# parameter has been set in the state's configuration
- *# in the {{game.ini}} file.
- */
-
-/*@ Map.render(layer, [scroll_x, scroll_y])
- *# Renders the specified layer of the map (background, center or foreground).
- *# The center layer is where all the action in the game occurs and sprites and so on moves around.
- *# The background is drawn behind the center layer for objects in the background. It needs to be drawn first,
- *# so that the center and foreground layers are drawn over it.
- *# The foreground layer is drawn last and contains objects in the foreground. 
- */
-static int render_map(lua_State *L) {
-	int layer = luaL_checkint(L,1) - 1;
-	int sx = 0, sy = 0;
-	struct lustate_data *sd = get_state_data(L);
-	
-	if(!sd->map) {
-		luaL_error(L, "Attempt to render non-existent Map");
-	} 
-	if(layer < 0 || layer >= 3) {
-		luaL_error(L, "Attempt to render non-existent Map layer %d", layer);
-	}
-	if(!sd->bmp) {
-		luaL_error(L, "Attempt to render Map outside of a screen update");	
-	}
-	
-	if(lua_gettop(L) > 2) {
-		sx = luaL_checkint(L,2);
-		sy = luaL_checkint(L,3);
-	}
-	
-	map_render(sd->map, sd->bmp, layer, sx, sy);
-	return 0;
-}
-
-/*@ Map.cell(r,c)
- *# Returns a cell on the map at row {{r}}, column {{c}} as 
- *# a {{CellObj}} instance.\n
- *# {{r}} must be between {{1}} and {{Map.ROWS}} inclusive.
- *# {{c}} must be between {{1}} and {{Map.COLS}} inclusive.
- */
-static int get_cell_obj(lua_State *L) {
-	
-	int r = luaL_checkint(L,1) - 1;
-	int c = luaL_checkint(L,2) - 1;	
-	struct lustate_data *sd = get_state_data(L);	
-	struct map_cell **o;
-	
-	assert(sd->map);
-	
-	if(c < 0 || c >= sd->map->nc) 
-		luaL_error(L, "Invalid r value in Map.cell()");
-	if(r < 0 || r >= sd->map->nr) 
-		luaL_error(L, "Invalid c value in Map.cell()");
-	
-	o = lua_newuserdata(L, sizeof *o);	
-	luaL_setmetatable(L, "CellObj");
-		
-	*o = map_get_cell(sd->map, c, r);
-	
-	return 1;
-}
-
-static const luaL_Reg map_funcs[] = {
-  {"render",      	render_map},
-  {"cell",      	get_cell_obj},
-  {0, 0}
-};
-
-/*1 CellObj
- *# The CellObj encapsulates an individual cell on the 
- *# map. You then use the methods of the CellObj to manipulate
- *# the cell.
- *#
- *# Cell Objects are obtained through the {{Map.cell(r,c)}} function.
- */
-
-/*@ CellObj:__tostring()
- *# Returns a string representation of the CellObj
- */
-static int cell_tostring(lua_State *L) {	
-	luaL_checkudata(L,1, "CellObj");
-	lua_pushstring(L, "CellObj");
-	return 1;
-}
-
-/*@ CellObj:__gc()
- *# Frees the CellObj when it is garbage collected.
- */
-static int gc_cell_obj(lua_State *L) {
-	/* Nothing to do, since we don't actually own the pointer to the map_cell */
-	return 0;
-}
-
-/*@ CellObj:set(layer, si, ti)
- *# Sets the specific layer of the cells encapsulated in the CellObj to 
- *# the {{si,ti}} value, where
- *{
- ** {{si}} is the Set Index
- ** {{ti}} is the Tile Index
- *}
- */
-static int cell_set(lua_State *L) {
-	struct lustate_data *sd = get_state_data(L);
-	struct map_cell **cp = luaL_checkudata(L,1, "CellObj");
-	struct map_cell *c = *cp;
-	
-	int l = luaL_checkint(L,2) - 1;
-	int si = luaL_checkint(L,3);
-	int ti = luaL_checkint(L,4);
-	
-	if(l < 0 || l > 2) {
-		luaL_error(L, "Invalid level passed to CellObj:set()");
-	}
-	
-	assert(sd->map); /* cant create a CellObj if this is false. */
-	if(si < 0 || si >= ts_get_num(&sd->map->tiles)) {
-		luaL_error(L, "Invalid si passed to CellObj:set()");
-	}
-	/* FIXME: error checking on ti? */
-	
-	/* TODO: Maybe you ought to store this change in some sort of list
-	   so that the savedgames can handle changes to the map like this. */
-	c->tiles[l].ti = ti;
-	c->tiles[l].si = si;
-	
-	/* Push the CellObj back onto the stack so that other methods can be called on it */
-	lua_pushvalue(L, -4);
-	
-	return 1;
-}
-
-/*@ CellObj:getId()
- *# Returns the {/id/} of a cell as defined in the Rengine Editor
- */
-static int cell_get_id(lua_State *L) {
-	struct map_cell **cp = luaL_checkudata(L,1, "CellObj");
-	struct map_cell *c = *cp;	
-	lua_pushstring(L, c->id ? c->id : "");
-	return 1;
-}
-
-/*@ CellObj:getClass()
- *# Returns the {/class/} of a cell as defined in the Rengine Editor
- */
-static int cell_get_class(lua_State *L) {
-	struct map_cell **cp = luaL_checkudata(L,1, "CellObj");
-	struct map_cell *c = *cp;	
-	lua_pushstring(L, c->clas ? c->clas : "");
-	return 1;
-}
-
-/*@ CellObj:isBarrier()
- *# Returns whether the cell is a barrier
- */
-static int cell_is_barrier(lua_State *L) {
-	struct map_cell **cp = luaL_checkudata(L,1, "CellObj");
-	struct map_cell *c = *cp;	
-	lua_pushboolean(L, c->flags & TS_FLAG_BARRIER);
-	return 1;
-}
-
-/*@ CellObj:setBarrier(b)
- *# Sets whether the cell is a barrier
- */
-static int cell_set_barrier(lua_State *L) {
-	struct map_cell **cp = luaL_checkudata(L,1, "CellObj");
-	struct map_cell *c = *cp;	
-	luaL_checktype(L, 2, LUA_TBOOLEAN);
-	int b = lua_toboolean(L, 2);
-	if(b)
-		c->flags |= TS_FLAG_BARRIER;
-	else
-		c->flags &= ~TS_FLAG_BARRIER;
-	return 0;
-}
-
-/*
-	I may have been doing this wrong. See http://lua-users.org/wiki/UserDataWithPointerExample
-*/
-static void cell_obj_meta(lua_State *L) {
-	/* Create the metatable for MyObj */
-	luaL_newmetatable(L, "CellObj");
-	lua_pushvalue(L, -1);
-	lua_setfield(L, -2, "__index"); /* CellObj.__index = CellObj */
-	
-	/* Add methods here */
-	lua_pushcfunction(L, cell_set);
-	lua_setfield(L, -2, "set");
-	lua_pushcfunction(L, cell_get_id);
-	lua_setfield(L, -2, "getId");
-	lua_pushcfunction(L, cell_get_class);
-	lua_setfield(L, -2, "getClass");
-	lua_pushcfunction(L, cell_is_barrier);
-	lua_setfield(L, -2, "isBarrier");
-	lua_pushcfunction(L, cell_set_barrier);
-	lua_setfield(L, -2, "setBarrier");
-	
-	lua_pushcfunction(L, cell_tostring);
-	lua_setfield(L, -2, "__tostring");	
-	lua_pushcfunction(L, gc_cell_obj);
-	lua_setfield(L, -2, "__gc");	
-	
-	/* The global method C() */
-	lua_pushcfunction(L, get_cell_obj);
-	lua_setglobal(L, "Cell");
-}
+void register_map_functions(lua_State *L);
 
 /*1 G
  *# {{G}} is the Graphics object that allows you to draw primitives on the screen. \n
@@ -1275,316 +949,8 @@ static const luaL_Reg mouse_funcs[] = {
   {0, 0}
 };
 
-/*1 SndObj
- *# The sound object that encapsulates a sound (WAV) file in the engine.
- */
-
-/*@ Wav(filename)
- *# Loads the WAV file specified by {{filename}} from the
- *# [[Resources|Resource Management]] and returns it
- *# encapsulated within a `SndObj` instance.
- */
-static int new_wav_obj(lua_State *L) {
-	const char *filename = luaL_checkstring(L,1);
-	
-	struct Mix_Chunk **cp = lua_newuserdata(L, sizeof *cp);	
-	luaL_setmetatable(L, "SndObj");
-	
-	*cp = re_get_wav(filename);
-	if(!*cp) {
-		luaL_error(L, "Unable to load WAV file '%s'", filename);
-	}
-	return 1;
-}
-
-/*@ SndObj:__tostring()
- *# Returns a string representation of the `SndObj` instance.
- */
-static int wav_tostring(lua_State *L) {	
-	struct Mix_Chunk **cp = luaL_checkudata(L,1, "SndObj");
-	struct Mix_Chunk *c = *cp;
-	lua_pushfstring(L, "SndObj[%p]", c->abuf);
-	return 1;
-}
-
-/*@ SndObj:__gc()
- *# Garbage collects the `SndObj` instance.
- */
-static int gc_wav_obj(lua_State *L) {
-	/* No need to free the Mix_Chunk: It's in the resource cache. */
-	return 0;
-}
-
-static void wav_obj_meta(lua_State *L) {
-	/* Create the metatable for MyObj */
-	luaL_newmetatable(L, "SndObj");
-	lua_pushvalue(L, -1);
-	lua_setfield(L, -2, "__index"); /* SndObj.__index = SndObj */
-			
-	lua_pushcfunction(L, wav_tostring);
-	lua_setfield(L, -2, "__tostring");	
-	lua_pushcfunction(L, gc_wav_obj);
-	lua_setfield(L, -2, "__gc");	
-	
-	/* The global method Wav() */
-	lua_pushcfunction(L, new_wav_obj);
-	lua_setglobal(L, "Wav");
-}
-
-/*1 Sound
- *# The {{Sound}} object exposes functions through which 
- *# sounds can be played an paused in your games.
- */
-
-/*@ Sound.play(sound)
- *# Plays a sound.
- *# {{sound}} is a {{SndObj}} object previously loaded through
- *# the {{Wav(filename)}} function.
- *# It returns the {{channel}} the sound is playing on, which can be used
- *# with other {{Sound}} functions.
- */
-static int sound_play(lua_State *L) {
-	struct Mix_Chunk **cp = luaL_checkudata(L,1, "SndObj");
-	struct Mix_Chunk *c = *cp;
-	int ch = Mix_PlayChannel(-1, c, 0);
-	if(ch < 0) {
-		luaL_error(L, "Sound.play(): %s", Mix_GetError());
-	}
-	lua_pushinteger(L, ch);
-	return 1;
-}
-
-/*@ Sound.loop(sound, [n])
- *# Loops a sound {{n}} times. 
- *# If {{n}} is omitted, the sound will loop indefinitely.
- *# {{sound}} is a {{SndObj}} object previously loaded through
- *# the {{Wav(filename)}} function.
- *# It returns the {{channel}} the sound is playing on, which can be used
- *# with other {{Sound}} functions.
- */
-static int sound_loop(lua_State *L) {
-	struct Mix_Chunk **cp = luaL_checkudata(L,1, "SndObj");
-	struct Mix_Chunk *c = *cp;
-	
-	int n = -1;
-	if(lua_gettop(L) > 0) {
-		n = luaL_checkinteger(L, 2);
-	}
-	if(n < 1) n = 1;
-	
-	int ch = Mix_PlayChannel(-1, c, n - 1);
-	if(ch < 0) {
-		luaL_error(L, "Sound.loop(): %s", Mix_GetError());
-	}
-	lua_pushinteger(L, ch);
-	return 1;
-}
-
-/*@ Sound.pause([channel])
- *# Pauses a sound.
- *# {{channel}} is the channel previously returned by
- *# {{Sound.play()}}. If it's omitted, all sound will be paused.
- */
-static int sound_pause(lua_State *L) {
-	int channel = -1;
-	if(lua_gettop(L) > 0) {
-		channel = luaL_checkinteger(L, 1);
-	}
-	Mix_Pause(channel);
-	return 0;
-}
-
-/*@ Sound.resume([channel])
- *# Resumes a paused sound on a specific channel.
- *# {{channel}} is the channel previously returned by
- *# {{Sound.play()}}. If it's omitted, all sound will be resumed.
- */
-static int sound_resume(lua_State *L) {
-	int channel = -1;
-	if(lua_gettop(L) > 0) {
-		channel = luaL_checkinteger(L, 1);
-	}
-	Mix_Resume(channel);
-	return 0;
-}
-
-/*@ Sound.halt([channel])
- *# Halts a sound playing on a specific channel.
- *# {{channel}} is the channel previously returned by
- *# {{Sound.play()}}. If it's omitted, all sound will be halted.
- */
-static int sound_halt(lua_State *L) {
-	int channel = -1;
-	if(lua_gettop(L) > 0) {
-		channel = luaL_checkinteger(L, 1);
-	}
-	if(Mix_HaltChannel(channel) < 0) {
-		luaL_error(L, "Sound.pause(): %s", Mix_GetError());
-	}
-	return 0;
-}
-
-/*@ Sound.playing([channel])
- *# Returns whether the sound on {{channel}} is currently playing.
- *# If {{channel}} is omitted, it will return an integer containing the
- *# number of channels currently playing.
- */
-static int sound_playing(lua_State *L) {
-	if(lua_gettop(L) > 0) {
-		int channel = luaL_checkinteger(L, 1);
-		lua_pushboolean(L, Mix_Playing(channel));
-	}
-	lua_pushinteger(L, Mix_Playing(-1));
-	return 1;
-}
-
-/*@ Sound.paused([channel])
- *# Returns whether the sound on {{channel}} is currently paused.
- *# If {{channel}} is omitted, it will return an integer containing the
- *# number of channels currently paused.
- */
-static int sound_paused(lua_State *L) {
-	if(lua_gettop(L) > 0) {
-		int channel = luaL_checkinteger(L, 1);
-		lua_pushboolean(L, Mix_Paused(channel));
-	}
-	lua_pushinteger(L, Mix_Paused(-1));
-	return 1;
-}
-
-/*@ Sound.volume([channel,] v)
- *# Sets the volume 
- *# {{v}} should be a value between {{0}} (minimum volume) and {{1}} (maximum volume).
- *# If {{channel}} is omitted, the volume of all channels will be set.
- *# It returns the volume of the {{channel}}. If the channel is not specified, it
- *# will return the average volume of all channels. To get the volume of a channel
- *# without changing it, use a negative value for {{v}}.
- */
-static int sound_volume(lua_State *L) {
-	int channel = -1;
-	double v = -1;
-	int vol = -1;
-	if(lua_gettop(L) > 1) {
-		channel = luaL_checkinteger(L, 1);
-		v = luaL_checknumber(L, 2);	
-	} else {
-		v = luaL_checknumber(L, 1);	
-	}
-	if(v < 0) {
-		vol = -1;
-	} else {
-		if(v > 1.0){
-			v = 1.0;
-		}
-		vol = v * MIX_MAX_VOLUME;
-	}		
-	lua_pushinteger(L, Mix_Volume(channel, vol));
-	return 1;
-}
-
-static const luaL_Reg sound_funcs[] = {
-  {"play",  sound_play},
-  {"loop",  sound_loop},
-  {"pause",  sound_pause},
-  {"resume",  sound_resume},
-  {"halt",  sound_halt},
-  {"playing",  sound_playing},
-  {"paused",  sound_paused},
-  {"volume",  sound_volume},
-  {0, 0}
-};
-
-/*1 MusicObj
- *# The music object that encapsulates a music file in the engine.
- */
-
-/*@ Music(filename)
- *# Loads the music file specified by {{filename}} from the
- *# [[Resources|Resource Management]] and returns it
- *# encapsulated within a `MusObj` instance.
- */
-static int new_mus_obj(lua_State *L) {
-	const char *filename = luaL_checkstring(L,1);
-	
-	Mix_Music **mp = lua_newuserdata(L, sizeof *mp);	
-	luaL_setmetatable(L, "MusicObj");
-	
-	*mp = re_get_mus(filename);
-	if(!*mp) {
-		luaL_error(L, "Unable to load music file '%s'", filename);
-	}
-	return 1;
-}
-
-/*@ MusicObj:play([loops])
- *# Plays a piece of music.
- */
-static int mus_play(lua_State *L) {	
-	Mix_Music **mp = luaL_checkudata(L,1, "MusicObj");
-	Mix_Music *m = *mp;
-	
-	int loops = -1;
-	
-	if(lua_gettop(L) > 1) {
-		loops = luaL_checkinteger(L, 2);
-	}
-	
-	if(Mix_PlayMusic(m, loops) == -1) {
-		rerror("Unable to play music: %s", Mix_GetError());
-	}	
-		
-	return 0;
-}
-
-/*@ MusicObj:halt()
- *# Stops music.
- */
-static int mus_halt(lua_State *L) {	
-	luaL_checkudata(L,1, "MusicObj");
-	
-	Mix_HaltMusic();
-		
-	return 0;
-}
-
-/*@ MusicObj:__tostring()
- *# Returns a string representation of the `MusicObj` instance.
- */
-static int mus_tostring(lua_State *L) {	
-	Mix_Music **mp = luaL_checkudata(L,1, "MusicObj");
-	Mix_Music *m = *mp;
-	lua_pushfstring(L, "MusicObj[%p]", m);
-	return 1;
-}
-
-/*@ MusicObj:__gc()
- *# Garbage collects the `MusObj` instance.
- */
-static int gc_mus_obj(lua_State *L) {
-	/* No need to free the Mix_Music: It's in the resource cache. */
-	return 0;
-}
-
-static void mus_obj_meta(lua_State *L) {
-	/* Create the metatable for MusicObj */
-	luaL_newmetatable(L, "MusicObj");
-	lua_pushvalue(L, -1);
-	lua_setfield(L, -2, "__index"); /* MusicObj.__index = MusicObj */
-			
-	lua_pushcfunction(L, mus_play);
-	lua_setfield(L, -2, "play");	
-	lua_pushcfunction(L, mus_halt);
-	lua_setfield(L, -2, "halt");	
-	
-	lua_pushcfunction(L, mus_tostring);
-	lua_setfield(L, -2, "__tostring");	
-	lua_pushcfunction(L, gc_mus_obj);
-	lua_setfield(L, -2, "__gc");	
-	
-	/* The global method Music() */
-	lua_pushcfunction(L, new_mus_obj);
-	lua_setglobal(L, "Music");
-}
+/* Declared in src/lua/ls_audio.c */
+void register_sound_functions(lua_State *L);
 
 /*1 GameDB
  *# The {/Game Database/}. 
@@ -1689,9 +1055,6 @@ static const luaL_Reg gdb_local_funcs[] = {
 };
 
 /* STATE FUNCTIONS */
-
-#define GLOBAL_FUNCTION(name, fun)	lua_pushcfunction(L, fun); lua_setglobal(L, name);
-#define SET_TABLE_INT_VAL(k, v)     lua_pushstring(L, k); lua_pushinteger(L, v); lua_rawset(L, -3);
 
 /*
 Based on the discussion at http://stackoverflow.com/a/966778/115589
@@ -1805,14 +1168,8 @@ static int lus_init(struct game_state *s) {
 		}
 		free(map_text);
 		
-		luaL_newlib(L, map_funcs);
-		SET_TABLE_INT_VAL("BACKGROUND", 1);
-		SET_TABLE_INT_VAL("CENTER", 2);
-		SET_TABLE_INT_VAL("FOREGROUND", 3);
-		SET_TABLE_INT_VAL("ROWS", sd->map->nr);
-		SET_TABLE_INT_VAL("COLS", sd->map->nc);
-		SET_TABLE_INT_VAL("TILE_WIDTH", sd->map->tiles.tw);
-		SET_TABLE_INT_VAL("TILE_HEIGHT", sd->map->tiles.th);
+        register_map_functions(L);
+        
 	} else {
 		rlog("Lua state %s does not specify a map file.", s->name);
 		lua_pushnil(L);
@@ -1823,11 +1180,10 @@ static int lus_init(struct game_state *s) {
 	GLOBAL_FUNCTION("setTimeout", l_set_timeout);
 	GLOBAL_FUNCTION("onUpdate", l_onUpdate);
 	GLOBAL_FUNCTION("atExit", l_atExit);
-	GLOBAL_FUNCTION("import", l_import);
-	
-	luaL_newlib(L, game_funcs);
+	GLOBAL_FUNCTION("import", l_import);    
+    
 	/* Register some Lua variables. */	
-	lua_setglobal(L, "Game");
+	register_game_functions(L);
 	
 	/* The graphics object G gives you access to all the 2D drawing functions */
 	luaL_newlib(L, graphics_funcs);
@@ -1836,6 +1192,10 @@ static int lus_init(struct game_state *s) {
 	SET_TABLE_INT_VAL("SCREEN_HEIGHT", virt_height);
 	SET_TABLE_INT_VAL("frameCounter", frame_counter);
 	lua_setglobal(L, "G");
+    
+	/* The Bitmap object is constructed through the Bmp() function that loads 
+		a bitmap through the resources module that can be drawn with G.blit() */
+	bmp_obj_meta(L);
 	
 	/* The input object Input gives you access to the keyboard and mouse. */
 	luaL_newlib(L, keyboard_funcs);
@@ -1852,21 +1212,8 @@ static int lus_init(struct game_state *s) {
 	luaL_newlib(L, gdb_local_funcs);
 	lua_setglobal(L, "LocalDB");
 	
-	luaL_newlib(L, sound_funcs);
-	lua_setglobal(L, "Sound");	
-	
-	/* The Bitmap object is constructed through the Bmp() function that loads 
-		a bitmap through the resources module that can be drawn with G.blit() */
-	bmp_obj_meta(L);
-	
-	wav_obj_meta(L);
-	
-	mus_obj_meta(L);
-	
-	/* There is a function C('selector') that returns a CellObj object that
-		gives you access to the cells on the map. */
-	cell_obj_meta(L);
-	
+    register_sound_functions(L);
+    
 	if(luaL_dostring(L, base_lua)) {
 		rerror("Unable load base library.");
 		sublog("lua", "%s", lua_tostring(L, -1));

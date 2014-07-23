@@ -42,7 +42,8 @@ SOURCES= bmp.c game.c ini.c utils.c pak.c \
 	states.c demo.c resources.c musl.c mustate.c hash.c \
 	lexer.c tileset.c map.c json.c luastate.c log.c \
 	gamedb.c sound.c paths.c mappings.c \
-	base.x.c
+	base.x.c \
+    lua/ls_audio.c lua/ls_game.c lua/ls_map.c
 
 FONTS = fonts/bold.xbm fonts/circuit.xbm fonts/hand.xbm fonts/normal.xbm \
 		fonts/small.xbm fonts/smallinv.xbm fonts/thick.xbm
@@ -116,6 +117,10 @@ gamedb.o: gamedb.c ../include/gamedb.h ../include/ini.h ../include/states.h \
 sound.o: sound.c ../include/resources.h ../include/log.h
 paths.o: paths.c ../include/utils.h
 
+ls_audio.o: lua/ls_audio.c ../include/resources.h ../include/log.h
+ls_game.o: lua/ls_game.c ../include/game.h ../include/luastate.h
+ls_map.o: lua/ls_map.c ../include/tileset.h ../include/map.h ../include/luastate.h
+
 # Utilities ###################################
 
 $(PAKR_BIN) : pakr.o pak.o utils.o
@@ -148,6 +153,6 @@ base.x.c : ../scripts/base.lua $(BACE_BIN)
 
 clean:
 	-rm -rf $(EXECUTABLES) $(BACE_BIN)
-	-rm -rf *.o rengine.res
+	-rm -rf *.o lua/*.o rengine.res
 	-rm -rf *.x.c *.x.h
 	-rm -rf *~ gmon.out
