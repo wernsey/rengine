@@ -100,3 +100,58 @@ function deserialize(s)
 	local f = assert(loadstring("do return " .. s .. " end"))
 	return f()
 end
+
+--[[
+*@ Class Stack
+*# A basic stack class for pushing and popping Lua tables
+*X stack = Stack:Create{};
+]]
+Stack = class(nil, {elements = nil, top = 0});
+
+--[[
+*@ function Stack:push(o)
+*# Pushes an element onto the stack.
+*X stack:push(o);
+]]
+function Stack:push(o)
+    if not self.elements then
+        self.elements = {}
+    end
+    self.top = self.top + 1
+    self.elements[self.top] = o;
+end
+
+--[[
+*@ function Stack:pop()
+*# Pops an element of the stack.
+*X o = stack:pop();
+]]
+function Stack:pop()
+    if self.elements and self.top > 0 then
+        local o = self.elements[self.top]
+        self.elements[self.top] = nil
+        self.top = self.top - 1
+        return o
+    end
+    error('Stack underflow', 2)
+end
+
+--[[
+*@ function Stack:size()
+*# Retrieves the size (number of elements) on the stack
+]]
+function Stack:size()
+    if not self.elements then
+        return 0
+    end
+    return self.top;
+end
+
+--[[
+*@ function Stack:clear()
+*# Erases all the elements in the stack.
+]]
+function Stack:clear()   
+	self.elements = {} 
+    self.top = 0;
+end
