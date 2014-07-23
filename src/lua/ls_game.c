@@ -13,6 +13,7 @@
 #endif
 
 #include "game.h"
+#include "states.h"
 #include "luastate.h"
 
 /*1 Game object

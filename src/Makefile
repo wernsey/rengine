@@ -42,8 +42,9 @@ SOURCES= bmp.c game.c ini.c utils.c pak.c \
 	states.c demo.c resources.c musl.c mustate.c hash.c \
 	lexer.c tileset.c map.c json.c luastate.c log.c \
 	gamedb.c sound.c paths.c mappings.c \
-	base.x.c \
-    lua/ls_audio.c lua/ls_game.c lua/ls_map.c
+    lua/ls_audio.c lua/ls_game.c lua/ls_map.c lua/ls_gamedb.c \
+    lua/ls_bmp.c lua/ls_gfx.c lua/ls_input.c \
+	base.x.c 
 
 FONTS = fonts/bold.xbm fonts/circuit.xbm fonts/hand.xbm fonts/normal.xbm \
 		fonts/small.xbm fonts/smallinv.xbm fonts/thick.xbm
@@ -117,9 +118,13 @@ gamedb.o: gamedb.c ../include/gamedb.h ../include/ini.h ../include/states.h \
 sound.o: sound.c ../include/resources.h ../include/log.h
 paths.o: paths.c ../include/utils.h
 
-ls_audio.o: lua/ls_audio.c ../include/resources.h ../include/log.h
-ls_game.o: lua/ls_game.c ../include/game.h ../include/luastate.h
-ls_map.o: lua/ls_map.c ../include/tileset.h ../include/map.h ../include/luastate.h
+lua/ls_audio.o: lua/ls_audio.c ../include/resources.h ../include/log.h
+lua/ls_game.o: lua/ls_game.c ../include/game.h ../include/luastate.h ../include/states.h
+lua/ls_map.o: lua/ls_map.c ../include/tileset.h ../include/map.h ../include/luastate.h
+lua/ls_gamedb.o: lua/ls_gamedb.c ../include/gamedb.h
+lua/ls_bmp.o: lua/ls_bmp.c ../include/luastate.h ../include/bmp.h ../include/resources.h
+lua/ls_gfx.o: lua/ls_gfx.c ../include/luastate.h ../include/bmp.h ../include/game.h  ../include/states.h
+lua/ls_input.o: lua/ls_input.c ../include/luastate.h ../include/log.h ../include/game.h 
 
 # Utilities ###################################
 
