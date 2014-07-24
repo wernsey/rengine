@@ -69,7 +69,8 @@ static int kb_readAscii(lua_State *L) {
 		int shift = keys[SDL_SCANCODE_LSHIFT] || keys[SDL_SCANCODE_RSHIFT];
 		int mod = SDL_GetModState();
 		int caps = mod & KMOD_CAPS ? 1 : 0;
-		string[0] = scancode_to_ascii(scancode, shift, caps);
+		int numl = mod & KMOD_NUM ? 1 : 0;
+		string[0] = scancode_to_ascii(scancode, shift, caps, numl);
 		lua_pushstring(L, string);
 	} else
 		lua_pushnil(L);

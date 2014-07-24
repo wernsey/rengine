@@ -4,7 +4,7 @@
 #	include <SDL2/SDL.h>
 #endif
 
-int scancode_to_ascii(int code, int shift, int  caps) {
+int scancode_to_ascii(int code, int shift, int  caps, int numl) {
 	/* Sorry: This assumes an American keyboard layout.
 	I'm not sure what the best way would be to handle this,
 	but I have neither the experience nor the equipment 
@@ -15,6 +15,13 @@ int scancode_to_ascii(int code, int shift, int  caps) {
 			return code - SDL_SCANCODE_A + 'A';
 		return code - SDL_SCANCODE_A + 'a';
 	}
+    
+    if(numl && code >= SDL_SCANCODE_KP_1 && code <= SDL_SCANCODE_KP_0) {
+        if(code == SDL_SCANCODE_KP_0)
+            return '0';
+        return code - SDL_SCANCODE_KP_1 + '1';
+    }
+    
 	switch(code) {
 		case SDL_SCANCODE_1 : return shift?'!':'1';
 		case SDL_SCANCODE_2 : return shift?'@':'2';
@@ -45,17 +52,7 @@ int scancode_to_ascii(int code, int shift, int  caps) {
 		case SDL_SCANCODE_BACKSPACE : return '\b';
 		case SDL_SCANCODE_DELETE : return 0x7F;
 		case SDL_SCANCODE_ESCAPE : return 0x1B;
-		
-		case SDL_SCANCODE_KP_1 : return '1';
-		case SDL_SCANCODE_KP_2 : return '2';
-		case SDL_SCANCODE_KP_3 : return '3';
-		case SDL_SCANCODE_KP_4 : return '4';
-		case SDL_SCANCODE_KP_5 : return '5';
-		case SDL_SCANCODE_KP_6 : return '6';
-		case SDL_SCANCODE_KP_7 : return '7';
-		case SDL_SCANCODE_KP_8 : return '8';
-		case SDL_SCANCODE_KP_9 : return '9';
-		case SDL_SCANCODE_KP_0 : return '0';
+    
 		case SDL_SCANCODE_KP_PLUS : return '+';
 		case SDL_SCANCODE_KP_MINUS : return '-';
 		case SDL_SCANCODE_KP_MULTIPLY : return '*';
