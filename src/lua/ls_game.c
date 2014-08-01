@@ -39,16 +39,14 @@ static int l_changeState(lua_State *L) {
 static int l_getstyle(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
 	const char * s = luaL_checkstring(L,1);
-    const char * v = get_style(sd->state, s);
-    if(v) {
-        lua_pushstring(L, v);
-    } else {
-        if(lua_gettop(L) > 1) {
-            lua_pushstring(L, luaL_checkstring(L,2));
-        } else {
-            lua_pushstring(L, "");
-        }
-    }
+    const char * d = "";
+    const char * v;
+    
+    if(lua_gettop(L) > 1)
+        d = luaL_checkstring(L,2);
+            
+    v = get_style(sd->state, s, d);
+    lua_pushstring(L, v);
 	
 	return 1;
 }

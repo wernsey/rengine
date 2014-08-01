@@ -1,6 +1,6 @@
 /*
-*# [Lua](http://www.lua.org/home.html) is a popular scripting language for games. 
-*# Through Rengine's Lua State you get access to a Lua interpreter, with most of 
+*# [Lua](http://www.lua.org/home.html) is a popular scripting language for games.
+*# Through Rengine's Lua State you get access to a Lua interpreter, with most of
 *# Rengine's functionality exposed.
 *#
 *# Links:
@@ -65,7 +65,7 @@ struct lustate_data *get_state_data(lua_State *L) {
 	return sd;
 }
 
-/*1 Global functions 
+/*1 Global functions
  *# These functions have global scope in the Lua script.
  */
 
@@ -85,7 +85,7 @@ static int l_log(lua_State *L) {
  *# This function is needed because the standard Lua functions like
  *# require() and dofile() are disabled in the Rengine sandbox.
  */
-static int l_import(lua_State *L) {	
+static int l_import(lua_State *L) {
 	const char *path = lua_tolstring(L, 1, NULL);
 	char * script = re_get_script(path);
 	if(!script)
@@ -104,37 +104,37 @@ static int l_import(lua_State *L) {
 static int l_set_timeout(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
 
-	/* This link was useful: 
-	http://stackoverflow.com/questions/2688040/how-to-callback-a-lua-function-from-a-c-function 
+	/* This link was useful:
+	http://stackoverflow.com/questions/2688040/how-to-callback-a-lua-function-from-a-c-function
 	*/
 	if(lua_gettop(L) == 2 && lua_isfunction(L, -2) && lua_isnumber(L, -1)) {
-		
+
 		if(sd->n_timeout == MAX_TIMEOUTS) {
 			luaL_error(L, "Maximum number of timeouts [%d] reached", MAX_TIMEOUTS);
 		}
-		
+
 		/* Push the callback function on to the top of the stack */
 		lua_pushvalue(L, -2);
-		
+
 		/* And create a reference to it in the special LUA_REGISTRYINDEX */
 		sd->timeout[sd->n_timeout].fun = luaL_ref(L, LUA_REGISTRYINDEX);
-		
-		sd->timeout[sd->n_timeout].time = luaL_checkinteger(L, 2);		
+
+		sd->timeout[sd->n_timeout].time = luaL_checkinteger(L, 2);
 		sd->timeout[sd->n_timeout].start = SDL_GetTicks();
-		
+
 		sd->n_timeout++;
-		
+
 	} else {
 		luaL_error(L, "setTimeout() requires a function and a time as parameters");
 	}
-	
+
 	return 0;
 }
 
 void process_timeouts(lua_State *L) {
 	struct lustate_data *sd;
 	int i = 0;
-	
+
 	lua_getglobal(L, STATE_DATA_VAR);
 	if(!lua_islightuserdata(L, -1)) {
 		/* Can't call LuaL_error here. */
@@ -144,20 +144,20 @@ void process_timeouts(lua_State *L) {
 		sd = lua_touserdata(L, -1);
 	}
 	lua_pop(L, 1);
-	
+
 	while(i < sd->n_timeout) {
 		Uint32 elapsed = SDL_GetTicks() - sd->timeout[i].start;
-		if(elapsed > sd->timeout[i].time) {			
+		if(elapsed > sd->timeout[i].time) {
 			/* Retrieve the callback */
 			lua_rawgeti(L, LUA_REGISTRYINDEX, sd->timeout[i].fun);
-			
+
 			/* Call it */
 			if(lua_pcall(L, 0, 0, 0)) {
-				rerror("Unable to execute setTimeout() callback: %s", lua_tostring(L, -1));				
+				rerror("Unable to execute setTimeout() callback: %s", lua_tostring(L, -1));
 			}
 			/* Release the reference so that it can be collected */
 			luaL_unref(L, LUA_REGISTRYINDEX, sd->timeout[i].fun);
-			
+
 			/* Now delete this timeout by replacing it with the last one */
 			sd->timeout[i] = sd->timeout[--sd->n_timeout];
 		} else {
@@ -175,15 +175,15 @@ static int l_onUpdate(lua_State *L) {
 
 	if(lua_gettop(L) == 1 && lua_isfunction(L, -1)) {
 		struct callback_function *fn;
-				
+
 		fn = malloc(sizeof *fn);
 		if(!fn)
 			luaL_error(L, "Out of memory");
-		
+
 		/* And create a reference to it in the special LUA_REGISTRYINDEX */
-		fn->ref = luaL_ref(L, LUA_REGISTRYINDEX);		
+		fn->ref = luaL_ref(L, LUA_REGISTRYINDEX);
 		rlog("Registering onUpdate() callback %d", fn->ref);
-		
+
 		fn->next = NULL;
 		if(!sd->last_fcn) {
 			assert(sd->update_fcn == NULL);
@@ -193,13 +193,13 @@ static int l_onUpdate(lua_State *L) {
 			sd->last_fcn->next = fn;
 			sd->last_fcn = fn;
 		}
-		
+
 		lua_pushinteger(L, fn->ref);
-		
+
 	} else {
 		luaL_error(L, "onUpdate() requires a function as a parameter");
 	}
-	
+
 	return 1;
 }
 
@@ -213,23 +213,23 @@ static int l_atExit(lua_State *L) {
 
 	if(lua_gettop(L) == 1 && lua_isfunction(L, -1)) {
 		struct callback_function *fn;
-				
+
 		fn = malloc(sizeof *fn);
 		if(!fn)
 			luaL_error(L, "Out of memory");
-		
+
 		/* And create a reference to it in the special LUA_REGISTRYINDEX */
-		fn->ref = luaL_ref(L, LUA_REGISTRYINDEX);		
+		fn->ref = luaL_ref(L, LUA_REGISTRYINDEX);
 		rlog("Registering atExit() callback %d", fn->ref);
-		
+
 		fn->next = sd->atexit_fcn;
 		sd->atexit_fcn = fn;
-		
-		lua_pushinteger(L, fn->ref);		
+
+		lua_pushinteger(L, fn->ref);
 	} else {
 		luaL_error(L, "atExit() requires a function as a parameter");
 	}
-	
+
 	return 1;
 }
 
@@ -298,16 +298,16 @@ static int lua_stacktrace(lua_State *L) {
 }
 
 static int lus_init(struct game_state *s) {
-	
+
 	const char *map_file, *script_file;
 	char *map_text, *script;
 	lua_State *L = NULL;
 	struct lustate_data *sd;
-		
+
 	rlog("Initializing Lua state '%s'", s->name);
-	
+
 	/* Load the Lua script */
-	script_file = ini_get(game_ini, s->name, "script", NULL);	
+	script_file = ini_get(game_ini, s->name, "script", NULL);
 	if(!script_file) {
 		rerror("Lua state '%s' doesn't specify a script file.", s->name);
 		return 0;
@@ -317,106 +317,106 @@ static int lus_init(struct game_state *s) {
 		rerror("Script %s was not found (state %s).", script_file, s->name);
 		return 0;
 	}
-	
+
 	/* Create the Lua interpreter */
 	L = luaL_newstate();
-	if(!L) { 
+	if(!L) {
 		rerror("Couldn't create Lua state.");
 		return 0;
 	}
 	s->data = L;
-	
+
 	/* Sandbox Lua instead of calling luaL_openlibs(L); */
 	open_sandbox_libs(L);
-	
+
 	/* Create and init the State Data that the interpreter carries with it. */
 	sd = malloc(sizeof *sd);
 	if(!sd)
 		return 0;
-	
-	sd->state = s;	
-	sd->update_fcn = NULL;	
+
+	sd->state = s;
+	sd->update_fcn = NULL;
 	sd->last_fcn = NULL;
-	sd->atexit_fcn = NULL;	
-	
+	sd->atexit_fcn = NULL;
+
 	sd->n_timeout = 0;
-	
+
     sd->bmp = get_screen();
-	
+
     sd->map = NULL;
-		
+
 	sd->change_state = 0;
 	sd->next_state = NULL;
-	
+
 	/* Store the State Data in the interpreter */
-	lua_pushlightuserdata(L, sd);		
+	lua_pushlightuserdata(L, sd);
 	lua_setglobal(L, STATE_DATA_VAR);
-	
+
 	/* Load the map, if one is specified. */
 	map_file = ini_get(game_ini, s->name, "map", NULL);
 	if(map_file) {
 		map_text = re_get_script(map_file);
 		if(!map_text) {
 			rerror("Unable to retrieve map resource '%s' (state %s).", map_file, s->name);
-			return 0;		
+			return 0;
 		}
-		
+
 		sd->map = map_parse(map_text, 0);
 		if(!sd->map) {
 			rerror("Unable to parse map '%s' (state %s).", map_file, s->name);
-			return 0;		
+			return 0;
 		}
 		free(map_text);
-		
+
         register_map_functions(L);
-        
+
 	} else {
 		rlog("Lua state %s does not specify a map file.", s->name);
 		lua_pushnil(L);
 	}
 	lua_setglobal(L, "Map");
-	
+
 	GLOBAL_FUNCTION("log", l_log);
 	GLOBAL_FUNCTION("setTimeout", l_set_timeout);
 	GLOBAL_FUNCTION("onUpdate", l_onUpdate);
 	GLOBAL_FUNCTION("atExit", l_atExit);
-	GLOBAL_FUNCTION("import", l_import);    
-    
-	/* Register some Lua variables. */	
+	GLOBAL_FUNCTION("import", l_import);
+
+	/* Register some Lua variables. */
 	register_game_functions(L);
-	
+
     /* The graphics object G gives you access to all the 2D drawing functions */
 	register_gfx_functions(L);
-    
-	/* The Bitmap object is constructed through the Bmp() function that loads 
+
+	/* The Bitmap object is constructed through the Bmp() function that loads
 		a bitmap through the resources module that can be drawn with G.blit() */
 	register_bmp_functions(L);
-	
-	/* The input objects Keyboard and Mouse gives you access to the 
+
+	/* The input objects Keyboard and Mouse gives you access to the
     keyboard and mouse. Did you expect anything else? */
     register_input_functions(L);
-        
+
     register_gamedb_functions(L);
-	
+
     register_sound_functions(L);
-    
+
 	if(luaL_dostring(L, base_lua)) {
 		rerror("Unable load base library.");
 		sublog("lua", "%s", lua_tostring(L, -1));
-		free(script);				
+		free(script);
 		return 0;
 	}
-	
+
 	/* Load the Lua script itself, and execute it. */
-	if(luaL_loadstring(L, script)) {		
+	if(luaL_loadstring(L, script)) {
 		rerror("Unable to load script %s (state %s).", script_file, s->name);
 		sublog("lua", "%s", lua_tostring(L, -1));
-		free(script);				
+		free(script);
 		return 0;
 	}
 	free(script);
-	
-	rlog("Running script %s", script_file);	
+
+	rlog("Running script %s", script_file);
 	if(lua_pcall(L, 0, 0, 0)) {
 		rerror("Unable to execute script %s (state %s).", script_file, s->name);
 		sublog("Lua", "%s", lua_tostring(L, -1));
@@ -430,7 +430,7 @@ static int lus_init(struct game_state *s) {
         lua_stacktrace(L);
 		return 0;
 	}
-		
+
 	return 1;
 }
 
@@ -438,9 +438,9 @@ static int lus_update(struct game_state *s, struct bitmap *bmp) {
 	struct lustate_data *sd = NULL;
 	lua_State *L = s->data;
 	struct callback_function *fn;
-	
+
 	assert(L);
-	
+
 	lua_getglobal(L, STATE_DATA_VAR);
 	if(!lua_isnil(L,-1)) {
 		if(!lua_islightuserdata(L, -1)) {
@@ -453,22 +453,22 @@ static int lus_update(struct game_state *s, struct bitmap *bmp) {
 		return 0;
 	}
 	lua_pop(L, 1);
-    
+
     lua_getglobal (L, "G");
 	SET_TABLE_INT_VAL("frameCounter", frame_counter);
 	lua_pop(L, 1);
-	
+
 	/* TODO: Maybe background colour metadata in the map file? */
 	bm_set_color_s(bmp, "black");
 	bm_clear(bmp);
-	
+
 	process_timeouts(L);
-	
+
 	fn = sd->update_fcn;
-	while(fn) {				
+	while(fn) {
 		/* Retrieve the callback */
 		lua_rawgeti(L, LUA_REGISTRYINDEX, fn->ref);
-		
+
 		/* Call it */
 		if(lua_pcall(L, 0, 0, 0)) {
 			rerror("Unable to execute onUpdate() callback (%d)", fn->ref);
@@ -476,42 +476,42 @@ static int lus_update(struct game_state *s, struct bitmap *bmp) {
             lua_stacktrace(L);
 			/* Should we remove it maybe? */
 		}
-		
+
 		fn = fn->next;
 	}
-	
+
 	if(sd->change_state) {
 		if(!sd->next_state) {
 			rwarn("Lua script didn't specify a next state; terminating...");
 			change_state(NULL);
-		} else {	
+		} else {
 			rlog("Lua script changing state to %s", sd->next_state);
 			set_state(sd->next_state);
 		}
 	}
-	
+
 	return 1;
 }
 
 static int lus_deinit(struct game_state *s) {
 	lua_State *L = s->data;
 	struct lustate_data *sd;
-	
+
 	if(!L)
 		return 0;
-		
+
 	lua_getglobal(L, STATE_DATA_VAR);
 	if(!lua_isnil(L,-1)) {
 		if(!lua_islightuserdata(L, -1)) {
 			rerror("Variable %s got tampered with (lus_deinit)", STATE_DATA_VAR);
 		} else {
 			struct callback_function *fn;
-			
-			sd = lua_touserdata(L, -1);			
-			
+
+			sd = lua_touserdata(L, -1);
+
 			/* Execute the atExit() callbacks */
 			fn = sd->atexit_fcn;
-			while(fn) {				
+			while(fn) {
 				struct callback_function *old = fn;
 				lua_rawgeti(L, LUA_REGISTRYINDEX, fn->ref);
 				if(lua_pcall(L, 0, 0, 0)) {
@@ -521,31 +521,31 @@ static int lus_deinit(struct game_state *s) {
 				fn = fn->next;
 				free(old);
 			}
-			
+
 			/* Remove the map */
 			map_free(sd->map);
-			
+
 			while(sd->update_fcn) {
 				fn = sd->update_fcn;
 				sd->update_fcn = sd->update_fcn->next;
 				free(fn);
 			}
-			
+
 			if(sd->next_state);
 				free(sd->next_state);
-			
+
 			free(sd);
 		}
 	}
 	lua_pop(L, 1);
-	
+
 	/* Stop all sounds */
 	Mix_HaltChannel(-1);
 	Mix_HaltMusic();
-	
+
 	lua_close(L);
 	L = NULL;
-	
+
 	return 1;
 }
 
@@ -553,12 +553,12 @@ struct game_state *get_lua_state(const char *name) {
 	struct game_state *state = malloc(sizeof *state);
 	if(!state)
 		return NULL;
-	
+
 	state->data = NULL;
-	
+
 	state->init = lus_init;
 	state->update = lus_update;
 	state->deinit = lus_deinit;
-	
+
 	return state;
 }

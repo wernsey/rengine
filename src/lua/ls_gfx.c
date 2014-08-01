@@ -49,7 +49,7 @@ static int gr_setcolor(lua_State *L) {
 		const char *c = luaL_checkstring(L,1);
 		bm_set_color_s(sd->bmp, c);
 	} else if(lua_gettop(L) == 0) {
-		bm_set_color_s(sd->bmp, get_style(sd->state, "foreground"));
+		bm_set_color_s(sd->bmp, get_style(sd->state, "foreground", "white"));
 	} else
 		luaL_error(L, "Invalid parameters to G.setColor()");	
 	return 0;
@@ -293,7 +293,7 @@ static int gr_setfont(lua_State *L) {
 		const char *name = luaL_checkstring(L,1);
 		font = bm_font_index(name);
 	} else {
-		font = bm_font_index(get_style(sd->state, "font"));
+		font = bm_font_index(get_style(sd->state, "font", "normal"));
 	}
 	bm_std_font(sd->bmp, font);	
 	return 0;

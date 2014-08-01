@@ -12,7 +12,7 @@ struct game_state {
 	struct hash_tbl *styles;
 };
 
-const char *get_style(struct game_state *s, const char *name);
+const char *get_style(struct game_state *s, const char *name, const char *def);
 
 /* There could be an array somewhere to push and pop states. */
 struct game_state *current_state();
