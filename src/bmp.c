@@ -1339,6 +1339,8 @@ static const struct color_map_entry {
 int bm_color_atoi(const char *text) {	
 	int col = 0;
 	
+    if(!text) return 0;
+    
 	while(isspace(text[0]))
 		text++;
 	
