@@ -18,7 +18,7 @@ endif
 
 INCLUDE_PATH = -I /usr/local/include -I ../include -I ..
 
-CFLAGS += `sdl2-config --cflags` $(INCLUDE_PATH) -DUSEPNG -DUSEJPG
+CFLAGS += `sdl2-config --cflags` $(INCLUDE_PATH) -DUSESDL -DUSEPNG -DUSEJPG
 LFLAGS += -lSDL2_mixer -lpng -lz -ljpeg
 
 # Different executables, and -lopengl32 is required for Windows
@@ -128,8 +128,11 @@ lua/ls_input.o: lua/ls_input.c ../include/luastate.h ../include/log.h ../include
 
 # Utilities ###################################
 
-$(PAKR_BIN) : pakr.o pak.o utils.o
+$(PAKR_BIN) : pakr.o pak-nosdl.o utils.o
 	$(CC) -o $@ $^
+	
+pak-nosdl.o: pak.c ../include/pak.h
+	$(CC) -c $(INCLUDE_PATH) $< -o $@
 	
 pakr.o : pakr.c ../include/pak.h ../include/utils.h
 	$(CC) -c $(INCLUDE_PATH) $< -o $@

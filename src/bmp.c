@@ -6,6 +6,10 @@
 #include <ctype.h>
 #include <assert.h>
 
+#ifdef USESDL
+#  include <SDL2/SDL.h>
+#endif
+
 /*
 Use the -DUSEPNG compiler option to enable PNG support via libpng.
 If you use it, you need to link against the libpng (-lpng)
@@ -666,6 +670,391 @@ static int bm_save_jpg(struct bitmap *b, const char *fname) {
 	return 1;
 }
 #endif
+
+#ifdef USESDL
+/* Some functions to load graphics through the SDL_RWops
+    related functions.
+*/
+
+static struct bitmap *bm_load_bmp_rw(SDL_RWops *rw);
+#  ifdef USEPNG
+static struct bitmap *bm_load_png_rw(SDL_RWops *rw);
+#  endif
+#  ifdef USEJPG
+static struct bitmap *bm_load_jpg_rw(SDL_RWops *rw);
+#  endif
+
+struct bitmap *bm_load_rw(SDL_RWops *rw) {	
+	unsigned char magic[2];	
+    long start = SDL_RWtell(rw);
+    long isbmp = 0, ispng = 0, isjpg = 0;
+    if(SDL_RWread(rw, magic, sizeof magic, 1) == 1) {
+		if(magic[0] == 'B' && magic[1] == 'M') 
+			isbmp = 1;
+		else if(magic[0] == 0xFF && magic[1] == 0xD8)
+			isjpg = 1;
+		else
+			ispng = 1; /* Assume PNG by default. 
+					JPG and BMP magic numbers are simpler */
+	}
+	SDL_RWseek(rw, start, RW_SEEK_SET);
+    
+#  ifdef USEJPG
+	if(isjpg)
+		return bm_load_jpg_rw(rw);
+#  else
+	(void)isjpg;
+#  endif
+#  ifdef USEPNG
+	if(ispng)
+		return bm_load_png_rw(rw);
+#  else
+	(void)ispng;
+#  endif
+	if(isbmp) 
+        return bm_load_bmp_rw(rw);
+    return NULL;
+}
+
+static struct bitmap *bm_load_bmp_rw(SDL_RWops *rw) {
+    struct bmpfile_magic magic; 
+	struct bmpfile_header hdr;
+	struct bmpfile_dibinfo dib;
+	struct bmpfile_colinfo *palette = NULL;
+	
+	struct bitmap *b = NULL;
+	
+	int rs, i, j;
+	char *data = NULL;
+	
+	long start_offset = SDL_RWtell(rw);
+		
+	if(SDL_RWread(rw, &magic, sizeof magic, 1) != 1) {
+		return NULL;
+	}
+	if(magic.magic[0] != 'B' || magic.magic[1] != 'M') {
+		return NULL;
+	}
+	
+	if(SDL_RWread(rw, &hdr, sizeof hdr, 1) != 1) {
+		return NULL;
+	}
+	
+	if(SDL_RWread(rw, &dib, sizeof dib, 1) != 1) {
+		return NULL;
+	}
+	
+	if((dib.bitspp != 8 && dib.bitspp != 24) || dib.compress_type != 0) {
+		/* Unsupported BMP type. TODO (maybe): support more types? */
+		return NULL;
+	}
+	
+	b = bm_create(dib.width, dib.height);
+	if(!b) {
+		return NULL;
+	}
+	
+	if(dib.bitspp <= 8) {
+		if(!dib.ncolors) {
+			dib.ncolors = 1 << dib.bitspp;
+		}		
+		palette = calloc(dib.ncolors, sizeof *palette);		
+		if(!palette) {
+			goto error;
+		}
+		if(SDL_RWread(rw, palette, sizeof *palette, dib.ncolors) != dib.ncolors) {
+			goto error;
+		}
+	}
+		
+	if(SDL_RWseek(rw, hdr.bmp_offset + start_offset, RW_SEEK_SET) < 0) {
+		goto error;
+	}
+
+	rs = ((dib.width * dib.bitspp / 8) + 3) & ~3;
+	assert(rs % 4 == 0);
+	
+	data = malloc(rs * b->h);
+	if(!data) {
+		goto error;
+	}
+	
+	if(dib.bmp_bytesz == 0) {		
+		if(SDL_RWread(rw, data, 1, rs * b->h) != rs * b->h) {
+			goto error;
+		}
+	} else {		
+		if(SDL_RWread(rw, data, 1, dib.bmp_bytesz) != dib.bmp_bytesz) {
+			goto error;
+		}
+	}
+		
+	if(dib.bitspp == 8) {
+		for(j = 0; j < b->h; j++) {
+			for(i = 0; i < b->w; i++) {
+				uint8_t p = data[(b->h - (j) - 1) * rs + i];
+				assert(p < dib.ncolors);				
+				BM_SET(b, i, j, palette[p].r, palette[p].g, palette[p].b, palette[p].a);
+			}
+		}			
+	} else {	
+		for(j = 0; j < b->h; j++) {
+			for(i = 0; i < b->w; i++) {
+				int p = ((b->h - (j) - 1) * rs + (i)*3);			
+				BM_SET(b, i, j, data[p+2], data[p+1], data[p+0], 0xFF);
+			}
+		}
+	}
+	
+end:
+	if(data) free(data);	
+	if(palette != NULL) free(palette);
+	
+	return b;
+error:
+	if(b) 
+		bm_free(b);
+	b = NULL;
+	goto end;
+}
+#  ifdef USEPNG
+/* 
+Code to read a PNG from a SDL_RWops
+http://www.libpng.org/pub/png/libpng-1.2.5-manual.html 
+http://blog.hammerian.net/2009/reading-png-images-from-memory/
+*/
+static void read_rwo_data(png_structp png_ptr, png_bytep data, png_size_t length) {
+    SDL_RWops *rw = png_get_io_ptr(png_ptr);
+    SDL_RWread(rw, data, 1, length);
+}
+
+static struct bitmap *bm_load_png_rw(SDL_RWops *rw) {
+    	struct bitmap *bmp = NULL;
+	
+	unsigned char header[8];
+	png_structp png = NULL;
+	png_infop info = NULL;
+	int number_of_passes;
+	png_bytep * rows = NULL;
+
+	int w, h, ct, bpp, x, y;
+
+	if((SDL_RWread(rw, header, 1, 8) != 8) || png_sig_cmp(header, 0, 8)) {
+		goto error;
+	}
+	
+	png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+	if(!png) {
+		goto error;
+	}
+	info = png_create_info_struct(png);
+	if(!info) {	
+		goto error;
+	}
+	if(setjmp(png_jmpbuf(png))) {
+		goto error;
+	}
+	
+	png_init_io(png, NULL);
+    png_set_read_fn(png, rw, read_rwo_data);
+        
+	png_set_sig_bytes(png, 8);
+	
+	png_read_info(png, info);
+	
+	w = png_get_image_width(png, info);
+	h = png_get_image_height(png, info);
+	ct = png_get_color_type(png, info);
+	
+	bpp = png_get_bit_depth(png, info);
+	assert(bpp == 8);(void)bpp;
+	
+	if(ct != PNG_COLOR_TYPE_RGB && ct != PNG_COLOR_TYPE_RGBA) {
+		goto error;
+	}
+	
+	number_of_passes = png_set_interlace_handling(png);
+	(void)number_of_passes;
+	
+	bmp = bm_create(w,h);
+	
+	if(setjmp(png_jmpbuf(png))) {
+		goto error;
+	}
+	
+	rows = malloc(h * sizeof *rows);
+	for(y = 0; y < h; y++)
+		rows[y] = malloc(png_get_rowbytes(png,info));
+
+	png_read_image(png, rows);
+	
+	/* Convert to my internal representation */
+	if(ct == PNG_COLOR_TYPE_RGBA) {
+		for(y = 0; y < h; y++) {
+			png_byte *row = rows[y];
+			for(x = 0; x < w; x++) {
+				png_byte *ptr = &(row[x * 4]);
+				BM_SET(bmp, x, y, ptr[0], ptr[1], ptr[2], ptr[3]);
+			}
+		}
+	} else if(ct == PNG_COLOR_TYPE_RGB) {
+		for(y = 0; y < h; y++) {
+			png_byte *row = rows[y];
+			for(x = 0; x < w; x++) {
+				png_byte *ptr = &(row[x * 3]);
+				BM_SET(bmp, x, y, ptr[0], ptr[1], ptr[2], 0xFF);
+			}
+		}
+	}
+
+	goto done;
+error:
+	if(bmp) bm_free(bmp);
+	bmp = NULL;
+done:
+	if (info != NULL) png_free_data(png, info, PNG_FREE_ALL, -1);
+	if (png != NULL) png_destroy_read_struct(&png, NULL, NULL);
+	if(rows) {
+		for(y = 0; y < h; y++) {
+			free(rows[y]);
+		}
+		free(rows);
+	}
+	return bmp;
+}
+#  endif /* USEPNG */
+#  ifdef USEJPG
+/*
+Code to read a JPEG from an SDL_RWops.
+Refer to jdatasrc.c in libjpeg's code.
+See also 
+http://www.cs.stanford.edu/~acoates/decompressJpegFromMemory.txt
+*/
+
+#define JPEG_INPUT_BUFFER_SIZE  4096
+struct rw_jpeg_src_mgr {
+    struct jpeg_source_mgr pub;
+    SDL_RWops *rw;
+    JOCTET *buffer;
+    boolean start_of_file;
+};
+
+static void rw_init_source(j_decompress_ptr cinfo) {
+    struct rw_jpeg_src_mgr *src = (struct rw_jpeg_src_mgr *)cinfo->src;
+    src->start_of_file = TRUE;
+}
+
+static boolean rw_fill_input_buffer(j_decompress_ptr cinfo) {
+    struct rw_jpeg_src_mgr *src = (struct rw_jpeg_src_mgr *)cinfo->src;
+    size_t nbytes = SDL_RWread(src->rw, src->buffer, 1, JPEG_INPUT_BUFFER_SIZE);
+    
+    if(nbytes <= 0) {
+        /*if(src->start_of_file) 
+            ERREXIT(cinfo, JERR_INPUT_EMPTY);
+        WARNMS(cinfo, JWRN_JPEG_EOF);*/
+        src->buffer[0] = (JOCTET)0xFF;
+        src->buffer[1] = (JOCTET)JPEG_EOI;
+        nbytes = 2;
+    }
+    
+    src->pub.next_input_byte = src->buffer;
+    src->pub.bytes_in_buffer = nbytes;
+    
+    src->start_of_file = TRUE;
+    return TRUE;
+}
+
+static void rw_skip_input_data(j_decompress_ptr cinfo, long nbytes) {
+    struct rw_jpeg_src_mgr *src = (struct rw_jpeg_src_mgr *)cinfo->src;
+    if(nbytes > 0) {
+        while(nbytes > src->pub.bytes_in_buffer) {
+            nbytes -= src->pub.bytes_in_buffer;
+            (void)(*src->pub.fill_input_buffer)(cinfo);
+        }
+        src->pub.next_input_byte += nbytes;
+        src->pub.bytes_in_buffer -= nbytes;
+    }
+}
+
+static void rw_term_source(j_decompress_ptr cinfo) {
+    /* Apparently nothing to do here */
+}
+
+static void rw_set_source_mgr(j_decompress_ptr cinfo, SDL_RWops *rw) {
+    struct rw_jpeg_src_mgr *src;
+    if(!cinfo->src) {
+        cinfo->src = (struct jpeg_source_mgr *)(*cinfo->mem->alloc_small)((j_common_ptr)cinfo, JPOOL_PERMANENT, sizeof *src);
+        src = (struct rw_jpeg_src_mgr *)cinfo->src;
+        src->buffer = (JOCTET *)(*cinfo->mem->alloc_small)((j_common_ptr)cinfo, JPOOL_PERMANENT, JPEG_INPUT_BUFFER_SIZE * sizeof(JOCTET));
+    }
+    
+    src = (struct rw_jpeg_src_mgr *)cinfo->src;
+    
+    src->pub.init_source = rw_init_source;
+    src->pub.fill_input_buffer = rw_fill_input_buffer;
+    src->pub.skip_input_data = rw_skip_input_data;
+    src->pub.term_source = rw_term_source;
+    src->pub.resync_to_restart = jpeg_resync_to_restart;
+    
+    src->pub.bytes_in_buffer = 0;
+    src->pub.next_input_byte = NULL;
+        
+    src->rw = rw;
+}
+
+static struct bitmap *bm_load_jpg_rw(SDL_RWops *rw) {
+    struct jpeg_decompress_struct cinfo;
+	struct jpg_err_handler jerr;
+	struct bitmap *bmp = NULL;
+	int i, j, row_stride;
+	unsigned char *data;
+	JSAMPROW row_pointer[1];
+		
+	cinfo.err = jpeg_std_error(&jerr.pub);
+	jerr.pub.error_exit = jpg_on_error;
+	if(setjmp(jerr.jbuf)) {
+		jpeg_destroy_decompress(&cinfo);
+		return NULL;
+	}
+	jpeg_create_decompress(&cinfo);	
+    
+	/* jpeg_stdio_src(&cinfo, f); */
+    rw_set_source_mgr(&cinfo, rw);
+	
+	jpeg_read_header(&cinfo, TRUE);	
+	cinfo.out_color_space = JCS_RGB;
+	
+	bmp = bm_create(cinfo.image_width, cinfo.image_height);
+	if(!bmp) {
+		return NULL;
+	}
+	row_stride = bmp->w * 3; 
+	
+	data = malloc(row_stride);
+	if(!data) {
+		return NULL;
+	}
+	memset(data, 0x00, row_stride);
+	row_pointer[0] = data;
+	
+	jpeg_start_decompress(&cinfo);
+	
+	for(j = 0; j < cinfo.output_height; j++) {
+		jpeg_read_scanlines(&cinfo, row_pointer, 1);		
+		for(i = 0; i < bmp->w; i++) {
+			unsigned char *ptr = &(data[i * 3]);
+			BM_SET(bmp, i, j, ptr[0], ptr[1], ptr[2], 0xFF);
+		}
+	}
+	free(data);
+	jpeg_finish_decompress(&cinfo);
+	jpeg_destroy_decompress(&cinfo);
+	
+	return bmp;
+}
+#  endif /* USEJPG */
+
+#endif /* USESDL */
 
 struct bitmap *bm_copy(struct bitmap *b) {
 	struct bitmap *out = bm_create(b->w, b->h);

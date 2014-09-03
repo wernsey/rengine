@@ -134,13 +134,8 @@ struct ini_file *re_get_ini(const char *filename) {
 }
 
 static SDL_RWops *re_get_RWops(const char *filename) {
-	if(game_pak) {
-		FILE *f = pak_get_file(game_pak, filename);
-		if(!f) {
-			rerror("Unable to locate %s in %s", filename, pak_file_name);
-			return NULL;
-		}		
-		return SDL_RWFromFP(f, SDL_FALSE);
+    if(game_pak) {
+		return pak_get_rwops(game_pak, filename);
 	} 
 	return SDL_RWFromFile(filename, "rb");
 }
@@ -165,26 +160,33 @@ struct bitmap *re_get_bmp(const char *filename) {
 	
 	/* Not cached. Load it. */
 	if(game_pak) {
-		FILE *f = pak_get_file(game_pak, filename);
-		if(!f) {
+		SDL_RWops *rw = re_get_RWops(filename);
+		if(!rw) {
 			rerror("Unable to locate %s in %s", filename, pak_file_name);
 			return NULL;
-		}		
-		bmp = bm_load_fp(f);
-		if(!bmp) {
-			rerror("Unable to load bitmap '%s' from %s", filename, pak_file_name);
 		}
-	} else {
-		bmp = bm_load(filename);
-		if(!bmp) {
-			rerror("Unable to load bitmap '%s'", filename);
-		}
+        bmp = bm_load_rw(rw);
+        if(!bmp) {
+            rerror("Unable to load bitmap '%s' from %s", filename, pak_file_name);
+        }		
+    } else {
+        SDL_RWops *rw = SDL_RWFromFile(filename, "rb");
+		if(!rw) {
+			rerror("Unable to open %s", filename);
+			return NULL;
+		}        
+        bmp = bm_load_rw(rw);
+        if(!bmp) {
+            rerror("Unable to load bitmap '%s'", filename);
+        }
+        SDL_RWclose(rw);
+    }
+    if(bmp) {	
+        /* Insert it to the cache on the top of the stack. */
+        ht_insert(re_cache->bmp_cache, filename, bmp);
+        rlog("Cached bitmap '%s'", filename);
 	}
-	
-	/* Insert it to the cache on the top of the stack. */
-	ht_insert(re_cache->bmp_cache, filename, bmp);
-	rlog("Cached bitmap '%s'", filename);
-	
+    
 	return bmp;
 }
 

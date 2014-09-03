@@ -72,6 +72,8 @@ struct game_state *get_demo_state(const char *name) {
 	struct game_state *state = malloc(sizeof *state);
 	if(!state)
 		return NULL;
+        
+    state->name = "DEMO";
 	
 	state->init = dem_init;
 	state->update = dem_update;

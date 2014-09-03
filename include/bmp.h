@@ -81,6 +81,18 @@ struct bitmap *bm_load(const char *filename);
  */
 struct bitmap *bm_load_fp(FILE *f);
 
+#if defined(USESDL) && defined(_SDL_H)
+/*@ struct bitmap *bm_load_rw(SDL_RWops *file)
+ *# Loads a bitmap from a SDL {{SDL_RWops*}} structure,
+ *# for use with the SDL library (http://www.libsdl.org).\n
+ *# This function is only available if the USESDL preprocessor macro
+ *# is defined, and {{SDL.h}} is included before {{bmp.h}}.\n
+ *# BMP support is always enabled, while JPG and PNG support is optional.\n
+ *# Returns {{NULL}} if the file could not be loaded.\n
+ */
+struct bitmap *bm_load_rw(SDL_RWops *file);
+#endif
+
 /*@ int bm_save(struct bitmap *b, const char *fname)
  *# Saves the bitmap {{b}} to a BMP, JPG or PNG file named {{fname}}.\n
  *# If the filename contains {{".bmp"}} or {{".jpg"}} the file is 

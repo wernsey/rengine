@@ -84,7 +84,13 @@ char *pak_get_text(struct pak_file * p, const char *filename);
  *# It returns {{NULL}} if the file could not be found.\n
  *N Don't write to this {{FILE*}}
  */
+#ifndef USESDL
 FILE *pak_get_file(struct pak_file * p, const char *filename);
+#endif
+
+#ifdef USESDL
+SDL_RWops *pak_get_rwops(struct pak_file * p, const char *filename);
+#endif
 
 /*@ int pak_extract_file(struct pak_file * p, const char *filename, const char *to)
  *# Extracts a file named {{filename}} from the archive to a file named {{to}}.\n
