@@ -269,10 +269,26 @@ void bm_apply_kernel(struct bitmap *b, int dim, float kernel[]);
 
 /*@ struct bitmap *bm_resample(const struct bitmap *in, int nw, int nh)
  *# Creates a new bitmap of dimensions nw*nh that is a scaled
- *# (linearly resampled) version of the input bitmap. 
+ *# using the Nearest Neighbour method the input bitmap.\n
  *# The input bimap remains untouched.
  */
 struct bitmap *bm_resample(const struct bitmap *in, int nw, int nh);
+
+/*@ struct bitmap *bm_resample_blin(const struct bitmap *in, int nw, int nh)
+ *# Creates a new bitmap of dimensions nw*nh that is a scaled
+ *# using Bilinear Interpolation from the input bitmap. \n
+ *# The input bimap remains untouched.\n
+ *# Bilinear Interpolation is better suited for making an image larger.
+ */
+struct bitmap *bm_resample_blin(const struct bitmap *in, int nw, int nh);
+
+/*@ struct bitmap *bm_resample_bcub(const struct bitmap *in, int nw, int nh)
+ *# Creates a new bitmap of dimensions nw*nh that is a scaled
+ *# using Bicubic Interpolation from the input bitmap.\n
+ *# The input bimap remains untouched.\n
+ *# Bicubic Interpolation is better suited for making an image smaller.
+ */
+struct bitmap *bm_resample_bcub(const struct bitmap *in, int nw, int nh);
 
 /*@ void bm_swap_colour(struct bitmap *b, unsigned char sR, unsigned char sG, unsigned char sB, unsigned char dR, unsigned char dG, unsigned char dB)
  *# Replaces all pixels of colour [sR,sG,sB] in bitmap b with the colour [dR,dG,dB]

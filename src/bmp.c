@@ -115,6 +115,9 @@ struct bmpfile_colinfo {
 #define BM_GETB(B,X,Y) (B->data[((Y) * BM_ROW_SIZE(B) + (X) * BM_BPP) + 2])
 #define BM_GETA(B,X,Y) (B->data[((Y) * BM_ROW_SIZE(B) + (X) * BM_BPP) + 3])
 
+/* N=0 -> R, N=1 -> G, N=2 -> B, N=3 -> A */
+#define BM_GETN(B,N,X,Y) (B->data[((Y) * BM_ROW_SIZE(B) + (X) * BM_BPP) + (N)])
+
 struct bitmap *bm_create(int w, int h) {	
 	struct bitmap *b = malloc(sizeof *b);
 	
@@ -1534,6 +1537,16 @@ void bm_swap_colour(struct bitmap *b, unsigned char sR, unsigned char sG, unsign
 		}
 }
 
+/*
+Image scaling functions: 
+ - bm_resample() : Uses the nearest neighbour
+ - bm_resample_blin() : Uses bilinear interpolation.
+ - bm_resample_bcub() : Uses bicubic interpolation.
+Bilinear Interpolation is better suited for making an image larger.
+Bicubic Interpolation is better suited for making an image smaller.
+http://blog.codinghorror.com/better-image-resizing/
+
+*/
 struct bitmap *bm_resample(const struct bitmap *in, int nw, int nh) {
 	struct bitmap *out = bm_create(nw, nh);
 	int x, y;
@@ -1544,6 +1557,95 @@ struct bitmap *bm_resample(const struct bitmap *in, int nw, int nh) {
 			assert(sx < in->w && sy < in->h);
 			BM_SET(out, x, y, BM_GETR(in,sx,sy), BM_GETG(in,sx,sy), BM_GETB(in,sx,sy), BM_GETA(in,sx,sy));
 		}
+	return out;
+}
+
+/* http://rosettacode.org/wiki/Bilinear_interpolation */
+static double lerp(double s, double e, double t) {
+    return s + (e-s)*t;
+}
+static double blerp(double c00, double c10, double c01, double c11, double tx, double ty) {
+    return lerp(
+        lerp(c00, c10, tx),
+        lerp(c01, c11, tx),
+        ty);
+}
+
+struct bitmap *bm_resample_blin(const struct bitmap *in, int nw, int nh) {
+	struct bitmap *out = bm_create(nw, nh);
+	int x, y;
+	for(y = 0; y < nh; y++)
+		for(x = 0; x < nw; x++) {
+            int C[4], c;
+            double gx = (double)x * in->w/(double)nw;
+			int sx = (int)gx;
+			double gy = (double)y * in->h/(double)nh;
+			int sy = (int)gy;
+            int dx = 1, dy = 1;            
+			assert(sx < in->w && sy < in->h);
+            if(sx + 1 >= in->w){ sx=in->w-1; dx = 0; }
+            if(sy + 1 >= in->h){ sy=in->h-1; dy = 0; }
+            for(c = 0; c < 4; c++) {
+                int p00 = BM_GETN(in,c,sx,sy);
+                int p10 = BM_GETN(in,c,sx+dx,sy);
+                int p01 = BM_GETN(in,c,sx,sy+dy);
+                int p11 = BM_GETN(in,c,sx+dx,sy+dy);
+                C[c] = (int)blerp(p00, p10, p01, p11, gx-sx, gy-sy);
+            }                         
+			BM_SET(out, x, y, C[0], C[1], C[2], C[3]);
+		}
+	return out;
+}
+
+/*
+http://www.codeproject.com/Articles/236394/Bi-Cubic-and-Bi-Linear-Interpolation-with-GLSL
+except I ported the GLSL code to straight C
+*/
+static double triangular_fun(double b) {
+    b = b * 1.5 / 2.0;
+    if( -1.0 < b && b <= 0.0) {
+        return b + 1.0;
+    } else if(0.0 < b && b <= 1.0) {
+        return 1.0 - b;
+    } 
+    return 0;
+}
+
+struct bitmap *bm_resample_bcub(const struct bitmap *in, int nw, int nh) {
+	struct bitmap *out = bm_create(nw, nh);
+	int x, y;
+    
+	for(y = 0; y < nh; y++)
+    for(x = 0; x < nw; x++) {
+
+        double sum[4] = {0.0, 0.0, 0.0, 0.0}; 
+        double denom[4] = {0.0, 0.0, 0.0, 0.0}; 
+        
+        double a = (double)x * in->w/(double)nw;
+        int sx = (int)a;
+        double b = (double)y * in->h/(double)nh;
+        int sy = (int)b;     
+        
+        int m, n, c, C;
+        for(m = -1; m < 3; m++ )
+        for(n = -1; n < 3; n++) {
+            double f = triangular_fun((double)sx - a);
+            double f1 = triangular_fun(-((double)sy - b));
+            for(c = 0; c < 4; c++) {
+                int i = sx+m;
+                int j = sy+n;
+                if(i < 0) i = 0;
+                if(i >= in->w) i = in->w - 1;
+                if(j < 0) j = 0;
+                if(j >= in->h) j = in->h - 1;
+                C = BM_GETN(in, c, i, j);
+                sum[c] = sum[c] + C * f1 * f;
+                denom[c] = denom[c] + f1 * f;
+            }
+        }
+        
+        BM_SET(out, x, y, sum[0]/denom[0], sum[1]/denom[1], sum[2]/denom[2], sum[3]/denom[3]);            
+    }
 	return out;
 }
 
