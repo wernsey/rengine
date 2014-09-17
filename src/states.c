@@ -414,8 +414,13 @@ void states_initialize() {
 }
 
 int change_state(struct game_state *next) {
-	rlog("Changing to state %s", next->name);
-	if(game_states[state_top] && game_states[state_top]->deinit) {
+    
+    if(next)
+        rlog("Changing to state %s", next->name);
+    else
+        rlog("Changing to null state");
+	
+    if(game_states[state_top] && game_states[state_top]->deinit) {
 		if(!game_states[state_top]->deinit(game_states[state_top])) {
 			rerror("Deinitialising old state");
 			return 0;
@@ -429,7 +434,8 @@ int change_state(struct game_state *next) {
 
 		free(game_states[state_top]);
 	}
-	game_states[state_top] = next;
+	
+    game_states[state_top] = next;
 	if(game_states[state_top]){
         const char *show_cursor_local;
         int show;
@@ -450,7 +456,12 @@ int change_state(struct game_state *next) {
 			return 0;
 		}
 	}
-	rlog("Game state is now %s", next->name);
+    
+    if(game_states[state_top])
+        rlog("Game state is now %s", game_states[state_top]->name);
+    else
+        rlog("Game state is now null");
+        
 	return 1;
 }
 
