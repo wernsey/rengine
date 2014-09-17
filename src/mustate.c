@@ -219,7 +219,7 @@ static struct mu_par mus_log(struct musl *m, int argc, struct mu_par argv[]) {
 	int i;
 	for(i = 0; i < argc; i++) {
 		const char *text = mu_par_str(m, i, argc, argv);
-		sublog("Musl", "%s", text);
+		SDL_LogMessage(LOG_CATEGORY_MUSL, SDL_LOG_PRIORITY_INFO, "%s", text);
 	}
 	return rv;
 }

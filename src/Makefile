@@ -117,6 +117,7 @@ gamedb.o: gamedb.c ../include/gamedb.h ../include/ini.h ../include/states.h \
   ../include/game.h
 sound.o: sound.c ../include/resources.h ../include/log.h
 paths.o: paths.c ../include/utils.h
+log.o: log.c ../include/log.h
 
 lua/ls_audio.o: lua/ls_audio.c ../include/resources.h ../include/log.h
 lua/ls_game.o: lua/ls_game.c ../include/game.h ../include/luastate.h ../include/states.h

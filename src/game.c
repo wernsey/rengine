@@ -351,9 +351,10 @@ int main(int argc, char *argv[]) {
 	}
 
 	/* Don't quite know how to use this in Windows yet.
-	SDL_LogSetAllPriority(SDL_rlog_PRIORITY_WARN);
-	SDL_Log("Testing Log capability.");
 	*/
+	SDL_LogSetAllPriority(SDL_LOG_PRIORITY_WARN);
+	SDL_Log("Testing Log capability.");
+    
 	SDL_VERSION(&compiled);
 	SDL_GetVersion(&linked);
 	rlog("SDL version %d.%d.%d (compile)", compiled.major, compiled.minor, compiled.patch);

@@ -75,7 +75,7 @@ struct lustate_data *get_state_data(lua_State *L) {
 static int l_log(lua_State *L) {
 	const char * s = lua_tolstring(L, 1, NULL);
 	if(s) {
-		sublog("Lua", "%s", s);
+        SDL_LogMessage(LOG_CATEGORY_LUA, SDL_LOG_PRIORITY_INFO, "%s", s);
 	}
 	return 0;
 }
@@ -92,7 +92,7 @@ static int l_import(lua_State *L) {
 		luaL_error(L, "Could not import %s", path);
 	rlog("Imported %s", path);
 	if(luaL_dostring(L, script)) {
-		sublog("lua", "%s: %s", path, lua_tostring(L, -1));
+		SDL_LogMessage(LOG_CATEGORY_LUA, SDL_LOG_PRIORITY_INFO, "%s: %s", path, lua_tostring(L, -1));
 	}
 	free(script);
 	return 0;
@@ -402,7 +402,7 @@ static int lus_init(struct game_state *s) {
 
 	if(luaL_dostring(L, base_lua)) {
 		rerror("Unable load base library.");
-		sublog("lua", "%s", lua_tostring(L, -1));
+		SDL_LogMessage(LOG_CATEGORY_LUA, SDL_LOG_PRIORITY_INFO, "%s", lua_tostring(L, -1));
 		free(script);
 		return 0;
 	}
@@ -410,7 +410,7 @@ static int lus_init(struct game_state *s) {
 	/* Load the Lua script itself, and execute it. */
 	if(luaL_loadstring(L, script)) {
 		rerror("Unable to load script %s (state %s).", script_file, s->name);
-		sublog("lua", "%s", lua_tostring(L, -1));
+		SDL_LogMessage(LOG_CATEGORY_LUA, SDL_LOG_PRIORITY_INFO, "%s", lua_tostring(L, -1));
 		free(script);
 		return 0;
 	}
@@ -419,7 +419,7 @@ static int lus_init(struct game_state *s) {
 	rlog("Running script %s", script_file);
 	if(lua_pcall(L, 0, 0, 0)) {
 		rerror("Unable to execute script %s (state %s).", script_file, s->name);
-		sublog("Lua", "%s", lua_tostring(L, -1));
+		SDL_LogMessage(LOG_CATEGORY_LUA, SDL_LOG_PRIORITY_INFO, "%s", lua_tostring(L, -1));
 		/*
 		Wouldn't it be nice to be able to print a stack trace here.
 		See http://stackoverflow.com/a/12256526/115589
@@ -472,7 +472,7 @@ static int lus_update(struct game_state *s, struct bitmap *bmp) {
 		/* Call it */
 		if(lua_pcall(L, 0, 0, 0)) {
 			rerror("Unable to execute onUpdate() callback (%d)", fn->ref);
-			sublog("Lua", "%s", lua_tostring(L, -1));
+			SDL_LogMessage(LOG_CATEGORY_LUA, SDL_LOG_PRIORITY_INFO, "%s", lua_tostring(L, -1));
             lua_stacktrace(L);
 			/* Should we remove it maybe? */
 		}
@@ -516,7 +516,7 @@ static int lus_deinit(struct game_state *s) {
 				lua_rawgeti(L, LUA_REGISTRYINDEX, fn->ref);
 				if(lua_pcall(L, 0, 0, 0)) {
 					rerror("Unable to execute atExit() callback (%d)", fn->ref);
-					sublog("Lua", "%s", lua_tostring(L, -1));
+					SDL_LogMessage(LOG_CATEGORY_LUA, SDL_LOG_PRIORITY_INFO, "%s", lua_tostring(L, -1));
 				}
 				fn = fn->next;
 				free(old);
