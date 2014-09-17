@@ -134,13 +134,13 @@ $(PAKR_BIN) : pakr.o pak-nosdl.o utils.o
 pak-nosdl.o: pak.c ../include/pak.h
 	$(CC) -c $(INCLUDE_PATH) $< -o $@
 	
-pakr.o : pakr.c ../include/pak.h ../include/utils.h
+pakr.o : ../utils/pakr.c ../include/pak.h ../include/utils.h
 	$(CC) -c $(INCLUDE_PATH) $< -o $@
 
 $(BACE_BIN) : bace.o
 	$(CC) -o $@ $^
 	
-bace.o : bace.c
+bace.o : ../utils/bace.c
 	$(CC) -c $< -o $@
 	
 # Resources ###################################
