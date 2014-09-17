@@ -468,8 +468,6 @@ start_demo:
 	snd_deinit();
 	rlog("Engine shut down.");
 
-	log_deinit();
-
 	return 0;
 }
 

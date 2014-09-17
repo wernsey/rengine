@@ -83,8 +83,24 @@ int ts_index_of(struct tile_collection *tc, const char *name) {
 	return -1;
 }
 
+/* Loading bitmaps is a bit different between the
+    editor and the actual engine.
+ */
+static struct bitmap *get_bitmap(const char *filename) {
+#ifdef EDITOR
+    struct bitmap *bmp = bm_load(filename);
+	if(!bmp) {
+		rerror("Unable to load bitmap '%s'", filename);
+	}	
+	return bmp;
+#else
+    /* Just get the bitmap from the resources */
+    return re_get_bmp(filename);
+#endif
+}
+
 static struct tileset *ts_make(const char *filename) {	
-	struct bitmap *bm = re_get_bmp(filename);	
+	struct bitmap *bm = get_bitmap(filename);	
 	if(bm) {
 		struct tileset *t = malloc(sizeof *t);
 		if(!t) { 

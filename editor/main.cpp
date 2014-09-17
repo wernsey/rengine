@@ -542,7 +542,6 @@ void zoomInCb(Fl_Button *w, void *p) {
 int main(int argc, char *argv[]) {
 	
 	log_init("editor.log");
-	atexit(log_deinit);
 	
 	rlog("Starting editor.");
 	

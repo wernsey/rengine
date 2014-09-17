@@ -4,15 +4,18 @@
 
 FILE *log_file;
 
+static void log_deinit();
+
 void log_init(const char *log_filename) {	
 	log_file = fopen(log_filename, "w");
 	if(!log_file) {
 		fprintf(stderr, "error: Unable to open log file %s; using stdout\n", log_filename);
 		log_file = stdout;
 	}
+	atexit(log_deinit);
 }
 
-void log_deinit() {
+static void log_deinit() {
 	if(log_file != stdout)
 		fclose(log_file);
 }
