@@ -1,38 +1,38 @@
-CC=gcc
+#CC=gcc
 
 ifeq ($(BUILD),debug)
 # Debug mode: Unoptimized and with debugging symbols
-CFLAGS = -Wall -O0 -g
-LFLAGS = 
+CFLAGS = -c -Wall -O0 -g
+LDFLAGS = 
 else
 	ifeq ($(BUILD),profile)
 	# Profile mode: Debugging symbols and profiling information.
-	CFLAGS = -Wall -O0 -pg
-	LFLAGS = -pg
+	CFLAGS = -c -Wall -O0 -pg
+	LDFLAGS = -pg
 	else
 	# Release mode: Optimized and stripped of debugging info
-	CFLAGS = -Wall -O2 -DNDEBUG
-	LFLAGS = -s 
+	CFLAGS = -c -Wall -O2 -DNDEBUG
+	LDFLAGS = -s 
 	endif
 endif
 
 INCLUDE_PATH = -I /usr/local/include -I ../include -I ..
 
 CFLAGS += `sdl2-config --cflags` $(INCLUDE_PATH) -DUSESDL -DUSEPNG -DUSEJPG
-LFLAGS += -lSDL2_mixer -lpng -lz -ljpeg
+LDFLAGS += -lSDL2_mixer -lpng -lz -ljpeg
 
 # Different executables, and -lopengl32 is required for Windows
 ifeq ($(OS),Windows_NT)
 GAME_BIN = ../bin/game.exe
 PAKR_BIN = ../bin/pakr.exe
 BACE_BIN = ../bin/bace.exe
-LFLAGS += `sdl2-config --libs` -lopengl32 -llua
+LDFLAGS += `sdl2-config --libs` -lopengl32 -llua
 RES = rengine.res
 else
 GAME_BIN = ../bin/game
 PAKR_BIN = ../bin/pakr
 BACE_BIN = ../bin/bace
-LFLAGS += `sdl2-config --libs` -lGL -llua5.2
+LDFLAGS += `sdl2-config --libs` -lGL -llua5.2
 RES = 
 endif
 
@@ -64,13 +64,13 @@ profile:
 game: $(GAME_BIN)
 
 $(GAME_BIN): $(OBJECTS) $(RES) ../bin
-	$(CC) -o $@ $(OBJECTS) $(RES) $(LFLAGS) 
+	$(CC) -o $@ $(OBJECTS) $(RES) $(LDFLAGS) 
 	
 ../bin:
 	mkdir $@
 	
 .c.o:
-	$(CC) -c $(CFLAGS) $< -o $@
+	$(CC) $(CFLAGS) $< -o $@
 
 bmp.o: bmp.c ../include/bmp.h ../fonts/bold.xbm \
  ../fonts/circuit.xbm ../fonts/hand.xbm ../fonts/normal.xbm \
