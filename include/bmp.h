@@ -103,6 +103,29 @@ struct bitmap *bm_load_rw(SDL_RWops *file);
  */
 int bm_save(struct bitmap *b, const char *fname);
 
+/*@ struct bitmap *bm_bind(int w, int h, unsigned char *data)
+ *# Creates a bitmap structure bound to an existing array
+ *# of pixel data (for example, a SDL surface). The {{data}}
+ *# Must be an array of {{w}} * {{h}} * 4 bytes of pixel data.
+ *# The returned {{bitmap*}} must be deallocated with {{bm_unbind()}}
+ *# rather than {{bm_free()}}
+ */
+struct bitmap *bm_bind(int w, int h, unsigned char *data);
+
+/*@ void bm_rebind(struct bitmap *b, unsigned char *data)
+ *# Changes the data referred to by a bitmap structure previously
+ *# created with a call to {{bm_bind()}}.
+ *# The new data must be of the same dimensions as specified
+ *# in the original {{bm_bind()}} call.
+ */
+void bm_rebind(struct bitmap *b, unsigned char *data);
+
+/*@ void bm_unbind(struct bitmap *b)
+ *# Deallocates the memory of a bitmap structure previously created 
+ *# through {{bm_bind()}}
+ */
+void bm_unbind(struct bitmap *b);
+
 /*@ struct bitmap *bm_copy(struct bitmap *b)
  *# Creates a duplicate of the bitmap structure 
  */
@@ -124,15 +147,27 @@ void bm_clip(struct bitmap *b, int x0, int y0, int x1, int y1);
  */
 void bm_unclip(struct bitmap *b);
 
-/*@ void bm_set(struct bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B)
+/*@ int bm_get(struct bitmap *b, int x, int y)
+ *# Retrieves the value of the pixel at x,y as an integer.\n
+ *# The return value is in the form 0xAABBGGRR
+ */
+int bm_get(struct bitmap *b, int x, int y);
+
+/*@ void bm_set(struct bitmap *b, int x, int y, int c)
+ *# Sets the value of the pixel at x,y to the color c.\n
+ *# {{c}} is in the form 0xAABBGGRR
+ */
+void bm_set(struct bitmap *b, int x, int y, int c);
+
+/*@ void bm_set_rgb(struct bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B)
  *# Sets a pixel at x,y in the bitmap b to the specified R,G,B color
  */ 
-void bm_set(struct bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B);
+void bm_set_rgb(struct bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B);
 
-/*@ void bm_set_a(struct bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B, unsigned char A)
+/*@ void bm_set_rgb_a(struct bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B, unsigned char A)
  *# Sets a pixel at x,y in the bitmap b to the specified R,G,B,A color
  */ 
-void bm_set_a(struct bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B, unsigned char A);
+void bm_set_rgb_a(struct bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B, unsigned char A);
 
 /*@ unsigned char bm_getr(struct bitmap *b, int x, int y)
  *# Retrieves the R value of the pixel at x,y in bitmap b 
@@ -181,6 +216,8 @@ void bm_set_color_s(struct bitmap *bm, const char *text);
 /*@ int bm_color_atoi(const char *text)
  *# Converts a text string like "#FF00FF" or "white" to
  *# an integer of the form 0xFF00FF.
+ *# The {{text}} parameter is not case sensitive and spaces are 
+ *# ignored, so for example "darkred" and "Dark Red" are equivalent.
  *# The shorthand #RGB format is also supported
  *# (eg. #0fb, which is the same as #00FFBB)
  *# Additionally, it also supports the syntax "RGB(x,y,z)".
@@ -209,9 +246,10 @@ int bm_get_color_i(struct bitmap *bm);
 /*@ void bm_picker(struct bitmap *bm, int x, int y)
  *# Sets the colour of the pen to the colour of the pixel at <x,y>
  *# on the bitmap.
- *# The pen colour can then be retrieved through {{bm_get_color()}}.
+ *# The pen colour can then be retrieved through {{bm_get_color()}}.\n
+ *# It returns the integer representation of the colour.
  */
-void bm_picker(struct bitmap *bm, int x, int y);
+int bm_picker(struct bitmap *bm, int x, int y);
 
 /*@ int bm_color_is(struct bitmap *bm, int x, int y, int r, int g, int b) 
  *# Returns 1 if the colour at <x,y> on the bitmap is (r,g,b), 0 otherwise

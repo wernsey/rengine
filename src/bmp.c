@@ -7,7 +7,11 @@
 #include <assert.h>
 
 #ifdef USESDL
-#  include <SDL2/SDL.h>
+#  ifdef ANDROID
+#    include <SDL.h>
+#  else
+#    include <SDL2/SDL.h>
+#  endif
 #endif
 
 /*
@@ -1077,6 +1081,34 @@ void bm_free(struct bitmap *b) {
 	free(b);
 }
 
+struct bitmap *bm_bind(int w, int h, unsigned char *data) {	
+	struct bitmap *b = malloc(sizeof *b);
+	
+	b->w = w;
+	b->h = h;
+	
+	b->clip.x0 = 0;
+	b->clip.y0 = 0;
+	b->clip.x1 = w;
+	b->clip.y1 = h;
+		
+	b->data = data;
+	
+	bm_std_font(b, BM_FONT_NORMAL);
+	bm_set_color(b, 255, 255, 255);
+	bm_set_alpha(b, 255);
+	
+	return b;
+}
+
+void bm_rebind(struct bitmap *b, unsigned char *data) {
+    b->data = data;
+}
+
+void bm_unbind(struct bitmap *b) {
+	free(b);
+}
+
 void bm_flip_vertical(struct bitmap *b) {
 	int y;
 	size_t s = BM_ROW_SIZE(b);
@@ -1091,12 +1123,25 @@ void bm_flip_vertical(struct bitmap *b) {
 	free(trow);
 }
 
-void bm_set(struct bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B) {
+
+int bm_get(struct bitmap *b, int x, int y) {	
+	assert(x >= 0 && x < b->w && y >= 0 && y < b->h);
+	int *p = (int*)(b->data + y * BM_ROW_SIZE(b) + x * BM_BPP);
+	return *p;
+}
+
+void bm_set(struct bitmap *b, int x, int y, int c) {	
+	assert(x >= 0 && x < b->w && y >= 0 && y < b->h);
+	int *p = (int*)(b->data + y * BM_ROW_SIZE(b) + x * BM_BPP);
+	*p = c;
+}
+
+void bm_set_rgb(struct bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B) {
 	assert(x >= 0 && x < b->w && y >= 0 && y < b->h);
 	BM_SET(b, x, y, R, G, B, b->a);
 }
 
-void bm_set_a(struct bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B, unsigned char A) {
+void bm_set_rgb_a(struct bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B, unsigned char A) {
 	assert(x >= 0 && x < b->w && y >= 0 && y < b->h);
 	BM_SET(b, x, y, R, G, B, A);
 }
@@ -1675,10 +1720,16 @@ void bm_adjust_rgba(struct bitmap *bm, float rf, float gf, float bf, float af) {
 
 /* Lookup table for bm_color_atoi() 
  * This list is based on the HTML and X11 colors on the
- * Wikipedia's list of web colors
+ * Wikipedia's list of web colors:
  * http://en.wikipedia.org/wiki/Web_colors
+ * I also felt a bit nostalgic for the EGA graphics from my earliest
+ * computer memories, so I added the EGA colors (prefixed with "EGA") from here:
+ * http://en.wikipedia.org/wiki/Enhanced_Graphics_Adapter
+ *
  * Keep the list sorted because a binary search is used.
- * Keep the name in uppercase to keep bm_color_atoi() case insensitive.
+ *
+ * bm_color_atoi()'s text parameter is not case sensitive and spaces are 
+ * ignored, so for example "darkred" and "Dark Red" are equivalent.
  */
 static const struct color_map_entry {
 	const char *name;
@@ -1726,6 +1777,24 @@ static const struct color_map_entry {
 	{"DEEPSKYBLUE", 0x00BFFF},
 	{"DIMGRAY", 0x696969},
 	{"DODGERBLUE", 0x1E90FF},
+	{"EGABLACK", 0x000000},
+	{"EGABLUE", 0x0000AA},
+	{"EGABRIGHTBLACK", 0x555555},
+	{"EGABRIGHTBLUE", 0x5555FF},
+	{"EGABRIGHTCYAN", 0x55FFFF},
+	{"EGABRIGHTGREEN", 0x55FF55},
+	{"EGABRIGHTMAGENTA", 0xFF55FF},
+	{"EGABRIGHTRED", 0xFF5555},
+	{"EGABRIGHTWHITE", 0xFFFFFF},
+	{"EGABRIGHTYELLOW", 0xFFFF55},
+	{"EGABROWN", 0xAA5500},
+	{"EGACYAN", 0x00AAAA},
+	{"EGADARKGRAY", 0x555555},
+	{"EGAGREEN", 0x00AA00},
+	{"EGALIGHTGRAY", 0xAAAAAA},
+	{"EGAMAGENTA", 0xAA00AA},
+	{"EGARED", 0xAA0000},
+	{"EGAWHITE", 0xAAAAAA},
 	{"FIREBRICK", 0xB22222},
 	{"FLORALWHITE", 0xFFFAF0},
 	{"FORESTGREEN", 0x228B22},
@@ -1858,17 +1927,26 @@ int bm_color_atoi(const char *text) {
 		}		
 		return col;
 	} else if(isalpha(text[0])) {
-		const char *q;
-		char buffer[32], *p;
-		for(q = text, p = buffer; *q && p - buffer < sizeof buffer - 1; q++, p++) {
-			*p = toupper(*q);
-		}
-		*p = 0;
+		const char *q, *p;
 		
 		int min = 0, max = ((sizeof color_map)/(sizeof color_map[0])) - 1;
 		while(min <= max) {
-			int i = (max + min) >> 1;
-			int r = strcmp(buffer, color_map[i].name);
+			int i = (max + min) >> 1, r;
+			
+			p = text;
+			q = color_map[i].name;
+			
+			/* Hacky case insensitive strcmp() that ignores spaces in p */
+			while(*p) {
+				if(*p == ' ') p++;
+				else {
+					if(tolower(*p) != tolower(*q))
+						break; 
+					p++; q++;
+				}
+			}			
+			r = tolower(*p) - tolower(*q);
+	
 			if(r == 0) 
 				return color_map[i].color;
 			else if(r < 0) { 
@@ -1931,15 +2009,17 @@ void bm_get_color(struct bitmap *bm, int *r, int *g, int *b) {
 }
 
 int bm_get_color_i(struct bitmap *bm) {
-	return (bm->r << 16) | (bm->g << 8) | (bm->b << 0);
+	return (bm->a << 24) | (bm->r << 16) | (bm->g << 8) | (bm->b << 0);
 }
 
-void bm_picker(struct bitmap *bm, int x, int y) {
+int bm_picker(struct bitmap *bm, int x, int y) {
 	if(x < 0 || x >= bm->w || y < 0 || y >= bm->h) 
-		return;
+		return 0;
 	bm->r = BM_GETR(bm, x, y);
 	bm->g = BM_GETG(bm, x, y);
 	bm->b = BM_GETB(bm, x, y);
+	bm->a = BM_GETA(bm, x, y);
+    return bm_get_color_i(bm);
 }
 
 int bm_color_is(struct bitmap *bm, int x, int y, int r, int g, int b) {
@@ -2494,19 +2574,22 @@ int bm_text_height(struct bitmap *b, const char *s) {
 }
 
 void bm_putc(struct bitmap *b, int x, int y, char c) {
-	int frow, fcol, byte;
+	int frow, fcol, byte, col;
 	int i, j;
 	if(c < 32 || c > 127) return;
 	c -= 32;
 	fcol = c >> 3;
 	frow = c & 0x7;
 	byte = frow * FONT_WIDTH + fcol;
+	
+	col = bm_get_color_i(b);
+	
 	for(j = 0; j < 8 && y + j < b->clip.y1; j++) {
 		if(y + j >= b->clip.y0) {
 			char bits = b->font[byte];
 			for(i = 0; i < 8 && x + i < b->clip.x1; i++) {
 				if(x + i >= b->clip.x0 && !(bits & (1 << i))) {
-					BM_SET(b, x + i, y + j, b->r, b->g, b->b, b->a);
+					bm_set(b, x + i, y + j, col);
 				}
 			}
 		}
