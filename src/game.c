@@ -117,7 +117,7 @@ int init(const char *appTitle, int flags) {
 
 	bmp = bm_create(virt_width, virt_height);
 
-	tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING, bmp->w, bmp->h);
+	tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, bmp->w, bmp->h);
 	if(!tex) {
 		rerror("SDL_CreateTexture: %s", SDL_GetError());
 		return 0;

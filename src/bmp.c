@@ -108,22 +108,22 @@ struct bmpfile_colinfo {
 
 #define BM_SET(BMP, X, Y, R, G, B, A) do { \
 		int _p = ((Y) * BM_ROW_SIZE(BMP) + (X)*BM_BPP);	\
-		BMP->data[_p++] = R;\
-		BMP->data[_p++] = G;\
 		BMP->data[_p++] = B;\
+		BMP->data[_p++] = G;\
+		BMP->data[_p++] = R;\
 		BMP->data[_p++] = A;\
 	} while(0)
 
-#define BM_GETR(B,X,Y) (B->data[((Y) * BM_ROW_SIZE(B) + (X) * BM_BPP) + 0])
+#define BM_GETB(B,X,Y) (B->data[((Y) * BM_ROW_SIZE(B) + (X) * BM_BPP) + 0])
 #define BM_GETG(B,X,Y) (B->data[((Y) * BM_ROW_SIZE(B) + (X) * BM_BPP) + 1])
-#define BM_GETB(B,X,Y) (B->data[((Y) * BM_ROW_SIZE(B) + (X) * BM_BPP) + 2])
+#define BM_GETR(B,X,Y) (B->data[((Y) * BM_ROW_SIZE(B) + (X) * BM_BPP) + 2])
 #define BM_GETA(B,X,Y) (B->data[((Y) * BM_ROW_SIZE(B) + (X) * BM_BPP) + 3])
 
-/* N=0 -> R, N=1 -> G, N=2 -> B, N=3 -> A */
+/* N=0 -> B, N=1 -> G, N=2 -> R, N=3 -> A */
 #define BM_GETN(B,N,X,Y) (B->data[((Y) * BM_ROW_SIZE(B) + (X) * BM_BPP) + (N)])
 
-struct bitmap *bm_create(int w, int h) {	
-	struct bitmap *b = malloc(sizeof *b);
+Bitmap *bm_create(int w, int h) {	
+	Bitmap *b = malloc(sizeof *b);
 	
 	b->w = w;
 	b->h = h;
@@ -143,8 +143,8 @@ struct bitmap *bm_create(int w, int h) {
 	return b;
 }
 
-struct bitmap *bm_load(const char *filename) {	
-	struct bitmap *bmp;
+Bitmap *bm_load(const char *filename) {	
+	Bitmap *bmp;
 	FILE *f = fopen(filename, "rb");
 	if(!f)
 		return NULL;
@@ -153,15 +153,15 @@ struct bitmap *bm_load(const char *filename) {
 	return bmp;
 }
 
-static struct bitmap *bm_load_bmp_fp(FILE *f);
+static Bitmap *bm_load_bmp_fp(FILE *f);
 #ifdef USEPNG
-static struct bitmap *bm_load_png_fp(FILE *f);
+static Bitmap *bm_load_png_fp(FILE *f);
 #endif
 #ifdef USEJPG
-static struct bitmap *bm_load_jpg_fp(FILE *f);
+static Bitmap *bm_load_jpg_fp(FILE *f);
 #endif
 
-struct bitmap *bm_load_fp(FILE *f) {
+Bitmap *bm_load_fp(FILE *f) {
 	unsigned char magic[2];	
 
 	long start = ftell(f), 
@@ -196,13 +196,13 @@ struct bitmap *bm_load_fp(FILE *f) {
 
 }
 
-static struct bitmap *bm_load_bmp_fp(FILE *f) {	
+static Bitmap *bm_load_bmp_fp(FILE *f) {	
 	struct bmpfile_magic magic; 
 	struct bmpfile_header hdr;
 	struct bmpfile_dibinfo dib;
 	struct bmpfile_colinfo *palette = NULL;
 	
-	struct bitmap *b = NULL;
+	Bitmap *b = NULL;
 	
 	int rs, i, j;
 	char *data = NULL;
@@ -298,15 +298,15 @@ error:
 	goto end;
 }
 
-static int bm_save_bmp(struct bitmap *b, const char *fname);
+static int bm_save_bmp(Bitmap *b, const char *fname);
 #ifdef USEPNG
-static int bm_save_png(struct bitmap *b, const char *fname);
+static int bm_save_png(Bitmap *b, const char *fname);
 #endif
 #ifdef USEJPG
-static int bm_save_jpg(struct bitmap *b, const char *fname);
+static int bm_save_jpg(Bitmap *b, const char *fname);
 #endif
 
-int bm_save(struct bitmap *b, const char *fname) {	
+int bm_save(Bitmap *b, const char *fname) {	
 	/* If the filename contains ".bmp" save as BMP,
 	   if the filename contains ".jpg" save as JPG,
 		otherwise save as PNG */
@@ -334,7 +334,7 @@ int bm_save(struct bitmap *b, const char *fname) {
 	return bm_save_bmp(b, fname);
 }
 
-static int bm_save_bmp(struct bitmap *b, const char *fname) {	
+static int bm_save_bmp(Bitmap *b, const char *fname) {	
 	struct bmpfile_magic magic = {{'B','M'}}; 
 	struct bmpfile_header hdr;
 	struct bmpfile_dibinfo dib;
@@ -401,8 +401,8 @@ static int bm_save_bmp(struct bitmap *b, const char *fname) {
 http://zarb.org/~gc/html/libpng.html
 http://www.labbookpages.co.uk/software/imgProc/libPNG.html
 */
-static struct bitmap *bm_load_png_fp(FILE *f) {
-	struct bitmap *bmp = NULL;
+static Bitmap *bm_load_png_fp(FILE *f) {
+	Bitmap *bmp = NULL;
 	
 	unsigned char header[8];
 	png_structp png = NULL;
@@ -494,7 +494,7 @@ done:
 	return bmp;
 }
 
-static int bm_save_png(struct bitmap *b, const char *fname) {
+static int bm_save_png(Bitmap *b, const char *fname) {
 	
 	png_structp png = NULL;
 	png_infop info = NULL;
@@ -570,10 +570,10 @@ static void jpg_on_error(j_common_ptr cinfo) {
 	longjmp(err->jbuf, 1);
 }
 
-static struct bitmap *bm_load_jpg_fp(FILE *f) {
+static Bitmap *bm_load_jpg_fp(FILE *f) {
 	struct jpeg_decompress_struct cinfo;
 	struct jpg_err_handler jerr;
-	struct bitmap *bmp = NULL;
+	Bitmap *bmp = NULL;
 	int i, j, row_stride;
 	unsigned char *data;
 	JSAMPROW row_pointer[1];
@@ -618,7 +618,7 @@ static struct bitmap *bm_load_jpg_fp(FILE *f) {
 	
 	return bmp;
 }
-static int bm_save_jpg(struct bitmap *b, const char *fname) {
+static int bm_save_jpg(Bitmap *b, const char *fname) {
 	struct jpeg_compress_struct cinfo;
 	struct jpg_err_handler jerr;
 	FILE *f;
@@ -683,15 +683,15 @@ static int bm_save_jpg(struct bitmap *b, const char *fname) {
     related functions.
 */
 
-static struct bitmap *bm_load_bmp_rw(SDL_RWops *rw);
+static Bitmap *bm_load_bmp_rw(SDL_RWops *rw);
 #  ifdef USEPNG
-static struct bitmap *bm_load_png_rw(SDL_RWops *rw);
+static Bitmap *bm_load_png_rw(SDL_RWops *rw);
 #  endif
 #  ifdef USEJPG
-static struct bitmap *bm_load_jpg_rw(SDL_RWops *rw);
+static Bitmap *bm_load_jpg_rw(SDL_RWops *rw);
 #  endif
 
-struct bitmap *bm_load_rw(SDL_RWops *rw) {	
+Bitmap *bm_load_rw(SDL_RWops *rw) {	
 	unsigned char magic[2];	
     long start = SDL_RWtell(rw);
     long isbmp = 0, ispng = 0, isjpg = 0;
@@ -723,13 +723,13 @@ struct bitmap *bm_load_rw(SDL_RWops *rw) {
     return NULL;
 }
 
-static struct bitmap *bm_load_bmp_rw(SDL_RWops *rw) {
+static Bitmap *bm_load_bmp_rw(SDL_RWops *rw) {
     struct bmpfile_magic magic; 
 	struct bmpfile_header hdr;
 	struct bmpfile_dibinfo dib;
 	struct bmpfile_colinfo *palette = NULL;
 	
-	struct bitmap *b = NULL;
+	Bitmap *b = NULL;
 	
 	int rs, i, j;
 	char *data = NULL;
@@ -835,8 +835,8 @@ static void read_rwo_data(png_structp png_ptr, png_bytep data, png_size_t length
     SDL_RWread(rw, data, 1, length);
 }
 
-static struct bitmap *bm_load_png_rw(SDL_RWops *rw) {
-    	struct bitmap *bmp = NULL;
+static Bitmap *bm_load_png_rw(SDL_RWops *rw) {
+    	Bitmap *bmp = NULL;
 	
 	unsigned char header[8];
 	png_structp png = NULL;
@@ -1009,10 +1009,10 @@ static void rw_set_source_mgr(j_decompress_ptr cinfo, SDL_RWops *rw) {
     src->rw = rw;
 }
 
-static struct bitmap *bm_load_jpg_rw(SDL_RWops *rw) {
+static Bitmap *bm_load_jpg_rw(SDL_RWops *rw) {
     struct jpeg_decompress_struct cinfo;
 	struct jpg_err_handler jerr;
-	struct bitmap *bmp = NULL;
+	Bitmap *bmp = NULL;
 	int i, j, row_stride;
 	unsigned char *data;
 	JSAMPROW row_pointer[1];
@@ -1063,8 +1063,8 @@ static struct bitmap *bm_load_jpg_rw(SDL_RWops *rw) {
 
 #endif /* USESDL */
 
-struct bitmap *bm_copy(struct bitmap *b) {
-	struct bitmap *out = bm_create(b->w, b->h);
+Bitmap *bm_copy(Bitmap *b) {
+	Bitmap *out = bm_create(b->w, b->h);
 	memcpy(out->data, b->data, BM_BLOB_SIZE(b));
 	
 	out->r = b->r; out->g = b->g; out->b = b->b;
@@ -1075,14 +1075,14 @@ struct bitmap *bm_copy(struct bitmap *b) {
 	return out;
 }
 
-void bm_free(struct bitmap *b) {
+void bm_free(Bitmap *b) {
 	if(!b) return;
 	if(b->data) free(b->data);
 	free(b);
 }
 
-struct bitmap *bm_bind(int w, int h, unsigned char *data) {	
-	struct bitmap *b = malloc(sizeof *b);
+Bitmap *bm_bind(int w, int h, unsigned char *data) {	
+	Bitmap *b = malloc(sizeof *b);
 	
 	b->w = w;
 	b->h = h;
@@ -1101,15 +1101,15 @@ struct bitmap *bm_bind(int w, int h, unsigned char *data) {
 	return b;
 }
 
-void bm_rebind(struct bitmap *b, unsigned char *data) {
+void bm_rebind(Bitmap *b, unsigned char *data) {
     b->data = data;
 }
 
-void bm_unbind(struct bitmap *b) {
+void bm_unbind(Bitmap *b) {
 	free(b);
 }
 
-void bm_flip_vertical(struct bitmap *b) {
+void bm_flip_vertical(Bitmap *b) {
 	int y;
 	size_t s = BM_ROW_SIZE(b);
 	unsigned char *trow = malloc(s);
@@ -1124,48 +1124,48 @@ void bm_flip_vertical(struct bitmap *b) {
 }
 
 
-int bm_get(struct bitmap *b, int x, int y) {	
+int bm_get(Bitmap *b, int x, int y) {	
 	assert(x >= 0 && x < b->w && y >= 0 && y < b->h);
 	int *p = (int*)(b->data + y * BM_ROW_SIZE(b) + x * BM_BPP);
 	return *p;
 }
 
-void bm_set(struct bitmap *b, int x, int y, int c) {	
+void bm_set(Bitmap *b, int x, int y, int c) {	
 	assert(x >= 0 && x < b->w && y >= 0 && y < b->h);
 	int *p = (int*)(b->data + y * BM_ROW_SIZE(b) + x * BM_BPP);
 	*p = c;
 }
 
-void bm_set_rgb(struct bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B) {
+void bm_set_rgb(Bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B) {
 	assert(x >= 0 && x < b->w && y >= 0 && y < b->h);
 	BM_SET(b, x, y, R, G, B, b->a);
 }
 
-void bm_set_rgb_a(struct bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B, unsigned char A) {
+void bm_set_rgb_a(Bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B, unsigned char A) {
 	assert(x >= 0 && x < b->w && y >= 0 && y < b->h);
 	BM_SET(b, x, y, R, G, B, A);
 }
 
-unsigned char bm_getr(struct bitmap *b, int x, int y) {
+unsigned char bm_getr(Bitmap *b, int x, int y) {
 	return BM_GETR(b,x,y);
 }
 
-unsigned char bm_getg(struct bitmap *b, int x, int y) {
+unsigned char bm_getg(Bitmap *b, int x, int y) {
 	return BM_GETG(b,x,y);
 }
 
-unsigned char bm_getb(struct bitmap *b, int x, int y) {
+unsigned char bm_getb(Bitmap *b, int x, int y) {
 	return BM_GETB(b,x,y);
 }
 
-unsigned char bm_geta(struct bitmap *b, int x, int y) {
+unsigned char bm_geta(Bitmap *b, int x, int y) {
 	return BM_GETA(b,x,y);
 }
 
-struct bitmap *bm_fromXbm(int w, int h, unsigned char *data) {
+Bitmap *bm_fromXbm(int w, int h, unsigned char *data) {
 	int x,y;
 		
-	struct bitmap *bmp = bm_create(w, h);
+	Bitmap *bmp = bm_create(w, h);
 	
 	int byte = 0;	
 	for(y = 0; y < h; y++)
@@ -1180,7 +1180,7 @@ struct bitmap *bm_fromXbm(int w, int h, unsigned char *data) {
 	return bmp;
 }
 
-void bm_clip(struct bitmap *b, int x0, int y0, int x1, int y1) {
+void bm_clip(Bitmap *b, int x0, int y0, int x1, int y1) {
 	if(x0 > x1) {
 		int t = x1;
 		x1 = x0;
@@ -1202,14 +1202,14 @@ void bm_clip(struct bitmap *b, int x0, int y0, int x1, int y1) {
 	b->clip.y1 = y1;
 }
 
-void bm_unclip(struct bitmap *b) {
+void bm_unclip(Bitmap *b) {
 	b->clip.x0 = 0;
 	b->clip.y0 = 0;
 	b->clip.x1 = b->w;
 	b->clip.y1 = b->h;
 }
 
-void bm_blit(struct bitmap *dst, int dx, int dy, struct bitmap *src, int sx, int sy, int w, int h) {
+void bm_blit(Bitmap *dst, int dx, int dy, Bitmap *src, int sx, int sy, int w, int h) {
 	int x,y, i, j;
 	
 	if(sx < 0) {
@@ -1301,7 +1301,7 @@ void bm_blit(struct bitmap *dst, int dx, int dy, struct bitmap *src, int sx, int
 	}
 }
 
-void bm_maskedblit(struct bitmap *dst, int dx, int dy, struct bitmap *src, int sx, int sy, int w, int h) {
+void bm_maskedblit(Bitmap *dst, int dx, int dy, Bitmap *src, int sx, int sy, int w, int h) {
 	int x,y, i, j;
 
 	if(sx < 0) {
@@ -1394,7 +1394,7 @@ void bm_maskedblit(struct bitmap *dst, int dx, int dy, struct bitmap *src, int s
 	}
 }
 
-void bm_blit_ex(struct bitmap *dst, int dx, int dy, int dw, int dh, struct bitmap *src, int sx, int sy, int sw, int sh, int mask) {
+void bm_blit_ex(Bitmap *dst, int dx, int dy, int dw, int dh, Bitmap *src, int sx, int sy, int sw, int sh, int mask) {
 	int x, y, ssx;
 	int ynum = 0;	
 	int xnum = 0;
@@ -1484,8 +1484,8 @@ void bm_blit_ex(struct bitmap *dst, int dx, int dy, int dw, int dh, struct bitma
 	}
 }
 
-void bm_smooth(struct bitmap *b) {
-	struct bitmap *tmp = bm_create(b->w, b->h);
+void bm_smooth(Bitmap *b) {
+	Bitmap *tmp = bm_create(b->w, b->h);
 	unsigned char *t = b->data;
 	int x, y;
 	
@@ -1532,8 +1532,8 @@ void bm_smooth(struct bitmap *b) {
 	bm_free(tmp);
 }
 
-void bm_apply_kernel(struct bitmap *b, int dim, float kernel[]) {
-	struct bitmap *tmp = bm_create(b->w, b->h);
+void bm_apply_kernel(Bitmap *b, int dim, float kernel[]) {
+	Bitmap *tmp = bm_create(b->w, b->h);
 	unsigned char *t = b->data;
 	int x, y;	
 	int kf = dim >> 1;
@@ -1571,7 +1571,7 @@ void bm_apply_kernel(struct bitmap *b, int dim, float kernel[]) {
 	bm_free(tmp);
 }
 
-void bm_swap_colour(struct bitmap *b, unsigned char sR, unsigned char sG, unsigned char sB, unsigned char dR, unsigned char dG, unsigned char dB) {
+void bm_swap_colour(Bitmap *b, unsigned char sR, unsigned char sG, unsigned char sB, unsigned char dR, unsigned char dG, unsigned char dB) {
 	int x,y;
 	for(y = 0; y < b->h; y++)
 		for(x = 0; x < b->w; x++) {			
@@ -1592,8 +1592,8 @@ Bicubic Interpolation is better suited for making an image smaller.
 http://blog.codinghorror.com/better-image-resizing/
 
 */
-struct bitmap *bm_resample(const struct bitmap *in, int nw, int nh) {
-	struct bitmap *out = bm_create(nw, nh);
+Bitmap *bm_resample(const Bitmap *in, int nw, int nh) {
+	Bitmap *out = bm_create(nw, nh);
 	int x, y;
 	for(y = 0; y < nh; y++)
 		for(x = 0; x < nw; x++) {
@@ -1616,8 +1616,8 @@ static double blerp(double c00, double c10, double c01, double c11, double tx, d
         ty);
 }
 
-struct bitmap *bm_resample_blin(const struct bitmap *in, int nw, int nh) {
-	struct bitmap *out = bm_create(nw, nh);
+Bitmap *bm_resample_blin(const Bitmap *in, int nw, int nh) {
+	Bitmap *out = bm_create(nw, nh);
 	int x, y;
 	for(y = 0; y < nh; y++)
 		for(x = 0; x < nw; x++) {
@@ -1656,8 +1656,8 @@ static double triangular_fun(double b) {
     return 0;
 }
 
-struct bitmap *bm_resample_bcub(const struct bitmap *in, int nw, int nh) {
-	struct bitmap *out = bm_create(nw, nh);
+Bitmap *bm_resample_bcub(const Bitmap *in, int nw, int nh) {
+	Bitmap *out = bm_create(nw, nh);
 	int x, y;
     
 	for(y = 0; y < nh; y++)
@@ -1694,19 +1694,19 @@ struct bitmap *bm_resample_bcub(const struct bitmap *in, int nw, int nh) {
 	return out;
 }
 
-void bm_set_color(struct bitmap *bm, unsigned char r, unsigned char g, unsigned char b) {
+void bm_set_color(Bitmap *bm, unsigned char r, unsigned char g, unsigned char b) {
 	bm->r = r;
 	bm->g = g;
 	bm->b = b;
 }
 
-void bm_set_alpha(struct bitmap *bm, int a) {
+void bm_set_alpha(Bitmap *bm, int a) {
 	if(a < 0) a = 0;
 	if(a > 255) a = 255;
 	bm->a = a;
 }
 
-void bm_adjust_rgba(struct bitmap *bm, float rf, float gf, float bf, float af) {
+void bm_adjust_rgba(Bitmap *bm, float rf, float gf, float bf, float af) {
 	int x, y;
 	for(y = 0; y < bm->h; y++)
 		for(x = 0; x < bm->w; x++) {
@@ -1994,35 +1994,37 @@ int bm_color_atoi(const char *text) {
 	return col;
 }
 
-void bm_set_color_s(struct bitmap *bm, const char *text) {	
+void bm_set_color_s(Bitmap *bm, const char *text) {	
 	bm_set_color_i(bm, bm_color_atoi(text));
 }
 
-void bm_set_color_i(struct bitmap *bm, int col) {	
+void bm_set_color_i(Bitmap *bm, int col) {	
 	bm_set_color(bm, (col >> 16) & 0xFF, (col >> 8) & 0xFF, (col >> 0) & 0xFF);
 }
 
-void bm_get_color(struct bitmap *bm, int *r, int *g, int *b) {
+void bm_get_color(Bitmap *bm, int *r, int *g, int *b) {
 	*r = bm->r;
 	*g = bm->g;
 	*b = bm->b;
 }
 
-int bm_get_color_i(struct bitmap *bm) {
+int bm_get_color_i(Bitmap *bm) {
 	return (bm->a << 24) | (bm->r << 16) | (bm->g << 8) | (bm->b << 0);
 }
 
-int bm_picker(struct bitmap *bm, int x, int y) {
+int bm_picker(Bitmap *bm, int x, int y) {
+	int c;
 	if(x < 0 || x >= bm->w || y < 0 || y >= bm->h) 
 		return 0;
-	bm->r = BM_GETR(bm, x, y);
-	bm->g = BM_GETG(bm, x, y);
-	bm->b = BM_GETB(bm, x, y);
-	bm->a = BM_GETA(bm, x, y);
-    return bm_get_color_i(bm);
+	c = bm_get(bm, x, y);
+	bm->r = (c >> 16) & 0xFF;
+	bm->g = (c >> 8) & 0xFF;
+	bm->b = (c >> 0) & 0xFF;
+	bm->a = (c >> 24) & 0xFF;
+    return c;
 }
 
-int bm_color_is(struct bitmap *bm, int x, int y, int r, int g, int b) {
+int bm_color_is(Bitmap *bm, int x, int y, int r, int g, int b) {
 	return BM_GETR(bm,x,y) == r && BM_GETG(bm,x,y) == g && BM_GETB(bm,x,y) == b;
 }
 
@@ -2064,15 +2066,15 @@ int bm_brightness(int color, double adj) {
 	return (r << 16) | (g << 8) | (b << 0);
 }
 
-int bm_width(struct bitmap *b) {
+int bm_width(Bitmap *b) {
 	return b->w;
 }
 
-int bm_height(struct bitmap *b) {
+int bm_height(Bitmap *b) {
 	return b->h;
 }
 
-void bm_clear(struct bitmap *b) {
+void bm_clear(Bitmap *b) {
 	int i, j;
 	for(j = 0; j < b->h; j++) 
 		for(i = 0; i < b->w; i++) {
@@ -2080,13 +2082,13 @@ void bm_clear(struct bitmap *b) {
 		}
 }
 
-void bm_putpixel(struct bitmap *b, int x, int y) {
+void bm_putpixel(Bitmap *b, int x, int y) {
 	if(x < b->clip.x0 || x >= b->clip.x1 || y < b->clip.y0 || y >= b->clip.y1) 
 		return;
 	BM_SET(b, x, y, b->r, b->g, b->b, b->a);
 }
 
-void bm_line(struct bitmap *b, int x0, int y0, int x1, int y1) {
+void bm_line(Bitmap *b, int x0, int y0, int x1, int y1) {
 	int dx = x1 - x0;
 	int dy = y1 - y0;
 	int sx, sy;
@@ -2126,14 +2128,14 @@ void bm_line(struct bitmap *b, int x0, int y0, int x1, int y1) {
 	}
 }
 
-void bm_rect(struct bitmap *b, int x0, int y0, int x1, int y1) {
+void bm_rect(Bitmap *b, int x0, int y0, int x1, int y1) {
 	bm_line(b, x0, y0, x1, y0);
 	bm_line(b, x1, y0, x1, y1);
 	bm_line(b, x1, y1, x0, y1);
 	bm_line(b, x0, y1, x0, y0);
 }
 
-void bm_fillrect(struct bitmap *b, int x0, int y0, int x1, int y1) {
+void bm_fillrect(Bitmap *b, int x0, int y0, int x1, int y1) {
 	int x,y;
 	if(x1 < x0) {
 		x = x0;
@@ -2153,7 +2155,7 @@ void bm_fillrect(struct bitmap *b, int x0, int y0, int x1, int y1) {
 	}	
 }
 
-void bm_dithrect(struct bitmap *b, int x0, int y0, int x1, int y1) {
+void bm_dithrect(Bitmap *b, int x0, int y0, int x1, int y1) {
 	int x,y;
 	if(x1 < x0) {
 		x = x0;
@@ -2174,7 +2176,7 @@ void bm_dithrect(struct bitmap *b, int x0, int y0, int x1, int y1) {
 	}	
 }
 
-void bm_circle(struct bitmap *b, int x0, int y0, int r) {
+void bm_circle(Bitmap *b, int x0, int y0, int r) {
 	int x = -r;
 	int y = 0;
 	int err = 2 - 2 * r;
@@ -2213,7 +2215,7 @@ void bm_circle(struct bitmap *b, int x0, int y0, int r) {
 	} while(x < 0);
 }
 
-void bm_fillcircle(struct bitmap *b, int x0, int y0, int r) {
+void bm_fillcircle(Bitmap *b, int x0, int y0, int r) {
 	int x = -r;
 	int y = 0;
 	int err = 2 - 2 * r;
@@ -2241,7 +2243,7 @@ void bm_fillcircle(struct bitmap *b, int x0, int y0, int r) {
 	} while(x < 0);
 }
 
-void bm_ellipse(struct bitmap *b, int x0, int y0, int x1, int y1) {
+void bm_ellipse(Bitmap *b, int x0, int y0, int x1, int y1) {
 	int a = abs(x1-x0), b0 = abs(y1-y0), b1 = b0 & 1;
 	long dx = 4 * (1 - a) * b0 * b0,
 		dy = 4*(b1 + 1) * a * a;
@@ -2293,7 +2295,7 @@ void bm_ellipse(struct bitmap *b, int x0, int y0, int x1, int y1) {
 	}
 }
 
-void bm_roundrect(struct bitmap *b, int x0, int y0, int x1, int y1, int r) {
+void bm_roundrect(Bitmap *b, int x0, int y0, int x1, int y1, int r) {
 	int x = -r;
 	int y = 0;
 	int err = 2 - 2 * r;
@@ -2339,7 +2341,7 @@ void bm_roundrect(struct bitmap *b, int x0, int y0, int x1, int y1, int r) {
 	} while(x < 0);
 }
 
-void bm_fillroundrect(struct bitmap *b, int x0, int y0, int x1, int y1, int r) {
+void bm_fillroundrect(Bitmap *b, int x0, int y0, int x1, int y1, int r) {
 	int x = -r;
 	int y = 0;
 	int err = 2 - 2 * r;
@@ -2383,7 +2385,7 @@ void bm_fillroundrect(struct bitmap *b, int x0, int y0, int x1, int y1, int r) {
  * http://members.chello.at/~easyfilter/bresenham.html
  * but that one had some caveats.
  */
-void bm_bezier3(struct bitmap *b, int x0, int y0, int x1, int y1, int x2, int y2) {
+void bm_bezier3(Bitmap *b, int x0, int y0, int x1, int y1, int x2, int y2) {
 	int lx = x0, ly = y0;
 	int steps = 12;
 	double inc = 1.0/steps;
@@ -2400,7 +2402,7 @@ void bm_bezier3(struct bitmap *b, int x0, int y0, int x1, int y1, int x2, int y2
 	bm_line(b, dx, dy, x2, y2);
 }
 
-void bm_fill(struct bitmap *b, int x, int y) {
+void bm_fill(Bitmap *b, int x, int y) {
 	/* TODO: The function does not take the clipping into account. 
 	 * I'm not really sure how to handle it, to be honest.
 	 */	
@@ -2484,14 +2486,14 @@ void bm_fill(struct bitmap *b, int x, int y) {
 	free(queue);
 }
 
-void bm_set_font(struct bitmap *b, const unsigned char *font, int spacing) {
+void bm_set_font(Bitmap *b, const unsigned char *font, int spacing) {
 	if(font)
 		b->font = font;
 	if(spacing > 0)
 		b->font_spacing = spacing;
 }
 
-void bm_std_font(struct bitmap *b, enum bm_fonts font) {
+void bm_std_font(Bitmap *b, enum bm_fonts font) {
 	switch(font) {
 		case BM_FONT_NORMAL  : bm_set_font(b, normal_bits, 6); break;
 		case BM_FONT_BOLD    : bm_set_font(b, bold_bits, 8); break;
@@ -2545,7 +2547,7 @@ const char *bm_font_name(int index) {
 	return font_names[0].s;
 }
 
-int bm_text_width(struct bitmap *b, const char *s) {
+int bm_text_width(Bitmap *b, const char *s) {
 	int len = 0, max_len = 0;
 	while(*s) {
 		if(*s == '\n') {
@@ -2564,7 +2566,7 @@ int bm_text_width(struct bitmap *b, const char *s) {
 	return max_len * b->font_spacing;
 }
 
-int bm_text_height(struct bitmap *b, const char *s) {
+int bm_text_height(Bitmap *b, const char *s) {
 	int height = 1;
 	while(*s) {
 		if(*s == '\n') height++;
@@ -2573,7 +2575,7 @@ int bm_text_height(struct bitmap *b, const char *s) {
 	return height * 8;
 }
 
-void bm_putc(struct bitmap *b, int x, int y, char c) {
+void bm_putc(Bitmap *b, int x, int y, char c) {
 	int frow, fcol, byte, col;
 	int i, j;
 	if(c < 32 || c > 127) return;
@@ -2597,7 +2599,7 @@ void bm_putc(struct bitmap *b, int x, int y, char c) {
 	}
 }
 
-void bm_puts(struct bitmap *b, int x, int y, const char *text) {
+void bm_puts(Bitmap *b, int x, int y, const char *text) {
 	int xs = x;
 	while(text[0]) {
 		if(text[0] == '\n') {
@@ -2625,7 +2627,7 @@ void bm_puts(struct bitmap *b, int x, int y, const char *text) {
 	}
 }
 
-void bm_printf(struct bitmap *b, int x, int y, const char *fmt, ...) {
+void bm_printf(Bitmap *b, int x, int y, const char *fmt, ...) {
 	char buffer[256];
 	va_list arg;
 	va_start(arg, fmt);
@@ -2634,7 +2636,7 @@ void bm_printf(struct bitmap *b, int x, int y, const char *fmt, ...) {
 	bm_puts(b, x, y, buffer);
 }
 
-void bm_putcs(struct bitmap *b, int x, int y, int s, char c) {
+void bm_putcs(Bitmap *b, int x, int y, int s, char c) {
 	int frow, fcol, byte;
 	int i, j;
 	if(c < 32 || c > 127) return;
@@ -2655,7 +2657,7 @@ void bm_putcs(struct bitmap *b, int x, int y, int s, char c) {
 	}
 }
 
-void bm_putss(struct bitmap *b, int x, int y, int s, const char *text) {
+void bm_putss(Bitmap *b, int x, int y, int s, const char *text) {
 	int xs = x;
 	while(text[0]) {
 		if(text[0] == '\n') {
@@ -2683,7 +2685,7 @@ void bm_putss(struct bitmap *b, int x, int y, int s, const char *text) {
 	}
 }
 
-void bm_printfs(struct bitmap *b, int x, int y, int s, const char *fmt, ...) {
+void bm_printfs(Bitmap *b, int x, int y, int s, const char *fmt, ...) {
 	char buffer[256];
 	va_list arg;
 	va_start(arg, fmt);
