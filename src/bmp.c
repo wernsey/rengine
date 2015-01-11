@@ -3,7 +3,9 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdarg.h>
+#include <math.h>
 #include <ctype.h>
+#include <float.h>
 #include <assert.h>
 
 #ifdef USESDL
@@ -154,6 +156,7 @@ Bitmap *bm_load(const char *filename) {
 }
 
 static Bitmap *bm_load_bmp_fp(FILE *f);
+static Bitmap *bm_load_pcx_fp(FILE *f);
 #ifdef USEPNG
 static Bitmap *bm_load_png_fp(FILE *f);
 #endif
@@ -165,13 +168,15 @@ Bitmap *bm_load_fp(FILE *f) {
 	unsigned char magic[2];	
 
 	long start = ftell(f), 
-		isbmp = 0, ispng = 0, isjpg = 0;	
+		isbmp = 0, ispng = 0, isjpg = 0, ispcx = 0;	
 	/* Tries to detect the type of file by looking at the first bytes. */
 	if(fread(magic, sizeof magic, 1, f) == 1) {
 		if(magic[0] == 'B' && magic[1] == 'M') 
 			isbmp = 1;
 		else if(magic[0] == 0xFF && magic[1] == 0xD8)
 			isjpg = 1;
+		else if(magic[0] == 0x0A)
+			ispcx = 1;
 		else
 			ispng = 1; /* Assume PNG by default. 
 					JPG and BMP magic numbers are simpler */
@@ -190,6 +195,8 @@ Bitmap *bm_load_fp(FILE *f) {
 #else
 	(void)ispng;
 #endif
+	if(ispcx)
+		return bm_load_pcx_fp(f);
 	if(!isbmp) 
 		return NULL;
 	return bm_load_bmp_fp(f);
@@ -299,6 +306,7 @@ error:
 }
 
 static int bm_save_bmp(Bitmap *b, const char *fname);
+static int bm_save_pcx(Bitmap *b, const char *fname);
 #ifdef USEPNG
 static int bm_save_png(Bitmap *b, const char *fname);
 #endif
@@ -311,14 +319,15 @@ int bm_save(Bitmap *b, const char *fname) {
 	   if the filename contains ".jpg" save as JPG,
 		otherwise save as PNG */
 	char *lname = strdup(fname), *c, 
-		bmp = 0, jpg = 0, png = 0;
+		bmp = 0, jpg = 0, png = 0, pcx = 0;
 	for(c = lname; *c; c++)
 		*c = tolower(*c);
 	bmp = !!strstr(lname, ".bmp");
+	pcx = !!strstr(lname, ".pcx");
 	jpg = !!strstr(lname, ".jpg") || !!strstr(lname, ".jpeg");
-	png = !bmp && !jpg;
+	png = !bmp && !jpg && !pcx;
 	free(lname);
-	
+		
 #ifdef USEPNG
 	if(png)
 		return bm_save_png(b, fname);
@@ -331,6 +340,8 @@ int bm_save(Bitmap *b, const char *fname) {
 #else
 	(void)jpg;
 #endif	
+	if(pcx)
+		return bm_save_pcx(b, fname);
 	return bm_save_bmp(b, fname);
 }
 
@@ -684,6 +695,7 @@ static int bm_save_jpg(Bitmap *b, const char *fname) {
 */
 
 static Bitmap *bm_load_bmp_rw(SDL_RWops *rw);
+static Bitmap *bm_load_pcx_rw(SDL_RWops *rw);
 #  ifdef USEPNG
 static Bitmap *bm_load_png_rw(SDL_RWops *rw);
 #  endif
@@ -694,12 +706,14 @@ static Bitmap *bm_load_jpg_rw(SDL_RWops *rw);
 Bitmap *bm_load_rw(SDL_RWops *rw) {	
 	unsigned char magic[2];	
     long start = SDL_RWtell(rw);
-    long isbmp = 0, ispng = 0, isjpg = 0;
+    long isbmp = 0, ispng = 0, isjpg = 0, ispcx = 0;
     if(SDL_RWread(rw, magic, sizeof magic, 1) == 1) {
 		if(magic[0] == 'B' && magic[1] == 'M') 
 			isbmp = 1;
 		else if(magic[0] == 0xFF && magic[1] == 0xD8)
 			isjpg = 1;
+		else if(magic[0] == 0x0A)
+			ispcx = 1;
 		else
 			ispng = 1; /* Assume PNG by default. 
 					JPG and BMP magic numbers are simpler */
@@ -718,6 +732,8 @@ Bitmap *bm_load_rw(SDL_RWops *rw) {
 #  else
 	(void)ispng;
 #  endif
+	if(ispcx)
+		return bm_load_pcx_rw(rw);
 	if(isbmp) 
         return bm_load_bmp_rw(rw);
     return NULL;
@@ -1062,6 +1078,329 @@ static Bitmap *bm_load_jpg_rw(SDL_RWops *rw) {
 #  endif /* USEJPG */
 
 #endif /* USESDL */
+
+/* PCX support
+http://web.archive.org/web/20100206055706/http://www.qzx.com/pc-gpe/pcx.txt
+http://www.shikadi.net/moddingwiki/PCX_Format
+*/
+struct rbg_triplet {
+	unsigned char r, g, b;
+};
+
+struct pcx_header {
+	char manuf;
+	char version;
+	char encoding;
+	char bpp;
+	unsigned short xmin, ymin, xmax, ymax;
+	unsigned short vert_dpi, hori_dpi;
+	
+	union {
+		unsigned char palette[48];
+		struct rbg_triplet rgb[16];
+	};
+	
+	char reserved;
+	char planes;
+	unsigned short bytes_per_line;
+	unsigned short paltype;
+	unsigned short hscrsize, vscrsize;
+	char pad[54];
+};
+
+static Bitmap *bm_load_pcx_fp(FILE *f) {
+	struct pcx_header hdr;
+	Bitmap *b = NULL;
+	
+	struct rbg_triplet rgb[256];
+		
+	if(fread(&hdr, sizeof hdr, 1, f) != 1) {
+		/*fprintf(stderr, "Unable to read header\n");*/
+		return NULL;
+	}
+	if(hdr.manuf != 0x0A) {
+		/*fprintf(stderr, "Not a PCX file\n");*/
+		return NULL;
+	}
+	/*
+	printf("Version: %d\n", hdr.version);
+	printf("Encoding: %d\n", hdr.encoding);
+	printf("BPP: %d\n", hdr.bpp);
+	printf("Window: %d %d - %d %d\n", hdr.xmin, hdr.ymin, hdr.xmax, hdr.ymax);
+	printf("DPI: %d %d\n", hdr.vert_dpi, hdr.hori_dpi);
+	printf("planes %d; bytes_per_plane: %d\n", hdr.planes, hdr.bytes_per_line);
+	printf("paltype: %d\n", hdr.paltype);
+	*/
+	if(hdr.version != 5 || hdr.encoding != 1 || hdr.bpp != 8 || (hdr.planes != 1 && hdr.planes != 3)) {
+		/* TODO: We might wat to support these PCX types at a later stage. */
+		/*fprintf(stderr, "Unsupported PCX file type\n");*/
+		return NULL;
+	}
+	
+	if(hdr.planes == 1) {
+		long pos = ftell(f);
+		
+		fseek(f, -769, SEEK_END);
+		char pbyte;
+		if(fread(&pbyte, sizeof pbyte, 1, f) != 1) {
+			/*fprintf(stderr, "Unable to read pallete marker\n");*/
+			return NULL;
+		}
+		if(pbyte != 12) {
+			/*fprintf(stderr, "Pallete marker is not 12\n");*/
+			return NULL;
+		}
+		if(fread(&rgb, sizeof rgb[0], 256, f) != 256) {
+			/*fprintf(stderr, "Unable to read pallete\n");*/
+			return NULL;
+		}
+		
+		fseek(f, pos, SEEK_SET);
+	}
+	
+	b = bm_create(hdr.xmax - hdr.xmin + 1, hdr.ymax - hdr.ymin + 1);
+	
+	int y;
+	for(y = 0; y < b->h; y++) {
+		int p;
+		for(p = 0; p < hdr.planes; p++) {
+			int x = 0;
+			while(x < b->w) {
+				int cnt = 1;
+				int i = fgetc(f);
+				if(i == EOF)
+					goto read_error;
+				
+				if((i & 0xC0) == 0xC0) {
+					cnt = i & 0x3F;
+					i = fgetc(f);
+					if(i == EOF)
+						goto read_error;
+				}
+				if(hdr.planes == 1) {
+					int c = (rgb[i].r << 16) | (rgb[i].g << 8) | rgb[i].b; 
+					while(cnt--) {
+						bm_set(b, x++, y, c);
+					}
+				} else {
+					while(cnt--) {
+						int c = bm_get(b, x, y);
+						switch(p) {
+						case 0: c |= (i << 16); break;
+						case 1: c |= (i << 8); break;
+						case 2: c |= (i << 0); break;
+						}
+						bm_set(b, x++, y, c);
+					}
+				}
+			}
+		}
+	}
+	
+	return b;
+read_error:
+	/*fprintf(stderr, "Read error\n");*/
+	bm_free(b);
+	return NULL;	
+}
+
+#ifdef USESDL
+static Bitmap *bm_load_pcx_rw(SDL_RWops *rw) {
+	struct pcx_header hdr;
+	Bitmap *b = NULL;
+	
+	struct rbg_triplet rgb[256];
+		
+	if(SDL_RWread(rw, &hdr, sizeof hdr, 1) != 1) {
+		return NULL;
+	}
+	if(hdr.manuf != 0x0A) {
+		return NULL;
+	}
+	if(hdr.version != 5 || hdr.encoding != 1 || hdr.bpp != 8 || (hdr.planes != 1 && hdr.planes != 3)) {
+		return NULL;
+	}
+	
+	if(hdr.planes == 1) {
+		long pos = SDL_RWtell(rw);
+		
+		SDL_RWseek(rw, -769, RW_SEEK_END);
+		char pbyte;
+		if(SDL_RWread(rw, &pbyte, sizeof pbyte, 1) != 1) {
+			return NULL;
+		}
+		if(pbyte != 12) {
+			return NULL;
+		}
+		if(SDL_RWread(rw, &rgb, sizeof rgb[0], 256) != 256) {
+			return NULL;
+		}
+		
+		SDL_RWseek(rw, pos, SEEK_SET);
+	}
+	
+	b = bm_create(hdr.xmax - hdr.xmin + 1, hdr.ymax - hdr.ymin + 1);
+	
+	int y;
+	for(y = 0; y < b->h; y++) {
+		int p;
+		for(p = 0; p < hdr.planes; p++) {
+			int x = 0;
+			while(x < b->w) {
+				int cnt = 1;
+				char i;
+				if(SDL_RWread(rw, &i, sizeof i, 1) != 1) 
+					goto read_error;
+				
+				if((i & 0xC0) == 0xC0) {
+					cnt = i & 0x3F;
+					if(SDL_RWread(rw, &i, sizeof i, 1) != 1) 
+					goto read_error;
+				}
+				if(hdr.planes == 1) {
+					int c = (rgb[(int)i].r << 16) | (rgb[(int)i].g << 8) | rgb[(int)i].b; 
+					while(cnt--) {
+						bm_set(b, x++, y, c);
+					}
+				} else {
+					while(cnt--) {
+						int c = bm_get(b, x, y);
+						switch(p) {
+						case 0: c |= (i << 16); break;
+						case 1: c |= (i << 8); break;
+						case 2: c |= (i << 0); break;
+						}
+						bm_set(b, x++, y, c);
+					}
+				}
+			}
+		}
+	}
+	
+	return b;
+read_error:
+	bm_free(b);
+	return NULL;	
+}
+#endif /* USESDL */
+
+/* Returns the index of the color c in the PCX pallette.
+	If c is not in the palette, but *nentries is less than 256 a new
+	entry in the palette will be created, otherwise it will return the
+	colour in the palette closest to c.
+ */
+static int get_pcx_pal_idx(struct rbg_triplet rgb[], int *nentries, int c) {
+	int r = (c >> 16) & 0xFF;
+	int g = (c >> 8) & 0xFF;
+	int b = (c >> 0) & 0xFF;
+	
+	int i, mini = 0;
+	
+	double mindist = DBL_MAX;
+	for(i = 0; i < *nentries; i++) {
+		if(rgb[i].r == r && rgb[i].g == g && rgb[i].b == b) {
+			/* Found an exact match */
+			return i;
+		}
+		/* Compute the distance between c and the current palette entry */
+		int dr = rgb[i].r - r;
+		int dg = rgb[i].g - g;
+		int db = rgb[i].b - b;
+		double dist = sqrt(dr * dr + dg * dg + db * db);
+		if(dist < mindist) {
+			mindist = dist;
+			mini = i;
+		}
+	}
+	
+	if(*nentries < 256) {		
+		(*nentries)++;
+		i = *nentries;
+		rgb[i].r = r;
+		rgb[i].g = g;
+		rgb[i].b = b;
+		return i;
+	}
+	
+	return mini;
+}
+
+static int bm_save_pcx(Bitmap *b, const char *fname) {	
+	if(!b) 
+		return 0;
+	
+	FILE *f = fopen(fname, "wb");
+	if(!f) 
+		return 0;
+		
+	struct pcx_header hdr;
+	memset(&hdr, 0, sizeof hdr);
+	
+	hdr.manuf = 0x0A;
+	hdr.version = 5;
+	hdr.encoding = 1;
+	hdr.bpp = 8;
+	
+	hdr.xmin = 0;
+	hdr.ymin = 0;
+	hdr.xmax = b->w - 1;
+	hdr.ymax = b->h - 1;
+	
+	hdr.vert_dpi = b->h;
+	hdr.hori_dpi = b->w;
+	
+	hdr.reserved = 0;
+	hdr.planes = 1;
+	hdr.bytes_per_line = hdr.xmax - hdr.xmin + 1;
+	hdr.paltype = 1;
+	hdr.hscrsize = 0;
+	hdr.vscrsize = 0;
+	
+	struct rbg_triplet rgb[256];
+	memset(&rgb, 0, sizeof rgb);
+	
+	if(fwrite(&hdr, sizeof hdr, 1, f) != 1) {
+		fclose(f);
+		return 0;
+	}
+	
+	int nentries = 0;
+	int y;
+	for(y = 0; y < b->h; y++) {
+		int x = 0;
+		while(x < b->w) {
+			int cnt = 1;
+			int c = bm_get(b, x++, y);			
+			while(x < b->w && cnt < 63) {
+				int n = bm_get(b, x, y);
+				if(c != n) 
+					break;
+				x++;
+				cnt++;				
+			}
+			
+			int i = get_pcx_pal_idx(rgb, &nentries, c);
+			if(cnt == 1 && i < 192) {
+				fputc(i, f);
+			} else {
+				fputc(0xC0 | cnt, f);
+				fputc(i, f);
+			}
+		}
+	}
+	
+	fputc(12, f);	
+	if(fwrite(rgb, sizeof rgb[0], 256, f) != 256) {
+		goto write_error;
+	}
+	
+	fclose(f);
+	return 1;
+	
+write_error:
+	fclose(f);
+	return 0;	
+}
 
 Bitmap *bm_copy(Bitmap *b) {
 	Bitmap *out = bm_create(b->w, b->h);

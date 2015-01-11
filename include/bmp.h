@@ -72,14 +72,14 @@ void bm_free(Bitmap *b);
 /*@ Bitmap *bm_load(const char *filename)
  *# Loads a bitmap file {{filename}} into a bitmap structure.\n
  *# It tries to detect the file type from the first bytes in the file.
- *# BMP support is always enabled, while JPG and PNG support is optional.\n
+ *# BMP and PCX support is always enabled, while JPG and PNG support is optional.\n
  *# Returns NULL if the file could not be loaded.
  */
 Bitmap *bm_load(const char *filename);
 
 /*@ Bitmap *bm_load_fp(FILE *f)
  *# Loads a bitmap from a {{FILE*}} that's already open.\n
- *# BMP support is always enabled, while JPG and PNG support is optional.\n
+ *# BMP and PCX support is always enabled, while JPG and PNG support is optional.\n
  *# Returns {{NULL}} if the file could not be loaded.
  */
 Bitmap *bm_load_fp(FILE *f);
@@ -98,8 +98,8 @@ Bitmap *bm_load_rw(SDL_RWops *file);
 
 /*@ int bm_save(Bitmap *b, const char *fname)
  *# Saves the bitmap {{b}} to a BMP, JPG or PNG file named {{fname}}.\n
- *# If the filename contains {{".bmp"}} or {{".jpg"}} the file is 
- *# saved as a BMP or JPG, otherwise the PNG format is the default.
+ *# If the filename contains {{".bmp"}}, {{".pcx"}} or {{".jpg"}} the file is 
+ *# saved as a BMP, PCX or JPG, otherwise the PNG format is the default.
  *# It can only save to JPG or PNG if JPG or PNG support is enabled
  *# at compile time, otherwise it saves to a BMP file.\n
  *# Returns 1 on success, 0 on failure.
