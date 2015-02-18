@@ -1363,8 +1363,23 @@ static int bm_save_pcx(Bitmap *b, const char *fname) {
 		fclose(f);
 		return 0;
 	}
-	
 	int nentries = 0;
+	
+	/* This is my poor man's color quantization hack:
+		Sample 128 random pixels from the bitmap and
+		generate a palette from that. The remainder of
+		the palette can be generated as the save goes
+		on.
+		Otherwise the palette is generated only from the
+		first 256 unique pixels in the image, which my
+		have undesirable results.
+	*/
+	int q;
+	for(q = 0; q < 128; q++) {
+		int c = bm_get(b, rand()%b->w, rand()%b->h);
+		get_pcx_pal_idx(rgb, &nentries, c);
+	}
+	
 	int y;
 	for(y = 0; y < b->h; y++) {
 		int x = 0;
