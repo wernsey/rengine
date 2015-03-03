@@ -1,10 +1,11 @@
-/*! bmp.h
+/*1 bmp.h
  *# Low-level routines to manipulate bitmap graphic files.\n
- *# It supports BMP files without any third party dependencies.
- *# PNG support is optional through libpng (http://www.libpng.org/pub/png/libpng.html). Use -DUSEPNG when compiling.
- *# JPG support is optional through libjpeg (http://www.ijg.org/). Use -DUSEJPG when compiling.
- *# 
- *@ References:
+ *{
+ ** It supports BMP and PCX files without any third party dependencies.
+ ** PNG support is optional through libpng (http://www.libpng.org/pub/png/libpng.html). Use {{-DUSEPNG}} when compiling.
+ ** JPG support is optional through libjpeg (http://www.ijg.org/). Use {{-DUSEJPG}} when compiling.
+ *} 
+ *2 References
  *{
  ** http://en.wikipedia.org/wiki/BMP_file_format
  ** http://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
@@ -14,13 +15,13 @@
  ** http://web.archive.org/web/20110706093850/http://free.pages.at/easyfilter/bresenham.html
  ** http://damieng.com/blog/2011/02/20/typography-in-8-bits-system-fonts
  *} 
- *=
+ *2 License
  *[
  *# Author: Werner Stoop
  *# This is free and unencumbered software released into the public domain.
  *# http://unlicense.org/
  *]
- *=
+ *2 API
  */
  
 #ifndef BMP_H
@@ -108,8 +109,8 @@ int bm_save(Bitmap *b, const char *fname);
 
 /*@ Bitmap *bm_bind(int w, int h, unsigned char *data)
  *# Creates a bitmap structure bound to an existing array
- *# of pixel data (for example, a SDL surface). The {{data}}
- *# Must be an array of {{w}} * {{h}} * 4 bytes of pixel data.
+ *# of pixel data (for example, an OpenGL texture or a SDL surface). The 
+ *# {{data}} must be an array of {{w}} * {{h}} * 4 bytes of pixel data.
  *# The returned {{bitmap*}} must be deallocated with {{bm_unbind()}}
  *# rather than {{bm_free()}}
  */
@@ -258,6 +259,11 @@ int bm_picker(Bitmap *bm, int x, int y);
  *# Returns 1 if the colour at <x,y> on the bitmap is (r,g,b), 0 otherwise
  */
 int bm_color_is(Bitmap *bm, int x, int y, int r, int g, int b); 
+
+/*@ double bm_cdist(int color1, int color2)
+ # Returns the distance between two colors in the RGB color space.
+ */
+double bm_cdist(int color1, int color2);
 
 /*@ int bm_lerp(int color1, int color2, double t)
  *# Computes the color that is a distance {{t}} along the line between 
@@ -419,6 +425,20 @@ void bm_bezier3(Bitmap *b, int x0, int y0, int x1, int y1, int x2, int y2);
  */
 void bm_fill(Bitmap *b, int x, int y);
 
+/*@ void bm_reduce_palette(Bitmap *b, int palette[], size_t n)
+ *# Reduces the colours in the bitmap {{b}} to the colors in {{palette}}
+ *# by applying Floyd-Steinberg dithering.\n
+ *# {{palette}} is an array of integers containing the new palette and
+ *# {{n}} is the number of entries in the palette.
+ */
+void bm_reduce_palette(Bitmap *b, int palette[], size_t n);
+
+/*2 XBM font routines
+ *# {{bmp.h}} has rudimetary support for drawing text using fonts in XBM bitmaps.\n
+ *# There are a number of built-in fonts available which is placed in the
+ *# {{fonts/}} directory.\n
+ *# If you don't wish to use this, compile with the {{-DNO_FONTS}} flag.
+ */
 /*@ bm_set_font(Bitmap *b, const unsigned char *font, int spacing)
  *# Changes the font used to render text on the bitmap. {{font}} should be
  *# an XBM char array that should match the layout of font.xbm.
@@ -428,6 +448,7 @@ void bm_fill(Bitmap *b, int x, int y);
  */
 void bm_set_font(Bitmap *b, const unsigned char *font, int spacing);
 
+#ifndef NO_FONTS
 /*@ enum bm_fonts
  *# Built-in fonts that can be set with {{bm_std_font()}}
  *{
@@ -466,6 +487,7 @@ int bm_font_index(const char *name);
  *# by {{index}}, which should fall in the range of the {{enum bm_fonts}}.
  */
 const char *bm_font_name(int index);
+#endif
 
 /*@ int bm_text_width(Bitmap *b, const char *s)
  *# Returns the width in pixels of a string of text.
@@ -478,39 +500,20 @@ int bm_text_width(Bitmap *b, const char *s);
 int bm_text_height(Bitmap *b, const char *s);
 
 /*@ void bm_putc(Bitmap *b, int x, int y, char c)
- *# Draws a single ASCII character {{c}} at position x,y on the bitmap.
+ *# Draws a single ASCII character {{c}} at position x,y on the bitmap {{b}}.
  */
 void bm_putc(Bitmap *b, int x, int y, char c);
 
 /*@ void bm_puts(Bitmap *b, int x, int y, const char *s)
- *# Prints the string {{s}} at position x,y on the bitmap b.
+ *# Prints the string {{s}} at position {{x,y}} on the bitmap {{b}}.
  */
 void bm_puts(Bitmap *b, int x, int y, const char *text);
 
 /*@ void bm_printf(Bitmap *b, int x, int y, const char *fmt, ...)
- *# Prints a printf()-formatted style string to the bitmap b,
- *# {{fmt}} is a {{printf()}}-style format string (It uses vsnprintf() internally).
+ *# Prints a {{printf()}}-formatted style string to the bitmap {{b}},
+ *# {{fmt}} is a {{printf()}}-style format string (It uses {{vsnprintf()}} internally).
  */
 void bm_printf(Bitmap *b, int x, int y, const char *fmt, ...);
-
-/*@ void bm_putcs(Bitmap *b, int x, int y, int s, char c)
- *# Draws a single ASCII character {{c}} at position x,y on the bitmap,
- *# scaled by 2^s
- */
-void bm_putcs(Bitmap *b, int x, int y, int s, char c);
-
-/*@ void bm_putss(Bitmap *b, int x, int y, int s, const char *text)
- *# Prints the string {{s}} at position x,y on the bitmap b,
- *# scaled by 2^s.
- */
-void bm_putss(Bitmap *b, int x, int y, int s, const char *text);
-
-/*@ void bm_printfs(Bitmap *b, int x, int y, int s, const char *fmt, ...)
- *# Prints a printf()-formatted style string to the bitmap b,,
- *# scaled by 2^s
- *# {{fmt}} is a {{printf()}}-style format string (It uses vsnprintf() internally).
- */
-void bm_printfs(Bitmap *b, int x, int y, int s, const char *fmt, ...);
 
 #if defined(__cplusplus) || defined(c_plusplus)
 } /* extern "C" */

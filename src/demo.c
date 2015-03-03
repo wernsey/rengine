@@ -50,9 +50,9 @@ static int dem_update(struct game_state *s, struct bitmap *bmp) {
 	
     bm_std_font(bmp, BM_FONT_NORMAL);
 	bm_set_color_s(bmp, "grey");
-	bm_printfs(bmp, 72, 37, 2, "Rengine");
+	bm_printf(bmp, 72, 37, "Rengine");
 	bm_set_color_s(bmp, "white");
-	bm_printfs(bmp, 70, 35, 2, "Rengine");
+	bm_printf(bmp, 70, 35, "Rengine");
 	
     bm_std_font(bmp, BM_FONT_SMALL);
     bm_puts(bmp, 10, 160, about_text);

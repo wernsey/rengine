@@ -55,6 +55,7 @@ TODO:
 	function.
 */
 
+#ifndef NO_FONTS
 /* I basically drew font.xbm from the fonts at.
  * http://damieng.com/blog/2011/02/20/typography-in-8-bits-system-fonts
  * The Apple ][ font turned out to be the nicest normal font.
@@ -68,6 +69,7 @@ TODO:
 #include "fonts/small.xbm"
 #include "fonts/smallinv.xbm"
 #include "fonts/thick.xbm"
+#endif
 
 #define FONT_WIDTH 96
 
@@ -138,7 +140,12 @@ Bitmap *bm_create(int w, int h) {
 	b->data = malloc(BM_BLOB_SIZE(b));
 	memset(b->data, 0x00, BM_BLOB_SIZE(b));
 	
+#ifndef NO_FONTS
 	bm_std_font(b, BM_FONT_NORMAL);
+#else
+	b->font = NULL;
+#endif
+
 	bm_set_color(b, 255, 255, 255);
 	bm_set_alpha(b, 255);
 	
@@ -1115,11 +1122,9 @@ static Bitmap *bm_load_pcx_fp(FILE *f) {
 	struct rbg_triplet rgb[256];
 		
 	if(fread(&hdr, sizeof hdr, 1, f) != 1) {
-		/*fprintf(stderr, "Unable to read header\n");*/
 		return NULL;
 	}
 	if(hdr.manuf != 0x0A) {
-		/*fprintf(stderr, "Not a PCX file\n");*/
 		return NULL;
 	}
 	/*
@@ -1133,7 +1138,6 @@ static Bitmap *bm_load_pcx_fp(FILE *f) {
 	*/
 	if(hdr.version != 5 || hdr.encoding != 1 || hdr.bpp != 8 || (hdr.planes != 1 && hdr.planes != 3)) {
 		/* TODO: We might wat to support these PCX types at a later stage. */
-		/*fprintf(stderr, "Unsupported PCX file type\n");*/
 		return NULL;
 	}
 	
@@ -1143,15 +1147,12 @@ static Bitmap *bm_load_pcx_fp(FILE *f) {
 		fseek(f, -769, SEEK_END);
 		char pbyte;
 		if(fread(&pbyte, sizeof pbyte, 1, f) != 1) {
-			/*fprintf(stderr, "Unable to read pallete marker\n");*/
 			return NULL;
 		}
 		if(pbyte != 12) {
-			/*fprintf(stderr, "Pallete marker is not 12\n");*/
 			return NULL;
 		}
 		if(fread(&rgb, sizeof rgb[0], 256, f) != 256) {
-			/*fprintf(stderr, "Unable to read pallete\n");*/
 			return NULL;
 		}
 		
@@ -1199,7 +1200,6 @@ static Bitmap *bm_load_pcx_fp(FILE *f) {
 	
 	return b;
 read_error:
-	/*fprintf(stderr, "Read error\n");*/
 	bm_free(b);
 	return NULL;	
 }
@@ -1380,6 +1380,10 @@ static int bm_save_pcx(Bitmap *b, const char *fname) {
 		get_pcx_pal_idx(rgb, &nentries, c);
 	}
 	
+	/* FIXME: We can use Floyd–Steinberg dithering to get
+	better results, but it will require some rework of
+	the get_pcx_pal_idx() function. 
+	See bm_reduce_palette() below. */
 	int y;
 	for(y = 0; y < b->h; y++) {
 		int x = 0;
@@ -1448,7 +1452,12 @@ Bitmap *bm_bind(int w, int h, unsigned char *data) {
 		
 	b->data = data;
 	
+#ifndef NO_FONTS
 	bm_std_font(b, BM_FONT_NORMAL);
+#else
+	b->font = NULL;
+#endif
+
 	bm_set_color(b, 255, 255, 255);
 	bm_set_alpha(b, 255);
 	
@@ -1476,7 +1485,6 @@ void bm_flip_vertical(Bitmap *b) {
 	}
 	free(trow);
 }
-
 
 int bm_get(Bitmap *b, int x, int y) {	
 	assert(x >= 0 && x < b->w && y >= 0 && y < b->h);
@@ -2382,6 +2390,18 @@ int bm_color_is(Bitmap *bm, int x, int y, int r, int g, int b) {
 	return BM_GETR(bm,x,y) == r && BM_GETG(bm,x,y) == g && BM_GETB(bm,x,y) == b;
 }
 
+double bm_cdist(int color1, int color2) {
+	int r1, g1, b1;
+	int r2, g2, b2;
+	int dr, dg, db;
+	r1 = (color1 >> 16) & 0xFF; g1 = (color1 >> 8) & 0xFF; b1 = (color1 >> 0) & 0xFF;
+	r2 = (color2 >> 16) & 0xFF; g2 = (color2 >> 8) & 0xFF; b2 = (color2 >> 0) & 0xFF;
+	dr = r1 - r2;
+	dg = g1 - g2;
+	db = b1 - b2;
+	return sqrt(dr * dr + dg * dg + db * db);
+}
+
 int bm_lerp(int color1, int color2, double t) {
 	int r1, g1, b1;
 	int r2, g2, b2;
@@ -2840,6 +2860,60 @@ void bm_fill(Bitmap *b, int x, int y) {
 	free(queue);
 }
 
+static void fs_add_factor(Bitmap *b, int x, int y, int er, int eg, int eb, double f) {
+	if(x < 0 || x >= b->w || y < 0 || y >= b->h)
+		return;
+	int c = bm_get(b, x, y);
+	
+	int R = ((c >> 16) & 0xFF) + f * er;
+	int G = ((c >> 8) & 0xFF) + f * eg;
+	int B = ((c >> 0) & 0xFF) + f * eb;
+	if(R > 255) R = 255;
+	if(R < 0) R = 0;
+	if(G > 255) G = 255;
+	if(G < 0) G = 0;
+	if(B > 255) B = 255;
+	if(B < 0) B = 0;
+	
+	bm_set_rgb(b, x, y, R, G, B);
+}
+
+void bm_reduce_palette(Bitmap *b, int palette[], size_t n) {
+	/* Floyd–Steinberg dithering
+		http://en.wikipedia.org/wiki/Floyd%E2%80%93Steinberg_dithering 
+	*/
+	int x, y;
+	if(!b) 
+		return;
+	for(y = 0; y < b->h; y++) {
+		for(x = 0; x < b->w; x++) {
+			int i, m = 0;
+			int oldpixel = bm_get(b, x, y);		
+			double md = bm_cdist(oldpixel, palette[m]);	
+			for(i = 1; i < n; i++) {
+				double d = bm_cdist(oldpixel, palette[i]);
+				if(d < md) {
+					md = d;
+					m = i;
+				}
+			}
+			int newpixel = palette[m];
+			
+			bm_set(b, x, y, newpixel);
+			
+			int r1 = (oldpixel >> 16) & 0xFF, g1 = (oldpixel >> 8) & 0xFF, b1 = (oldpixel >> 0) & 0xFF;
+			int r2 = (newpixel >> 16) & 0xFF, g2 = (newpixel >> 8) & 0xFF, b2 = (newpixel >> 0) & 0xFF;
+			int er = r1 - r2, eg = g1 - g2, eb = b1 - b2;
+
+			fs_add_factor(b, x + 1, y    , er, eg, eb, 7.0 / 16.0);
+			fs_add_factor(b, x - 1, y + 1, er, eg, eb, 3.0 / 16.0);
+			fs_add_factor(b, x    , y + 1, er, eg, eb, 5.0 / 16.0);
+			fs_add_factor(b, x + 1, y + 1, er, eg, eb, 1.0 / 16.0);
+			
+		}
+	}
+}
+
 void bm_set_font(Bitmap *b, const unsigned char *font, int spacing) {
 	if(font)
 		b->font = font;
@@ -2847,6 +2921,7 @@ void bm_set_font(Bitmap *b, const unsigned char *font, int spacing) {
 		b->font_spacing = spacing;
 }
 
+#ifndef NO_FONTS
 void bm_std_font(Bitmap *b, enum bm_fonts font) {
 	switch(font) {
 		case BM_FONT_NORMAL  : bm_set_font(b, normal_bits, 6); break;
@@ -2900,6 +2975,7 @@ const char *bm_font_name(int index) {
 	}
 	return font_names[0].s;
 }
+#endif
 
 int bm_text_width(Bitmap *b, const char *s) {
 	int len = 0, max_len = 0;
@@ -2932,7 +3008,7 @@ int bm_text_height(Bitmap *b, const char *s) {
 void bm_putc(Bitmap *b, int x, int y, char c) {
 	int frow, fcol, byte, col;
 	int i, j;
-	if(c < 32 || c > 127) return;
+	if(!b->font || c < 32 || c > 127) return;
 	c -= 32;
 	fcol = c >> 3;
 	frow = c & 0x7;
@@ -2955,6 +3031,7 @@ void bm_putc(Bitmap *b, int x, int y, char c) {
 
 void bm_puts(Bitmap *b, int x, int y, const char *text) {
 	int xs = x;
+	if(!b->font) return;
 	while(text[0]) {
 		if(text[0] == '\n') {
 			y += 8;
@@ -2983,71 +3060,10 @@ void bm_puts(Bitmap *b, int x, int y, const char *text) {
 
 void bm_printf(Bitmap *b, int x, int y, const char *fmt, ...) {
 	char buffer[256];
+	if(!b->font) return;
 	va_list arg;
 	va_start(arg, fmt);
   	vsnprintf(buffer, sizeof buffer, fmt, arg);
   	va_end(arg);
 	bm_puts(b, x, y, buffer);
 }
-
-void bm_putcs(Bitmap *b, int x, int y, int s, char c) {
-	int frow, fcol, byte;
-	int i, j;
-	if(c < 32 || c > 127) return;
-	c -= 32;
-	fcol = c >> 3;
-	frow = c & 0x7;
-	
-	for(j = 0; j < (8 << s) && y + j < b->clip.y1; j++) {
-		byte = frow * FONT_WIDTH + fcol + (j >> s) * (FONT_WIDTH >> 3);		
-		if(y + j >= b->clip.y0) {
-			char bits = b->font[byte];
-			for(i = 0; i < (8 << s) && x + i < b->clip.x1; i++) {
-				if(x + i >= b->clip.x0 && !(bits & (1 << (i >> s)))) {
-					BM_SET(b, x + i, y + j, b->r, b->g, b->b, b->a);
-				}
-			}
-		}
-	}
-}
-
-void bm_putss(Bitmap *b, int x, int y, int s, const char *text) {
-	int xs = x;
-	while(text[0]) {
-		if(text[0] == '\n') {
-			y += 8 << s;
-			x = xs;
-		} else if(text[0] == '\t') {
-			/* I briefly toyed with the idea of having tabs line up,
-			 * but it doesn't really make sense because
-			 * this isn't exactly a character based terminal.
-			 */
-			x += b->font_spacing << s;
-		} else if(text[0] == '\r') {
-			/* why would anyone find this useful? */
-			x = xs;
-		} else {
-			bm_putcs(b, x, y, s, text[0]);
-			x += b->font_spacing << s;
-		}
-		text++;
-		if(y > b->h) { 
-			/* I used to check x >= b->w as well,
-			but it doesn't take \n's into account */
-			return;
-		}
-	}
-}
-
-void bm_printfs(Bitmap *b, int x, int y, int s, const char *fmt, ...) {
-	char buffer[256];
-	va_list arg;
-	va_start(arg, fmt);
-  	vsnprintf(buffer, sizeof buffer, fmt, arg);
-  	va_end(arg);
-	if(s > 0)
-		bm_putss(b, x, y, s, buffer);
-	else
-		bm_puts(b, x, y, buffer);
-}
-
