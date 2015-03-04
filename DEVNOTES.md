@@ -16,6 +16,13 @@ See here: http://wiki.libsdl.org/SDL_GetKeyboardState
 
 ## Game
 
+Integrate FreeType fonts with the rest of the application. The files `bmpfont.c`
+and `bmpfont.h` already implements the ability to load and render FreeType fonts
+on a bitmap, but the API is not exposed elsewhere.
+
+Also, rendering FreeType fonts to the bitmap does not respect the bitmap's
+clipping rectangle.
+
 Allow the using of bitmap cursors.
 
 ~~The scheme of pushing/popping states has some implications on the
