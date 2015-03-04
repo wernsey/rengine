@@ -22,6 +22,7 @@
 #include "log.h"
 #include "gamedb.h"
 #include "sound.h"
+#include "bmpfont.h"
 
 /* Some Defaults *************************************************/
 
@@ -421,6 +422,11 @@ start_demo:
 	if(!init(appTitle, fullscreen | borderless | resizable)) {
 		return 1;
 	}
+	
+	if(!bmf_init()){	
+        rlog("Quiting; Unable to start FreeType font library");
+        return 1;
+	}
 
     assert(gs);
 	rlog("Entering initial state...");
@@ -428,7 +434,7 @@ start_demo:
         rlog("Quiting, because of earlier problems with the initial state");
         return 1;
     }
-
+	
     frameStart = SDL_GetTicks();
 
 	rlog("Event loop starting...");
@@ -463,6 +469,8 @@ start_demo:
 
 	re_clean_up();
 
+	bmf_deinit();
+	
 	gdb_save("dump.db"); /* For testing the game database functionality. Remove later. */
 
 	gdb_close();
@@ -481,6 +489,7 @@ const char *about_text =
 "libpng (c) Contributing Authors and Group 42, Inc.\n"
 "zlib (c) 1995-2013 Jean-loup Gailly and Mark Adler\n"
 "libjpeg (c) 1991-2014, Thomas G. Lane, Guido Vollbeding\n"
+"FreeType (c) 1996-2002, 2006 by David Turner,\n    Robert Wilhelm, and Werner Lemberg\n"
 "FLTK project (http://www.fltk.org)"
 ;
 

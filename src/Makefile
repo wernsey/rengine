@@ -21,6 +21,9 @@ INCLUDE_PATH = -I /usr/local/include -I ../include -I ..
 CFLAGS += `sdl2-config --cflags` $(INCLUDE_PATH) -DUSESDL -DUSEPNG -DUSEJPG
 LDFLAGS += -lSDL2_mixer -lpng -lz -ljpeg
 
+CFLAGS += `freetype-config --cflags`
+LDFLAGS += `freetype-config --libs`
+
 # Different executables, and -lopengl32 is required for Windows
 ifeq ($(OS),Windows_NT)
 GAME_BIN = ../bin/game.exe
@@ -41,7 +44,7 @@ EXECUTABLES = $(GAME_BIN) $(PAKR_BIN)
 SOURCES= bmp.c game.c ini.c utils.c pak.c \
 	states.c demo.c resources.c musl.c mustate.c hash.c \
 	lexer.c tileset.c map.c json.c luastate.c log.c \
-	gamedb.c sound.c paths.c mappings.c \
+	gamedb.c sound.c paths.c mappings.c bmpfont.c \
     lua/ls_audio.c lua/ls_game.c lua/ls_map.c lua/ls_gamedb.c \
     lua/ls_bmp.c lua/ls_gfx.c lua/ls_input.c \
 	base.x.c 
@@ -81,12 +84,14 @@ demo.o: demo.c ../include/bmp.h ../include/states.h \
 game.o: game.c ../include/bmp.h \
  ../include/ini.h ../include/game.h \
  ../include/utils.h ../include/states.h ../include/resources.h \
- ../include/log.h ../include/gamedb.h ../include/sound.h
+ ../include/log.h ../include/gamedb.h ../include/sound.h \
+ ../include/bmpfont.h
 hash.o: hash.c ../include/hash.h
 ini.o: ini.c ../include/ini.h \
  ../include/utils.h
 json.o: json.c ../include/json.h ../include/lexer.h \
  ../include/hash.h ../include/utils.h
+bmpfont.o: bmpfont.c ../include/bmpfont.h
 lexer.o: lexer.c ../include/lexer.h
 luop.o: luop.c 
 map.o: ../src/map.c ../include/tileset.h \

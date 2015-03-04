@@ -55,7 +55,7 @@ static int dem_update(struct game_state *s, struct bitmap *bmp) {
 	bm_printf(bmp, 70, 35, "Rengine");
 	
     bm_std_font(bmp, BM_FONT_SMALL);
-    bm_puts(bmp, 10, 160, about_text);
+    bm_puts(bmp, 10, 140, about_text);
     
 	bm_maskedblit(bmp, (bmp->w - dummy->w)>>1, (bmp->h - dummy->h)>>1, dummy, 0, 0, dummy->w, dummy->h);
     
