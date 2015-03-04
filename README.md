@@ -103,6 +103,7 @@ Here is a summary of the licenses of Rengine's 3rd party dependencies:
 * libpng is licensed under the [libpng license](http://en.wikipedia.org/wiki/Libpng_License)
 * zlib is licensed under the [zlib license](http://en.wikipedia.org/wiki/Zlib_license).
 * libjpeg uses a custom free software license.
+* FreeType uses a [BSD-style license](http://git.savannah.gnu.org/cgit/freetype/freetype2.git/tree/docs/FTL.TXT)
 * FLTK is provided under the terms of the LGPL with an exception for
     static linking.
 
