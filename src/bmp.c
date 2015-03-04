@@ -140,10 +140,9 @@ Bitmap *bm_create(int w, int h) {
 	b->data = malloc(BM_BLOB_SIZE(b));
 	memset(b->data, 0x00, BM_BLOB_SIZE(b));
 	
+	b->font = NULL;
 #ifndef NO_FONTS
 	bm_std_font(b, BM_FONT_NORMAL);
-#else
-	b->font = NULL;
 #endif
 
 	bm_set_color(b, 255, 255, 255);
@@ -1458,10 +1457,9 @@ Bitmap *bm_bind(int w, int h, unsigned char *data) {
 		
 	b->data = data;
 	
+	b->font = NULL;
 #ifndef NO_FONTS
 	bm_std_font(b, BM_FONT_NORMAL);
-#else
-	b->font = NULL;
 #endif
 
 	bm_set_color(b, 255, 255, 255);
