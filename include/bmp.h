@@ -30,7 +30,7 @@
 #if defined(__cplusplus) || defined(c_plusplus)
 extern "C" {
 #endif
- 
+
 /*@ typedef struct bitmap Bitmap
  *# Structure containing a bitmap image.
  */
@@ -44,11 +44,8 @@ typedef struct bitmap {
 	/* Color for the pen, of the canvas */
 	unsigned char r,g,b,a;
 	
-	/* XBM font. See font.xbm */
-	const unsigned char *font;
-	
-	/* The width of eac character in the font */
-	int font_spacing;
+	/* Font object for rendering text */
+	struct bitmap_font *font;
 	
 	/* Clipping Rectangle 
 	 * (x0,y0) is inclusive.
@@ -131,7 +128,9 @@ void bm_rebind(Bitmap *b, unsigned char *data);
 void bm_unbind(Bitmap *b);
 
 /*@ Bitmap *bm_copy(Bitmap *b)
- *# Creates a duplicate of the bitmap structure 
+ *# Creates a duplicate of the bitmap structure.\n
+ *# Caveat: Font information is not copied and must be set on the copy before
+ *# text can be drawn on it.
  */
 Bitmap *bm_copy(Bitmap *b);
 
@@ -342,6 +341,18 @@ Bitmap *bm_resample_bcub(const Bitmap *in, int nw, int nh);
  */
 void bm_swap_colour(Bitmap *b, unsigned char sR, unsigned char sG, unsigned char sB, unsigned char dR, unsigned char dG, unsigned char dB);
 
+/*@ void bm_reduce_palette(Bitmap *b, int palette[], size_t n)
+ *# Reduces the colours in the bitmap {{b}} to the colors in {{palette}}
+ *# by applying Floyd-Steinberg dithering.\n
+ *# {{palette}} is an array of integers containing the new palette and
+ *# {{n}} is the number of entries in the palette.
+ */
+void bm_reduce_palette(Bitmap *b, int palette[], size_t n);
+
+/*2 Drawing Primitives
+ *# {{bmp.h}} provides these methods for drawing graphics primitives.
+ */
+
 /*@ int bm_width(Bitmap *b)
  *# Retrieves the width of the bitmap {{b}}
  */
@@ -425,32 +436,79 @@ void bm_bezier3(Bitmap *b, int x0, int y0, int x1, int y1, int x2, int y2);
  */
 void bm_fill(Bitmap *b, int x, int y);
 
-/*@ void bm_reduce_palette(Bitmap *b, int palette[], size_t n)
- *# Reduces the colours in the bitmap {{b}} to the colors in {{palette}}
- *# by applying Floyd-Steinberg dithering.\n
- *# {{palette}} is an array of integers containing the new palette and
- *# {{n}} is the number of entries in the palette.
+/*2 Font routines
  */
-void bm_reduce_palette(Bitmap *b, int palette[], size_t n);
+ 
+/*@ typedef struct bitmap_font BmFont
+ *# Structure that represents the details about a font.
+ *{
+ ** {{const char *type}} - a text description of the type of font
+ ** {{int (*puts)(Bitmap *b, int x, int y, const char *text)}} -
+ *# Pointer to the structure that will actually render the text.
+ ** {{void (*dtor)(struct bitmap_font *font)}} -
+ *# Destructor that will be used to delete the font if the bitmap is deleted
+ *# or another font chosen.
+ ** {{int (*width)(struct bitmap_font *font)}} - Function that returns the
+ *# width (in pixels) of a single character in the font.
+ ** {{int (*height)(struct bitmap_font *font)}} - Function that returns the
+ *# height (in pixels) of a single character in the font.
+ ** {{void *data}} - Additonal data that may be required by the font.
+ *}
+ */
+typedef struct bitmap_font {	
+	const char *type;
+	int (*puts)(Bitmap *b, int x, int y, const char *text);
+	void (*dtor)(struct bitmap_font *font);
+	int (*width)(struct bitmap_font *font);
+	int (*height)(struct bitmap_font *font);	
+	void *data;
+} BmFont; 
+ 
+/*@ bm_set_font(Bitmap *b, , BmFont *font)
+ *# Changes the font used to render text on the bitmap.
+ */
+void bm_set_font(Bitmap *b, BmFont *font);
 
-/*2 XBM font routines
- *# {{bmp.h}} has rudimetary support for drawing text using fonts in XBM bitmaps.\n
- *# There are a number of built-in fonts available which is placed in the
- *# {{fonts/}} directory.\n
- *# If you don't wish to use this, compile with the {{-DNO_FONTS}} flag.
+/*@ int bm_text_width(Bitmap *b, const char *s)
+ *# Returns the width in pixels of a string of text.
  */
-/*@ bm_set_font(Bitmap *b, const unsigned char *font, int spacing)
- *# Changes the font used to render text on the bitmap. {{font}} should be
- *# an XBM char array that should match the layout of font.xbm.
- *# {{spacing}} is the width of the characters in pixels (typically 6, 7 or 8).
- *# If you only want to change the spacing, set {{font}} to {{NULL}}.
- *# If you want to keep the current spacing, set it to {{0}}
+int bm_text_width(Bitmap *b, const char *s);
+
+/*@ int bm_text_height(Bitmap *b, const char *s)
+ *# returns the height in pixels of a string of text.
  */
-void bm_set_font(Bitmap *b, const unsigned char *font, int spacing);
+int bm_text_height(Bitmap *b, const char *s);
+
+/*@ void bm_puts(Bitmap *b, int x, int y, const char *s)
+ *# Prints the string {{s}} at position {{x,y}} on the bitmap {{b}}.
+ */
+int bm_puts(Bitmap *b, int x, int y, const char *text);
+
+/*@ void bm_printf(Bitmap *b, int x, int y, const char *fmt, ...)
+ *# Prints a {{printf()}}-formatted style string to the bitmap {{b}},
+ *# {{fmt}} is a {{printf()}}-style format string (It uses {{vsnprintf()}} internally).
+ */
+int bm_printf(Bitmap *b, int x, int y, const char *fmt, ...);
+
+/*3 XBM Font Functions
+ *# {{bmp.h}} has rudimetary support for drawing text using fonts in 
+ *# XBM bitmaps. The XBM bitmaps are compiled into your program's executable
+ *# rather than being loaded from a file.
+ */
+ 
+/*@ BmFont *bm_make_xbm_font(const unsigned char *bits, int spacing)
+ *# Creates a font from a XBM bitmap. The XBM bitmap {/must/} be modeled after the
+ *# fonts in the {{fonts/}} directory.
+ */
+BmFont *bm_make_xbm_font(const unsigned char *bits, int spacing);
 
 #ifndef NO_FONTS
-/*@ enum bm_fonts
- *# Built-in fonts that can be set with {{bm_std_font()}}
+/*3 Built-in XBM fonts.
+ *# There are a number of built-in fonts available which is placed in the
+ *# {{fonts/}} directory.\n
+ *# If you don't wish to use these, compile with the {{-DNO_FONTS}} flag.
+ *@ enum bm_fonts
+ *# Built-in XBM fonts that can be set with {{bm_std_font()}}
  *{
  ** {{BM_FONT_NORMAL}} - A default font.
  ** {{BM_FONT_BOLD}} - A bold font.
@@ -477,43 +535,17 @@ enum bm_fonts {
 void bm_std_font(Bitmap *b, enum bm_fonts font);
 
 /*@ int bm_font_index(const char *name)
- *# Returns the index of on of the standard (built-in) fonts identified
+ *# Returns the index of one of the standard (built-in) XBM fonts identified
  *# by the {{name}}.
  */
 int bm_font_index(const char *name);
 
 /*@ const char *bm_font_name(int index);
- *# Returns the name of the standard (built-in) font identified
+ *# Returns the name of the standard (built-in) XBM font identified
  *# by {{index}}, which should fall in the range of the {{enum bm_fonts}}.
  */
 const char *bm_font_name(int index);
-#endif
-
-/*@ int bm_text_width(Bitmap *b, const char *s)
- *# Returns the width in pixels of a string of text.
- */
-int bm_text_width(Bitmap *b, const char *s);
-
-/*@ int bm_text_height(Bitmap *b, const char *s)
- *# returns the height in pixels of a string of text.
- */
-int bm_text_height(Bitmap *b, const char *s);
-
-/*@ void bm_putc(Bitmap *b, int x, int y, char c)
- *# Draws a single ASCII character {{c}} at position x,y on the bitmap {{b}}.
- */
-void bm_putc(Bitmap *b, int x, int y, char c);
-
-/*@ void bm_puts(Bitmap *b, int x, int y, const char *s)
- *# Prints the string {{s}} at position {{x,y}} on the bitmap {{b}}.
- */
-void bm_puts(Bitmap *b, int x, int y, const char *text);
-
-/*@ void bm_printf(Bitmap *b, int x, int y, const char *fmt, ...)
- *# Prints a {{printf()}}-formatted style string to the bitmap {{b}},
- *# {{fmt}} is a {{printf()}}-style format string (It uses {{vsnprintf()}} internally).
- */
-void bm_printf(Bitmap *b, int x, int y, const char *fmt, ...);
+#endif /* NO_FONTS */
 
 #if defined(__cplusplus) || defined(c_plusplus)
 } /* extern "C" */

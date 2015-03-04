@@ -207,7 +207,6 @@ Bitmap *bm_load_fp(FILE *f) {
 	if(!isbmp) 
 		return NULL;
 	return bm_load_bmp_fp(f);
-
 }
 
 static Bitmap *bm_load_bmp_fp(FILE *f) {	
@@ -1426,8 +1425,13 @@ Bitmap *bm_copy(Bitmap *b) {
 	memcpy(out->data, b->data, BM_BLOB_SIZE(b));
 	
 	out->r = b->r; out->g = b->g; out->b = b->b;
-	out->font = b->font;
-	out->font_spacing = b->font_spacing;
+	
+	/* Caveat: The input bitmap is technically the owner
+	of its own font, so we can't just copy the pointer
+	*/
+	/* out->font = b->font */
+	out->font = NULL;
+	
 	memcpy(&out->clip, &b->clip, sizeof b->clip);
 	
 	return out;
@@ -1436,6 +1440,8 @@ Bitmap *bm_copy(Bitmap *b) {
 void bm_free(Bitmap *b) {
 	if(!b) return;
 	if(b->data) free(b->data);
+	if(b->font && b->font->dtor)
+		b->font->dtor(b->font);
 	free(b);
 }
 
@@ -1469,6 +1475,9 @@ void bm_rebind(Bitmap *b, unsigned char *data) {
 }
 
 void bm_unbind(Bitmap *b) {
+	if(!b) return;
+	if(b->font && b->font->dtor)
+		b->font->dtor(b->font);
 	free(b);
 }
 
@@ -2914,71 +2923,22 @@ void bm_reduce_palette(Bitmap *b, int palette[], size_t n) {
 	}
 }
 
-void bm_set_font(Bitmap *b, const unsigned char *font, int spacing) {
-	if(font)
-		b->font = font;
-	if(spacing > 0)
-		b->font_spacing = spacing;
-}
+/** FONT FUNCTIONS **********************************************************/
 
-#ifndef NO_FONTS
-void bm_std_font(Bitmap *b, enum bm_fonts font) {
-	switch(font) {
-		case BM_FONT_NORMAL  : bm_set_font(b, normal_bits, 6); break;
-		case BM_FONT_BOLD    : bm_set_font(b, bold_bits, 8); break;
-		case BM_FONT_CIRCUIT : bm_set_font(b, circuit_bits, 7); break;
-		case BM_FONT_HAND    : bm_set_font(b, hand_bits, 7); break;
-		case BM_FONT_SMALL   : bm_set_font(b, small_bits, 5); break;
-		case BM_FONT_SMALL_I : bm_set_font(b, smallinv_bits, 7); break;
-		case BM_FONT_THICK   : bm_set_font(b, thick_bits, 6); break;
-	}
+void bm_set_font(Bitmap *b, BmFont *font) {
+	if(b->font && b->font->dtor)
+		b->font->dtor(b->font);
+	b->font = font;	
 }
-
-static struct {
-	const char *s;
-	int i;
-} font_names[] = {
-	{"NORMAL", BM_FONT_NORMAL},
-	{"BOLD", BM_FONT_BOLD},
-	{"CIRCUIT", BM_FONT_CIRCUIT},
-	{"HAND", BM_FONT_HAND},
-	{"SMALL", BM_FONT_SMALL},
-	{"SMALL_I", BM_FONT_SMALL_I},
-	{"THICK", BM_FONT_THICK},
-	{NULL, 0}
-};
-
-int bm_font_index(const char *name) {
-	int i = 0;
-	char buffer[12], *c = buffer;
-	do {
-		*c++ = toupper(*name++);
-	} while(*name && c - buffer < sizeof buffer - 1);
-	*c = '\0';
-	
-	while(font_names[i].s) {
-		if(!strcmp(font_names[i].s, buffer)) {
-			return font_names[i].i;
-		}
-		i++;
-	}
-	return BM_FONT_NORMAL;
-}
-
-const char *bm_font_name(int index) {
-	int i = 0;
-	while(font_names[i].s) {
-		i++;
-		if(font_names[i].i == index) {
-			return font_names[i].s;
-		}
-	}
-	return font_names[0].s;
-}
-#endif
 
 int bm_text_width(Bitmap *b, const char *s) {
 	int len = 0, max_len = 0;
+	int glyph_width;
+	
+	if(!b->font || !b->font->width)
+		return 0;
+		
+	glyph_width = b->font->width(b->font);
 	while(*s) {
 		if(*s == '\n') {
 			if(len > max_len)
@@ -2993,22 +2953,49 @@ int bm_text_width(Bitmap *b, const char *s) {
 	}
 	if(len > max_len)
 		max_len = len;
-	return max_len * b->font_spacing;
+	return max_len * glyph_width;
 }
 
 int bm_text_height(Bitmap *b, const char *s) {
 	int height = 1;
+	int glyph_height;
+	if(!b->font || !b->font->height)
+		return 0;
+	glyph_height = b->font->height(b->font);
 	while(*s) {
 		if(*s == '\n') height++;
 		s++;
 	}
-	return height * 8;
+	return height * glyph_height;
 }
 
-void bm_putc(Bitmap *b, int x, int y, char c) {
+int bm_puts(Bitmap *b, int x, int y, const char *text) {
+	if(!b->font || !b->font->puts)
+		return 0;
+	return b->font->puts(b, x, y, text);
+}
+
+int bm_printf(Bitmap *b, int x, int y, const char *fmt, ...) {
+	char buffer[256];
+	if(!b->font || !b->font->puts) return 0;
+	va_list arg;
+	va_start(arg, fmt);
+  	vsnprintf(buffer, sizeof buffer, fmt, arg);
+  	va_end(arg);
+	return bm_puts(b, x, y, buffer);
+}
+
+/** XBM FONT FUNCTIONS ******************************************************/
+
+typedef struct {
+	const unsigned char *bits;
+	int spacing;
+} XbmFontInfo;
+
+static void xbmf_putc(Bitmap *b, XbmFontInfo *info, int x, int y, char c) {
 	int frow, fcol, byte, col;
 	int i, j;
-	if(!b->font || c < 32 || c > 127) return;
+	if(!info || !info->bits || c < 32 || c > 127) return;
 	c -= 32;
 	fcol = c >> 3;
 	frow = c & 0x7;
@@ -3018,7 +3005,7 @@ void bm_putc(Bitmap *b, int x, int y, char c) {
 	
 	for(j = 0; j < 8 && y + j < b->clip.y1; j++) {
 		if(y + j >= b->clip.y0) {
-			char bits = b->font[byte];
+			char bits = info->bits[byte];
 			for(i = 0; i < 8 && x + i < b->clip.x1; i++) {
 				if(x + i >= b->clip.x0 && !(bits & (1 << i))) {
 					bm_set(b, x + i, y + j, col);
@@ -3029,9 +3016,11 @@ void bm_putc(Bitmap *b, int x, int y, char c) {
 	}
 }
 
-void bm_puts(Bitmap *b, int x, int y, const char *text) {
+static int xbmf_puts(Bitmap *b, int x, int y, const char *text) {
+	XbmFontInfo *info;
 	int xs = x;
-	if(!b->font) return;
+	if(!b->font) return 0;
+	info = b->font->data;
 	while(text[0]) {
 		if(text[0] == '\n') {
 			y += 8;
@@ -3041,29 +3030,110 @@ void bm_puts(Bitmap *b, int x, int y, const char *text) {
 			 * but it doesn't really make sense because
 			 * this isn't exactly a character based terminal.
 			 */
-			x += 4 * b->font_spacing;
+			x += 4 * info->spacing;
 		} else if(text[0] == '\r') {
 			/* why would anyone find this useful? */
 			x = xs;
 		} else {
-			bm_putc(b, x, y, text[0]);
-			x += b->font_spacing;
+			xbmf_putc(b, info, x, y, text[0]);
+			x += info->spacing;
 		}
 		text++;
 		if(y > b->h) { 
 			/* I used to check x >= b->w as well,
 			but it doesn't take \n's into account */
-			return;
+			return 1;
 		}
 	}
+	return 1;
+}
+static void xbmf_dtor(struct bitmap_font *font) {
+	XbmFontInfo *info = font->data;
+	free(info);
+	free(font);
+}
+static int xbmf_width(struct bitmap_font *font) {
+	XbmFontInfo *info = font->data;
+	return info->spacing;
+}
+static int xbmf_height(struct bitmap_font *font) {
+	return 8;
 }
 
-void bm_printf(Bitmap *b, int x, int y, const char *fmt, ...) {
-	char buffer[256];
-	if(!b->font) return;
-	va_list arg;
-	va_start(arg, fmt);
-  	vsnprintf(buffer, sizeof buffer, fmt, arg);
-  	va_end(arg);
-	bm_puts(b, x, y, buffer);
+BmFont *bm_make_xbm_font(const unsigned char *bits, int spacing) {
+	BmFont *font;
+	XbmFontInfo *info;
+	font = malloc(sizeof *font);
+	if(!font) 
+		return NULL;
+	info = malloc(sizeof *info);
+	if(!info) {
+		free(font);
+		return NULL;
+	}
+	
+	info->bits = bits;
+	info->spacing = spacing;
+	
+	font->type = "XBM";
+	font->puts = xbmf_puts;
+	font->dtor = xbmf_dtor;
+	font->width = xbmf_width;
+	font->height = xbmf_height;
+	font->data = info;
+	
+	return font;
 }
+
+#ifndef NO_FONTS
+
+static struct xbm_font_info {
+	const char *s;
+	int i;
+	const unsigned char *bits;
+	int spacing;
+} xbm_font_infos[] = {
+	{"NORMAL", BM_FONT_NORMAL, normal_bits, 6},
+	{"BOLD", BM_FONT_BOLD, bold_bits, 8},
+	{"CIRCUIT", BM_FONT_CIRCUIT, circuit_bits, 7},
+	{"HAND", BM_FONT_HAND, hand_bits, 7},
+	{"SMALL", BM_FONT_SMALL, small_bits, 5},
+	{"SMALL_I", BM_FONT_SMALL_I, smallinv_bits, 7},
+	{"THICK", BM_FONT_THICK, thick_bits, 6},
+	{NULL, 0}
+};
+
+void bm_std_font(Bitmap *b, enum bm_fonts font) {
+	struct xbm_font_info *info = &xbm_font_infos[font];
+	BmFont * bfont = bm_make_xbm_font(info->bits, info->spacing);
+	bm_set_font(b, bfont);
+}
+
+int bm_font_index(const char *name) {
+	int i = 0;
+	char buffer[12], *c = buffer;
+	do {
+		*c++ = toupper(*name++);
+	} while(*name && c - buffer < sizeof buffer - 1);
+	*c = '\0';
+	
+	while(xbm_font_infos[i].s) {
+		if(!strcmp(xbm_font_infos[i].s, buffer)) {
+			return xbm_font_infos[i].i;
+		}
+		i++;
+	}
+	return BM_FONT_NORMAL;
+}
+
+const char *bm_font_name(int index) {
+	int i = 0;
+	while(xbm_font_infos[i].s) {
+		i++;
+		if(xbm_font_infos[i].i == index) {
+			return xbm_font_infos[i].s;
+		}
+	}
+	return xbm_font_infos[0].s;
+}
+#endif /* NO_FONTS */
