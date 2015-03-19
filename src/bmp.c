@@ -354,6 +354,7 @@ static int bm_save_bmp(Bitmap *b, const char *fname) {
 	struct bmpfile_magic magic = {{'B','M'}}; 
 	struct bmpfile_header hdr;
 	struct bmpfile_dibinfo dib;
+	FILE *f;
 	
 	int rs, padding, i, j;
 	char *data;
@@ -363,7 +364,7 @@ static int bm_save_bmp(Bitmap *b, const char *fname) {
 	rs = b->w * 3 + padding;	
 	assert(rs % 4 == 0);
 		
-	FILE *f = fopen(fname, "wb");
+	f = fopen(fname, "wb");
 	if(!f) return 0;	
 		
 	hdr.creator1 = 0;
@@ -1101,9 +1102,9 @@ struct pcx_header {
 	unsigned short vert_dpi, hori_dpi;
 	
 	union {
-		unsigned char palette[48];
+		unsigned char bytes[48];
 		struct rbg_triplet rgb[16];
-	};
+	} palette;
 	
 	char reserved;
 	char planes;
@@ -1116,6 +1117,7 @@ struct pcx_header {
 static Bitmap *bm_load_pcx_fp(FILE *f) {
 	struct pcx_header hdr;
 	Bitmap *b = NULL;
+	int y;
 	
 	struct rbg_triplet rgb[256];
 		
@@ -1141,9 +1143,9 @@ static Bitmap *bm_load_pcx_fp(FILE *f) {
 	
 	if(hdr.planes == 1) {
 		long pos = ftell(f);
+		char pbyte;
 		
 		fseek(f, -769, SEEK_END);
-		char pbyte;
 		if(fread(&pbyte, sizeof pbyte, 1, f) != 1) {
 			return NULL;
 		}
@@ -1159,7 +1161,6 @@ static Bitmap *bm_load_pcx_fp(FILE *f) {
 	
 	b = bm_create(hdr.xmax - hdr.xmin + 1, hdr.ymax - hdr.ymin + 1);
 	
-	int y;
 	for(y = 0; y < b->h; y++) {
 		int p;
 		for(p = 0; p < hdr.planes; p++) {
@@ -1296,15 +1297,18 @@ static int get_pcx_pal_idx(struct rbg_triplet rgb[], int *nentries, int c) {
 	
 	double mindist = DBL_MAX;
 	for(i = 0; i < *nentries; i++) {
+		int dr, dg, db;
+		double dist;
+		
 		if(rgb[i].r == r && rgb[i].g == g && rgb[i].b == b) {
 			/* Found an exact match */
 			return i;
 		}
 		/* Compute the distance between c and the current palette entry */
-		int dr = rgb[i].r - r;
-		int dg = rgb[i].g - g;
-		int db = rgb[i].b - b;
-		double dist = sqrt(dr * dr + dg * dg + db * db);
+		dr = rgb[i].r - r;
+		dg = rgb[i].g - g;
+		db = rgb[i].b - b;
+		dist = sqrt(dr * dr + dg * dg + db * db);
 		if(dist < mindist) {
 			mindist = dist;
 			mini = i;
@@ -1324,14 +1328,19 @@ static int get_pcx_pal_idx(struct rbg_triplet rgb[], int *nentries, int c) {
 }
 
 static int bm_save_pcx(Bitmap *b, const char *fname) {	
+	FILE *f;
+	struct pcx_header hdr;
+	int nentries = 0;
+	struct rbg_triplet rgb[256];
+	int q, y;
+	
 	if(!b) 
 		return 0;
 	
-	FILE *f = fopen(fname, "wb");
+	f = fopen(fname, "wb");
 	if(!f) 
 		return 0;
 		
-	struct pcx_header hdr;
 	memset(&hdr, 0, sizeof hdr);
 	
 	hdr.manuf = 0x0A;
@@ -1354,14 +1363,12 @@ static int bm_save_pcx(Bitmap *b, const char *fname) {
 	hdr.hscrsize = 0;
 	hdr.vscrsize = 0;
 	
-	struct rbg_triplet rgb[256];
 	memset(&rgb, 0, sizeof rgb);
 	
 	if(fwrite(&hdr, sizeof hdr, 1, f) != 1) {
 		fclose(f);
 		return 0;
 	}
-	int nentries = 0;
 	
 	/* This is my poor man's color quantization hack:
 		Sample 128 random pixels from the bitmap and
@@ -1372,7 +1379,6 @@ static int bm_save_pcx(Bitmap *b, const char *fname) {
 		first 256 unique pixels in the image, which my
 		have undesirable results.
 	*/
-	int q;
 	for(q = 0; q < 128; q++) {
 		int c = bm_get(b, rand()%b->w, rand()%b->h);
 		get_pcx_pal_idx(rgb, &nentries, c);
@@ -1382,11 +1388,10 @@ static int bm_save_pcx(Bitmap *b, const char *fname) {
 	better results, but it will require some rework of
 	the get_pcx_pal_idx() function. 
 	See bm_reduce_palette() below. */
-	int y;
 	for(y = 0; y < b->h; y++) {
 		int x = 0;
 		while(x < b->w) {
-			int cnt = 1;
+			int i, cnt = 1;
 			int c = bm_get(b, x++, y);			
 			while(x < b->w && cnt < 63) {
 				int n = bm_get(b, x, y);
@@ -1396,7 +1401,7 @@ static int bm_save_pcx(Bitmap *b, const char *fname) {
 				cnt++;				
 			}
 			
-			int i = get_pcx_pal_idx(rgb, &nentries, c);
+			i = get_pcx_pal_idx(rgb, &nentries, c);
 			if(cnt == 1 && i < 192) {
 				fputc(i, f);
 			} else {
@@ -1494,14 +1499,16 @@ void bm_flip_vertical(Bitmap *b) {
 }
 
 int bm_get(Bitmap *b, int x, int y) {	
+	int *p;
 	assert(x >= 0 && x < b->w && y >= 0 && y < b->h);
-	int *p = (int*)(b->data + y * BM_ROW_SIZE(b) + x * BM_BPP);
+	p = (int*)(b->data + y * BM_ROW_SIZE(b) + x * BM_BPP);
 	return *p;
 }
 
 void bm_set(Bitmap *b, int x, int y, int c) {	
+	int *p;
 	assert(x >= 0 && x < b->w && y >= 0 && y < b->h);
-	int *p = (int*)(b->data + y * BM_ROW_SIZE(b) + x * BM_BPP);
+	p = (int*)(b->data + y * BM_ROW_SIZE(b) + x * BM_BPP);
 	*p = c;
 }
 
@@ -1801,6 +1808,7 @@ void bm_blit_ex(Bitmap *dst, int dx, int dy, int dw, int dh, Bitmap *src, int sx
 		}
 		y++;
 	}
+	
 	if(dy >= dst->clip.y1 || dy + dh < dst->clip.y0)
 		return;
 	
@@ -1811,9 +1819,11 @@ void bm_blit_ex(Bitmap *dst, int dx, int dy, int dw, int dh, Bitmap *src, int sx
 		while(xnum > dw) {
 			xnum -= dw;
 			sx++;
+			sw--;
 		}
 		x++;
 	}
+	dw -= (x - dx);
 	dx = x;
 	
 	if(dx >= dst->clip.x1 || dx + dw < dst->clip.x0)
@@ -1828,13 +1838,14 @@ void bm_blit_ex(Bitmap *dst, int dx, int dy, int dw, int dh, Bitmap *src, int sx
 		
 		assert(y >= dst->clip.y0 && sy >= 0);
 		for(x = dx; x < dx + dw; x++) {			
+			int r, g, b, a;
 			if(sx >= src->w || x >= dst->clip.x1)
 				break;
 			assert(x >= dst->clip.x0 && sx >= 0);
 			
-			int r = BM_GETR(src, sx, sy),
-				g = BM_GETG(src, sx, sy),
-				b = BM_GETB(src, sx, sy),
+			r = BM_GETR(src, sx, sy);
+			g = BM_GETG(src, sx, sy);
+			b = BM_GETB(src, sx, sy);
 				a = BM_GETA(src, sx, sy);
 			if(!mask || r != src->r || g != src->g || b != src->b)
 				BM_SET(dst, x, y, r, g, b, a);
@@ -2789,8 +2800,7 @@ void bm_fill(Bitmap *b, int x, int y) {
 	 */	
 	struct node {int x; int y;} 
 		*queue,
-		n = {x, y};
-		
+		n;		
 	int qs = 0, /* queue size */
 		mqs = 128; /* Max queue size */
 	int sr, sg, sb; /* Source colour */
@@ -2810,10 +2820,11 @@ void bm_fill(Bitmap *b, int x, int y) {
 	if(!queue)
 		return;
 		
+	n.x = x; n.y = y;
 	queue[qs++] = n;
 	
 	while(qs > 0) {
-		struct node w,e;
+		struct node w,e, nn;
 		int i;
 		
 		n = queue[--qs];
@@ -2840,7 +2851,7 @@ void bm_fill(Bitmap *b, int x, int y) {
 			BM_SET(b, i, w.y, dr, dg, db, b->a);			
 			if(w.y > 0) {
 				if(bm_color_is(b, i, w.y - 1, sr, sg, sb)) {
-					struct node nn = {i, w.y - 1};
+					nn.x = i; nn.y = w.y - 1;
 					queue[qs++] = nn;
 					if(qs == mqs) {
 						mqs <<= 1;
@@ -2852,7 +2863,7 @@ void bm_fill(Bitmap *b, int x, int y) {
 			}
 			if(w.y < b->h - 1) {
 				if(bm_color_is(b, i, w.y + 1, sr, sg, sb)) {
-					struct node nn = {i, w.y + 1};
+					nn.x = i; nn.y = w.y + 1;
 					queue[qs++] = nn;
 					if(qs == mqs) {
 						mqs <<= 1;
@@ -2868,13 +2879,15 @@ void bm_fill(Bitmap *b, int x, int y) {
 }
 
 static void fs_add_factor(Bitmap *b, int x, int y, int er, int eg, int eb, double f) {
+	int c, R, G, B;
 	if(x < 0 || x >= b->w || y < 0 || y >= b->h)
 		return;
-	int c = bm_get(b, x, y);
+	c = bm_get(b, x, y);
 	
-	int R = ((c >> 16) & 0xFF) + f * er;
-	int G = ((c >> 8) & 0xFF) + f * eg;
-	int B = ((c >> 0) & 0xFF) + f * eb;
+	R = ((c >> 16) & 0xFF) + f * er;
+	G = ((c >> 8) & 0xFF) + f * eg;
+	B = ((c >> 0) & 0xFF) + f * eb;
+	
 	if(R > 255) R = 255;
 	if(R < 0) R = 0;
 	if(G > 255) G = 255;
@@ -2895,7 +2908,10 @@ void bm_reduce_palette(Bitmap *b, int palette[], size_t n) {
 	for(y = 0; y < b->h; y++) {
 		for(x = 0; x < b->w; x++) {
 			int i, m = 0;
-			int oldpixel = bm_get(b, x, y);		
+			int r1, g1, b1;
+			int r2, g2, b2;
+			int er, eg, eb;
+			int newpixel, oldpixel = bm_get(b, x, y);		
 			double md = bm_cdist(oldpixel, palette[m]);	
 			for(i = 1; i < n; i++) {
 				double d = bm_cdist(oldpixel, palette[i]);
@@ -2904,13 +2920,13 @@ void bm_reduce_palette(Bitmap *b, int palette[], size_t n) {
 					m = i;
 				}
 			}
-			int newpixel = palette[m];
+			newpixel = palette[m];
 			
 			bm_set(b, x, y, newpixel);
 			
-			int r1 = (oldpixel >> 16) & 0xFF, g1 = (oldpixel >> 8) & 0xFF, b1 = (oldpixel >> 0) & 0xFF;
-			int r2 = (newpixel >> 16) & 0xFF, g2 = (newpixel >> 8) & 0xFF, b2 = (newpixel >> 0) & 0xFF;
-			int er = r1 - r2, eg = g1 - g2, eb = b1 - b2;
+			r1 = (oldpixel >> 16) & 0xFF; g1 = (oldpixel >> 8) & 0xFF; b1 = (oldpixel >> 0) & 0xFF;
+			r2 = (newpixel >> 16) & 0xFF; g2 = (newpixel >> 8) & 0xFF; b2 = (newpixel >> 0) & 0xFF;
+			er = r1 - r2; eg = g1 - g2; eb = b1 - b2;
 
 			fs_add_factor(b, x + 1, y    , er, eg, eb, 7.0 / 16.0);
 			fs_add_factor(b, x - 1, y + 1, er, eg, eb, 3.0 / 16.0);
@@ -2975,8 +2991,8 @@ int bm_puts(Bitmap *b, int x, int y, const char *text) {
 
 int bm_printf(Bitmap *b, int x, int y, const char *fmt, ...) {
 	char buffer[256];
-	if(!b->font || !b->font->puts) return 0;
 	va_list arg;
+	if(!b->font || !b->font->puts) return 0;
 	va_start(arg, fmt);
   	vsnprintf(buffer, sizeof buffer, fmt, arg);
   	va_end(arg);
