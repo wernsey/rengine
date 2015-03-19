@@ -75,12 +75,14 @@ void bm_free(Bitmap *b);
  */
 Bitmap *bm_load(const char *filename);
 
+#ifdef EOF /* <stdio.h> included? http://stackoverflow.com/q/29117606/115589 */
 /*@ Bitmap *bm_load_fp(FILE *f)
  *# Loads a bitmap from a {{FILE*}} that's already open.\n
  *# BMP and PCX support is always enabled, while JPG and PNG support is optional.\n
  *# Returns {{NULL}} if the file could not be loaded.
  */
 Bitmap *bm_load_fp(FILE *f);
+#endif
 
 #if defined(USESDL) && defined(_SDL_H)
 /*@ Bitmap *bm_load_rw(SDL_RWops *file)
