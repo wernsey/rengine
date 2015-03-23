@@ -1771,7 +1771,7 @@ void bm_maskedblit(Bitmap *dst, int dx, int dy, Bitmap *src, int sx, int sy, int
 }
 
 void bm_blit_ex(Bitmap *dst, int dx, int dy, int dw, int dh, Bitmap *src, int sx, int sy, int sw, int sh, int mask) {
-	int x, y, ssx;
+	int x, y, ssx, sdx;
 	int ynum = 0;	
 	int xnum = 0;
 	
@@ -1809,7 +1809,7 @@ void bm_blit_ex(Bitmap *dst, int dx, int dy, int dw, int dh, Bitmap *src, int sx
 		y++;
 	}
 	
-	if(dy >= dst->clip.y1 || dy + dh < dst->clip.y0)
+	if(dy >= dst->clip.y1 || dy + dh < dst->clip.y0 || sy >= src->h)
 		return;
 	
 	/* Clip on the X */
@@ -1819,17 +1819,15 @@ void bm_blit_ex(Bitmap *dst, int dx, int dy, int dw, int dh, Bitmap *src, int sx
 		while(xnum > dw) {
 			xnum -= dw;
 			sx++;
-			sw--;
 		}
 		x++;
 	}
-	dw -= (x - dx);
-	dx = x;
 	
-	if(dx >= dst->clip.x1 || dx + dw < dst->clip.x0)
+	if(dx >= dst->clip.x1 || dx + dw < dst->clip.x0 || sx >= src->w)
 		return;
 	
 	ssx = sx; /* Save sx for the next row */
+	sdx = x;
 	for(; y < dy + dh; y++){		
 		if(sy >= src->h || y >= dst->clip.y1)
 			break;
@@ -1837,7 +1835,7 @@ void bm_blit_ex(Bitmap *dst, int dx, int dy, int dw, int dh, Bitmap *src, int sx
 		sx = ssx;
 		
 		assert(y >= dst->clip.y0 && sy >= 0);
-		for(x = dx; x < dx + dw; x++) {			
+		for(x = sdx; x < dx + dw; x++) {	
 			int r, g, b, a;
 			if(sx >= src->w || x >= dst->clip.x1)
 				break;
