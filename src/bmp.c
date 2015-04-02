@@ -110,7 +110,7 @@ struct bmpfile_colinfo {
 #define BM_BLOB_SIZE(B)	(B->w * B->h * BM_BPP)
 #define BM_ROW_SIZE(B)	(B->w * BM_BPP)
 
-#define BM_SET(BMP, X, Y, R, G, B, A) do { \
+#define BM_SETRGB(BMP, X, Y, R, G, B, A) do { \
 		int _p = ((Y) * BM_ROW_SIZE(BMP) + (X)*BM_BPP);	\
 		BMP->data[_p++] = B;\
 		BMP->data[_p++] = G;\
@@ -125,6 +125,12 @@ struct bmpfile_colinfo {
 
 /* N=0 -> B, N=1 -> G, N=2 -> R, N=3 -> A */
 #define BM_GETN(B,N,X,Y) (B->data[((Y) * BM_ROW_SIZE(B) + (X) * BM_BPP) + (N)])
+
+/* TODO: These macros are fairly new additions and can probably be used to improve
+ * performance in some of the older functions that still uses BM_SETRGB and friends.
+ */
+#define BM_GET(b, x, y) (*((int*)(b->data + y * BM_ROW_SIZE(b) + x * BM_BPP)))
+#define BM_SET(b, x, y, c) *((int*)(b->data + y * BM_ROW_SIZE(b) + x * BM_BPP)) = c
 
 Bitmap *bm_create(int w, int h) {	
 	Bitmap *b = malloc(sizeof *b);
@@ -286,14 +292,14 @@ static Bitmap *bm_load_bmp_fp(FILE *f) {
 			for(i = 0; i < b->w; i++) {
 				uint8_t p = data[(b->h - (j) - 1) * rs + i];
 				assert(p < dib.ncolors);				
-				BM_SET(b, i, j, palette[p].r, palette[p].g, palette[p].b, palette[p].a);
+				BM_SETRGB(b, i, j, palette[p].r, palette[p].g, palette[p].b, palette[p].a);
 			}
 		}			
 	} else {	
 		for(j = 0; j < b->h; j++) {
 			for(i = 0; i < b->w; i++) {
 				int p = ((b->h - (j) - 1) * rs + (i)*3);			
-				BM_SET(b, i, j, data[p+2], data[p+1], data[p+0], 0xFF);
+				BM_SETRGB(b, i, j, data[p+2], data[p+1], data[p+0], 0xFF);
 			}
 		}
 	}
@@ -482,7 +488,7 @@ static Bitmap *bm_load_png_fp(FILE *f) {
 			png_byte *row = rows[y];
 			for(x = 0; x < w; x++) {
 				png_byte *ptr = &(row[x * 4]);
-				BM_SET(bmp, x, y, ptr[0], ptr[1], ptr[2], ptr[3]);
+				BM_SETRGB(bmp, x, y, ptr[0], ptr[1], ptr[2], ptr[3]);
 			}
 		}
 	} else if(ct == PNG_COLOR_TYPE_RGB) {
@@ -490,7 +496,7 @@ static Bitmap *bm_load_png_fp(FILE *f) {
 			png_byte *row = rows[y];
 			for(x = 0; x < w; x++) {
 				png_byte *ptr = &(row[x * 3]);
-				BM_SET(bmp, x, y, ptr[0], ptr[1], ptr[2], 0xFF);
+				BM_SETRGB(bmp, x, y, ptr[0], ptr[1], ptr[2], 0xFF);
 			}
 		}
 	}
@@ -626,7 +632,7 @@ static Bitmap *bm_load_jpg_fp(FILE *f) {
 		jpeg_read_scanlines(&cinfo, row_pointer, 1);		
 		for(i = 0; i < bmp->w; i++) {
 			unsigned char *ptr = &(data[i * 3]);
-			BM_SET(bmp, i, j, ptr[0], ptr[1], ptr[2], 0xFF);
+			BM_SETRGB(bmp, i, j, ptr[0], ptr[1], ptr[2], 0xFF);
 		}
 	}
 	free(data);
@@ -823,14 +829,14 @@ static Bitmap *bm_load_bmp_rw(SDL_RWops *rw) {
 			for(i = 0; i < b->w; i++) {
 				uint8_t p = data[(b->h - (j) - 1) * rs + i];
 				assert(p < dib.ncolors);				
-				BM_SET(b, i, j, palette[p].r, palette[p].g, palette[p].b, palette[p].a);
+				BM_SETRGB(b, i, j, palette[p].r, palette[p].g, palette[p].b, palette[p].a);
 			}
 		}			
 	} else {	
 		for(j = 0; j < b->h; j++) {
 			for(i = 0; i < b->w; i++) {
 				int p = ((b->h - (j) - 1) * rs + (i)*3);			
-				BM_SET(b, i, j, data[p+2], data[p+1], data[p+0], 0xFF);
+				BM_SETRGB(b, i, j, data[p+2], data[p+1], data[p+0], 0xFF);
 			}
 		}
 	}
@@ -923,7 +929,7 @@ static Bitmap *bm_load_png_rw(SDL_RWops *rw) {
 			png_byte *row = rows[y];
 			for(x = 0; x < w; x++) {
 				png_byte *ptr = &(row[x * 4]);
-				BM_SET(bmp, x, y, ptr[0], ptr[1], ptr[2], ptr[3]);
+				BM_SETRGB(bmp, x, y, ptr[0], ptr[1], ptr[2], ptr[3]);
 			}
 		}
 	} else if(ct == PNG_COLOR_TYPE_RGB) {
@@ -931,7 +937,7 @@ static Bitmap *bm_load_png_rw(SDL_RWops *rw) {
 			png_byte *row = rows[y];
 			for(x = 0; x < w; x++) {
 				png_byte *ptr = &(row[x * 3]);
-				BM_SET(bmp, x, y, ptr[0], ptr[1], ptr[2], 0xFF);
+				BM_SETRGB(bmp, x, y, ptr[0], ptr[1], ptr[2], 0xFF);
 			}
 		}
 	}
@@ -1072,7 +1078,7 @@ static Bitmap *bm_load_jpg_rw(SDL_RWops *rw) {
 		jpeg_read_scanlines(&cinfo, row_pointer, 1);		
 		for(i = 0; i < bmp->w; i++) {
 			unsigned char *ptr = &(data[i * 3]);
-			BM_SET(bmp, i, j, ptr[0], ptr[1], ptr[2], 0xFF);
+			BM_SETRGB(bmp, i, j, ptr[0], ptr[1], ptr[2], 0xFF);
 		}
 	}
 	free(data);
@@ -1514,12 +1520,12 @@ void bm_set(Bitmap *b, int x, int y, int c) {
 
 void bm_set_rgb(Bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B) {
 	assert(x >= 0 && x < b->w && y >= 0 && y < b->h);
-	BM_SET(b, x, y, R, G, B, b->a);
+	BM_SETRGB(b, x, y, R, G, B, b->a);
 }
 
 void bm_set_rgb_a(Bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B, unsigned char A) {
 	assert(x >= 0 && x < b->w && y >= 0 && y < b->h);
-	BM_SET(b, x, y, R, G, B, A);
+	BM_SETRGB(b, x, y, R, G, B, A);
 }
 
 unsigned char bm_getr(Bitmap *b, int x, int y) {
@@ -1550,7 +1556,7 @@ Bitmap *bm_fromXbm(int w, int h, unsigned char *data) {
 			b = data[byte++];
 			for(i = 0; i < 8 && x < w; i++) {
 				unsigned char c = (b & (1 << i))?0x00:0xFF;
-				BM_SET(bmp, x++, y, c, c, c, c);
+				BM_SETRGB(bmp, x++, y, c, c, c, c);
 			}
 		}
 	return bmp;
@@ -1670,7 +1676,7 @@ void bm_blit(Bitmap *dst, int dx, int dy, Bitmap *src, int sx, int sy, int w, in
 				g = BM_GETG(src, i, j),
 				b = BM_GETB(src, i, j),
 				a = BM_GETA(src, i, j);
-			BM_SET(dst, x, y, r, g, b, a);
+			BM_SETRGB(dst, x, y, r, g, b, a);
 			i++;
 		}
 		j++;
@@ -1763,7 +1769,7 @@ void bm_maskedblit(Bitmap *dst, int dx, int dy, Bitmap *src, int sx, int sy, int
 				b = BM_GETB(src, i, j),
 				a = BM_GETA(src, i, j);
 			if(r != src->r || g != src->g || b != src->b)
-				BM_SET(dst, x, y, r, g, b, a);
+				BM_SETRGB(dst, x, y, r, g, b, a);
 			i++;
 		}
 		j++;
@@ -1771,10 +1777,10 @@ void bm_maskedblit(Bitmap *dst, int dx, int dy, Bitmap *src, int sx, int sy, int
 }
 
 void bm_blit_ex(Bitmap *dst, int dx, int dy, int dw, int dh, Bitmap *src, int sx, int sy, int sw, int sh, int mask) {
-	int x, y, ssx, sdx;
+	int x, y, ssx;
 	int ynum = 0;	
 	int xnum = 0;
-	
+	int maskc = bm_get_color_i(src) & 0xFFFFFF;
 	/*
 	Uses Bresenham's algoritm to implement a simple scaling while blitting.
 	See the article "Scaling Bitmaps with Bresenham" by Tim Kientzle in the
@@ -1809,7 +1815,7 @@ void bm_blit_ex(Bitmap *dst, int dx, int dy, int dw, int dh, Bitmap *src, int sx
 		y++;
 	}
 	
-	if(dy >= dst->clip.y1 || dy + dh < dst->clip.y0 || sy >= src->h)
+	if(dy >= dst->clip.y1 || dy + dh < dst->clip.y0)
 		return;
 	
 	/* Clip on the X */
@@ -1819,15 +1825,17 @@ void bm_blit_ex(Bitmap *dst, int dx, int dy, int dw, int dh, Bitmap *src, int sx
 		while(xnum > dw) {
 			xnum -= dw;
 			sx++;
+			sw--;
 		}
 		x++;
 	}
+	dw -= (x - dx);
+	dx = x;
 	
-	if(dx >= dst->clip.x1 || dx + dw < dst->clip.x0 || sx >= src->w)
+	if(dx >= dst->clip.x1 || dx + dw < dst->clip.x0)
 		return;
 	
 	ssx = sx; /* Save sx for the next row */
-	sdx = x;
 	for(; y < dy + dh; y++){		
 		if(sy >= src->h || y >= dst->clip.y1)
 			break;
@@ -1835,19 +1843,87 @@ void bm_blit_ex(Bitmap *dst, int dx, int dy, int dw, int dh, Bitmap *src, int sx
 		sx = ssx;
 		
 		assert(y >= dst->clip.y0 && sy >= 0);
-		for(x = sdx; x < dx + dw; x++) {	
-			int r, g, b, a;
+		for(x = dx; x < dx + dw; x++) {	
+			int c;
 			if(sx >= src->w || x >= dst->clip.x1)
 				break;
 			assert(x >= dst->clip.x0 && sx >= 0);
 			
-			r = BM_GETR(src, sx, sy);
-			g = BM_GETG(src, sx, sy);
-			b = BM_GETB(src, sx, sy);
-				a = BM_GETA(src, sx, sy);
-			if(!mask || r != src->r || g != src->g || b != src->b)
-				BM_SET(dst, x, y, r, g, b, a);
+			c = BM_GET(src, sx, sy) & 0xFFFFFF;
+			if(!mask || c != maskc)
+				BM_SET(dst, x, y, c);
 					
+			xnum += sw;
+			while(xnum > dw) {
+				xnum -= dw;
+				sx++;
+			}
+		}
+		ynum += sh;
+		while(ynum > dh) {
+			ynum -= dh;
+			sy++;
+		}
+	}
+}
+
+/* 
+Works the same as bm_blit_ex(), but calls the callback for each pixel
+typedef int (*bm_blit_fun)(Bitmap *dst, int dx, int dy, int sx, int sy, void *data);
+*/
+void bm_blit_ex_fun(Bitmap *dst, int dx, int dy, int dw, int dh, Bitmap *src, int sx, int sy, int sw, int sh, bm_blit_fun fun, void *data){
+	int x, y, ssx;
+	int ynum = 0;	
+	int xnum = 0;
+	int maskc = bm_get_color_i(src) & 0xFFFFFF;
+	
+	if(!fun || sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0)
+		return;
+	
+	/* Clip on the Y */
+	y = dy;
+	while(y < dst->clip.y0 || sy < 0) {
+		ynum += sh;
+		while(ynum > dh) {
+			ynum -= dh;
+			sy++;
+		}
+		y++;
+	}
+	
+	if(dy >= dst->clip.y1 || dy + dh < dst->clip.y0)
+		return;
+					
+	/* Clip on the X */
+	x = dx;
+	while(x < dst->clip.x0 || sx < 0) {
+		xnum += sw;
+		while(xnum > dw) {
+			xnum -= dw;
+			sx++;
+			sw--;
+		}
+		x++;
+	}
+	dw -= (x - dx);
+	dx = x;
+	
+	if(dx >= dst->clip.x1 || dx + dw < dst->clip.x0)
+		return;
+	
+	ssx = sx; /* Save sx for the next row */
+	for(; y < dy + dh; y++){		
+		if(sy >= src->h || y >= dst->clip.y1)
+			break;
+		xnum = 0;			
+		sx = ssx;
+		
+		assert(y >= dst->clip.y0 && sy >= 0);
+		for(x = dx; x < dx + dw; x++) {	
+			if(sx >= src->w || x >= dst->clip.x1)
+				break;
+			if(!fun(dst, x, y, src, sx, sy, maskc, data))
+				return;			
 			xnum += sw;
 			while(xnum > dw) {
 				xnum -= dw;
@@ -1886,7 +1962,7 @@ void bm_smooth(Bitmap *b) {
 				A += kernel[k] * BM_GETA(b,p,y);
 				c += kernel[k];
 			}
-			BM_SET(tmp, x, y, R/c, G/c, B/c, A/c);
+			BM_SETRGB(tmp, x, y, R/c, G/c, B/c, A/c);
 		}
 	
 	for(y = 0; y < b->h; y++)
@@ -1902,7 +1978,7 @@ void bm_smooth(Bitmap *b) {
 				A += kernel[k] * BM_GETA(tmp,x,p);
 				c += kernel[k];
 			}
-			BM_SET(tmp, x, y, R/c, G/c, B/c, A/c);
+			BM_SETRGB(tmp, x, y, R/c, G/c, B/c, A/c);
 		}
 	
 	b->data = tmp->data;
@@ -1940,7 +2016,7 @@ void bm_apply_kernel(Bitmap *b, int dim, float kernel[]) {
 			G /= c; if(G > 255) G = 255;if(G < 0) G = 0;
 			B /= c; if(B > 255) B = 255;if(B < 0) B = 0;
 			A /= c; if(A > 255) A = 255;if(A < 0) A = 0;
-			BM_SET(tmp, x, y, R, G, B, A);
+			BM_SETRGB(tmp, x, y, R, G, B, A);
 		}
 	}
 	
@@ -1955,7 +2031,7 @@ void bm_swap_colour(Bitmap *b, unsigned char sR, unsigned char sG, unsigned char
 		for(x = 0; x < b->w; x++) {			
 			if(BM_GETR(b,x,y) == sR && BM_GETG(b,x,y) == sG && BM_GETB(b,x,y) == sB) {
 				int a = BM_GETA(b, x, y);
-				BM_SET(b, x, y, dR, dG, dB, a);
+				BM_SETRGB(b, x, y, dR, dG, dB, a);
 			}
 		}
 }
@@ -1978,7 +2054,7 @@ Bitmap *bm_resample(const Bitmap *in, int nw, int nh) {
 			int sx = x * in->w/nw;
 			int sy = y * in->h/nh;
 			assert(sx < in->w && sy < in->h);
-			BM_SET(out, x, y, BM_GETR(in,sx,sy), BM_GETG(in,sx,sy), BM_GETB(in,sx,sy), BM_GETA(in,sx,sy));
+			BM_SETRGB(out, x, y, BM_GETR(in,sx,sy), BM_GETG(in,sx,sy), BM_GETB(in,sx,sy), BM_GETA(in,sx,sy));
 		}
 	return out;
 }
@@ -2015,7 +2091,7 @@ Bitmap *bm_resample_blin(const Bitmap *in, int nw, int nh) {
                 int p11 = BM_GETN(in,c,sx+dx,sy+dy);
                 C[c] = (int)blerp(p00, p10, p01, p11, gx-sx, gy-sy);
             }                         
-			BM_SET(out, x, y, C[0], C[1], C[2], C[3]);
+			BM_SETRGB(out, x, y, C[0], C[1], C[2], C[3]);
 		}
 	return out;
 }
@@ -2067,7 +2143,7 @@ Bitmap *bm_resample_bcub(const Bitmap *in, int nw, int nh) {
             }
         }
         
-        BM_SET(out, x, y, sum[0]/denom[0], sum[1]/denom[1], sum[2]/denom[2], sum[3]/denom[3]);            
+        BM_SETRGB(out, x, y, sum[0]/denom[0], sum[1]/denom[1], sum[2]/denom[2], sum[3]/denom[3]);            
     }
 	return out;
 }
@@ -2092,7 +2168,7 @@ void bm_adjust_rgba(Bitmap *bm, float rf, float gf, float bf, float af) {
 			float G = BM_GETG(bm,x,y);
 			float B = BM_GETB(bm,x,y);
 			float A = BM_GETA(bm,x,y);
-			BM_SET(bm, x, y, rf * R, gf * G, bf * B, af * A);
+			BM_SETRGB(bm, x, y, rf * R, gf * G, bf * B, af * A);
 		}
 }
 
@@ -2468,14 +2544,14 @@ void bm_clear(Bitmap *b) {
 	int i, j;
 	for(j = 0; j < b->h; j++) 
 		for(i = 0; i < b->w; i++) {
-			BM_SET(b, i, j, b->r, b->g, b->b, b->a);
+			BM_SETRGB(b, i, j, b->r, b->g, b->b, b->a);
 		}
 }
 
 void bm_putpixel(Bitmap *b, int x, int y) {
 	if(x < b->clip.x0 || x >= b->clip.x1 || y < b->clip.y0 || y >= b->clip.y1) 
 		return;
-	BM_SET(b, x, y, b->r, b->g, b->b, b->a);
+	BM_SETRGB(b, x, y, b->r, b->g, b->b, b->a);
 }
 
 void bm_line(Bitmap *b, int x0, int y0, int x1, int y1) {
@@ -2501,7 +2577,7 @@ void bm_line(Bitmap *b, int x0, int y0, int x1, int y1) {
 	for(;;) {
 		/* Clipping can probably be more effective... */
 		if(x0 >= b->clip.x0 && x0 < b->clip.x1 && y0 >= b->clip.y0 && y0 < b->clip.y1) 
-			BM_SET(b, x0, y0, b->r, b->g, b->b, b->a);
+			BM_SETRGB(b, x0, y0, b->r, b->g, b->b, b->a);
 			
 		if(x0 == x1 && y0 == y1) break;
 		
@@ -2540,7 +2616,7 @@ void bm_fillrect(Bitmap *b, int x0, int y0, int x1, int y1) {
 	for(y = MAX(y0, b->clip.y0); y < MIN(y1 + 1, b->clip.y1); y++) {		
 		for(x = MAX(x0, b->clip.x0); x < MIN(x1 + 1, b->clip.x1); x++) {
 			assert(y >= 0 && y < b->h && x >= 0 && x < b->w);
-			BM_SET(b, x, y, b->r, b->g, b->b, b->a);
+			BM_SETRGB(b, x, y, b->r, b->g, b->b, b->a);
 		}
 	}	
 }
@@ -2561,7 +2637,7 @@ void bm_dithrect(Bitmap *b, int x0, int y0, int x1, int y1) {
 		for(x = MAX(x0, b->clip.x0); x < MIN(x1 + 1, b->clip.x1); x++) {
             if((x + y) % 2) continue;
 			assert(y >= 0 && y < b->h && x >= 0 && x < b->w);
-			BM_SET(b, x, y, b->r, b->g, b->b, b->a);
+			BM_SETRGB(b, x, y, b->r, b->g, b->b, b->a);
 		}
 	}	
 }
@@ -2576,22 +2652,22 @@ void bm_circle(Bitmap *b, int x0, int y0, int r) {
 		/* Lower Right */
 		xp = x0 - x; yp = y0 + y;
 		if(xp >= b->clip.x0 && xp < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
-			BM_SET(b, xp, yp, b->r, b->g, b->b, b->a);
+			BM_SETRGB(b, xp, yp, b->r, b->g, b->b, b->a);
 		
 		/* Lower Left */
 		xp = x0 - y; yp = y0 - x;
 		if(xp >= b->clip.x0 && xp < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
-			BM_SET(b, xp, yp, b->r, b->g, b->b, b->a);
+			BM_SETRGB(b, xp, yp, b->r, b->g, b->b, b->a);
 		
 		/* Upper Left */
 		xp = x0 + x; yp = y0 - y;
 		if(xp >= b->clip.x0 && xp < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
-			BM_SET(b, xp, yp, b->r, b->g, b->b, b->a);
+			BM_SETRGB(b, xp, yp, b->r, b->g, b->b, b->a);
 		
 		/* Upper Right */
 		xp = x0 + y; yp = y0 + x;
 		if(xp >= b->clip.x0 && xp < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
-			BM_SET(b, xp, yp, b->r, b->g, b->b, b->a);
+			BM_SETRGB(b, xp, yp, b->r, b->g, b->b, b->a);
 				
 		r = err;
 		if(r > x) {
@@ -2615,10 +2691,10 @@ void bm_fillcircle(Bitmap *b, int x0, int y0, int r) {
 			/* Maybe the clipping can be more effective... */
 			int yp = y0 + y;
 			if(i >= b->clip.x0 && i < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
-				BM_SET(b, i, yp, b->r, b->g, b->b, b->a);
+				BM_SETRGB(b, i, yp, b->r, b->g, b->b, b->a);
 			yp = y0 - y;
 			if(i >= b->clip.x0 && i < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
-				BM_SET(b, i, yp, b->r, b->g, b->b, b->a);			
+				BM_SETRGB(b, i, yp, b->r, b->g, b->b, b->a);			
 		}		
 		
 		r = err;
@@ -2648,16 +2724,16 @@ void bm_ellipse(Bitmap *b, int x0, int y0, int x1, int y1) {
 	
 	do {
 		if(x1 >= b->clip.x0 && x1 < b->clip.x1 && y0 >= b->clip.y0 && y0 < b->clip.y1)
-			BM_SET(b, x1, y0, b->r, b->g, b->b, b->a);	
+			BM_SETRGB(b, x1, y0, b->r, b->g, b->b, b->a);	
 		
 		if(x0 >= b->clip.x0 && x0 < b->clip.x1 && y0 >= b->clip.y0 && y0 < b->clip.y1)
-			BM_SET(b, x0, y0, b->r, b->g, b->b, b->a);	
+			BM_SETRGB(b, x0, y0, b->r, b->g, b->b, b->a);	
 		
 		if(x0 >= b->clip.x0 && x0 < b->clip.x1 && y1 >= b->clip.y0 && y1 < b->clip.y1)
-			BM_SET(b, x0, y1, b->r, b->g, b->b, b->a);	
+			BM_SETRGB(b, x0, y1, b->r, b->g, b->b, b->a);	
 		
 		if(x1 >= b->clip.x0 && x1 < b->clip.x1 && y1 >= b->clip.y0 && y1 < b->clip.y1)
-			BM_SET(b, x1, y1, b->r, b->g, b->b, b->a);	
+			BM_SETRGB(b, x1, y1, b->r, b->g, b->b, b->a);	
 		
 		e2 = 2 * err;
 		if(e2 <= dy) {
@@ -2670,17 +2746,17 @@ void bm_ellipse(Bitmap *b, int x0, int y0, int x1, int y1) {
 	
 	while(y0 - y1 < b0) {
 		if(x0 - 1 >= b->clip.x0 && x0 - 1 < b->clip.x1 && y0 >= b->clip.y0 && y0 < b->clip.y1)
-			BM_SET(b, x0 - 1, y0, b->r, b->g, b->b, b->a);
+			BM_SETRGB(b, x0 - 1, y0, b->r, b->g, b->b, b->a);
 		
 		if(x1 + 1 >= b->clip.x0 && x1 + 1 < b->clip.x1 && y0 >= b->clip.y0 && y0 < b->clip.y1)
-			BM_SET(b, x1 + 1, y0, b->r, b->g, b->b, b->a);
+			BM_SETRGB(b, x1 + 1, y0, b->r, b->g, b->b, b->a);
 		y0++;
 		
 		if(x0 - 1 >= b->clip.x0 && x0 - 1 < b->clip.x1 && y0 >= b->clip.y0 && y0 < b->clip.y1)
-			BM_SET(b, x0 - 1, y1, b->r, b->g, b->b, b->a);
+			BM_SETRGB(b, x0 - 1, y1, b->r, b->g, b->b, b->a);
 		
 		if(x1 + 1 >= b->clip.x0 && x1 + 1 < b->clip.x1 && y0 >= b->clip.y0 && y0 < b->clip.y1)
-			BM_SET(b, x1 + 1, y1, b->r, b->g, b->b, b->a);	
+			BM_SETRGB(b, x1 + 1, y1, b->r, b->g, b->b, b->a);	
 		y1--;
 	}
 }
@@ -2702,22 +2778,22 @@ void bm_roundrect(Bitmap *b, int x0, int y0, int x1, int y1, int r) {
 		/* Lower Right */
 		xp = x1 - x - rad; yp = y1 + y - rad;
 		if(xp >= b->clip.x0 && xp < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
-			BM_SET(b, xp, yp, b->r, b->g, b->b, b->a);
+			BM_SETRGB(b, xp, yp, b->r, b->g, b->b, b->a);
 		
 		/* Lower Left */
 		xp = x0 - y + rad; yp = y1 - x - rad;
 		if(xp >= b->clip.x0 && xp < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
-			BM_SET(b, xp, yp, b->r, b->g, b->b, b->a);
+			BM_SETRGB(b, xp, yp, b->r, b->g, b->b, b->a);
 		
 		/* Upper Left */
 		xp = x0 + x + rad; yp = y0 - y + rad;
 		if(xp >= b->clip.x0 && xp < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
-			BM_SET(b, xp, yp, b->r, b->g, b->b, b->a);
+			BM_SETRGB(b, xp, yp, b->r, b->g, b->b, b->a);
 		
 		/* Upper Right */
 		xp = x1 + y - rad; yp = y0 + x + rad;
 		if(xp >= b->clip.x0 && xp < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
-			BM_SET(b, xp, yp, b->r, b->g, b->b, b->a);
+			BM_SETRGB(b, xp, yp, b->r, b->g, b->b, b->a);
 		
 		r = err;
 		if(r > x) {
@@ -2744,10 +2820,10 @@ void bm_fillroundrect(Bitmap *b, int x0, int y0, int x1, int y1, int r) {
 		for(i = xp; i <= xq; i++) {
 			yp = y1 + y - rad;
 			if(i >= b->clip.x0 && i < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
-				BM_SET(b, i, yp, b->r, b->g, b->b, b->a);
+				BM_SETRGB(b, i, yp, b->r, b->g, b->b, b->a);
 			yp = y0 - y + rad;
 			if(i >= b->clip.x0 && i < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
-				BM_SET(b, i, yp, b->r, b->g, b->b, b->a);
+				BM_SETRGB(b, i, yp, b->r, b->g, b->b, b->a);
 		}
 		
 		r = err;
@@ -2764,7 +2840,7 @@ void bm_fillroundrect(Bitmap *b, int x0, int y0, int x1, int y1, int r) {
 	for(y = MAX(y0 + rad + 1, b->clip.y0); y < MIN(y1 - rad, b->clip.y1); y++) {
 		for(x = MAX(x0, b->clip.x0); x <= MIN(x1,b->clip.x1 - 1); x++) {
 			assert(x >= 0 && x < b->w && y >= 0 && y < b->h);
-			BM_SET(b, x, y, b->r, b->g, b->b, b->a);
+			BM_SETRGB(b, x, y, b->r, b->g, b->b, b->a);
 		}			
 	}
 }
@@ -2846,7 +2922,7 @@ void bm_fill(Bitmap *b, int x, int y) {
 		}
 		for(i = w.x; i <= e.x; i++) {
 			assert(i >= 0 && i < b->w);
-			BM_SET(b, i, w.y, dr, dg, db, b->a);			
+			BM_SETRGB(b, i, w.y, dr, dg, db, b->a);			
 			if(w.y > 0) {
 				if(bm_color_is(b, i, w.y - 1, sr, sg, sb)) {
 					nn.x = i; nn.y = w.y - 1;

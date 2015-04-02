@@ -305,6 +305,25 @@ void bm_maskedblit(Bitmap *dst, int dx, int dy, Bitmap *src, int sx, int sy, int
  */
 void bm_blit_ex(Bitmap *dst, int dx, int dy, int dw, int dh, Bitmap *src, int sx, int sy, int sw, int sh, int mask);
 
+/*@ typedef int (*bm_blit_fun)(Bitmap *dst, int dx, int dy, Bitmap *src, int sx, int sy, void *data);
+ *# Prototype for the callback function to be passed to {{bm_blit_ex_fun()}}.\n
+ *# {{dst}} is the destination bitmap and {{dx,dy}} is where the pixel is too be plotted.\n
+ *# {{src}} is the source bitmap and {{sx,sy}} is where the colour of the pixel is to be obtained from.\n
+ *# {{mask}} is the mask color of the source bitmap. The function can decide whether or not to blit the pixel based on this.\n
+ *# It should return 1 on success. If it returns 0 bm_blit_ex_fun will terminate immediately.
+ */
+typedef int (*bm_blit_fun)(Bitmap *dst, int dx, int dy, Bitmap *src, int sx, int sy, int mask, void *data);
+
+/*@ void bm_blit_ex_fun(Bitmap *dst, int dx, int dy, int dw, int dh, Bitmap *src, int sx, int sy, int sw, int sh, bm_blit_fun fun, void *data);
+ *# Blits a scaled bitmap from {{src}} to {{dst}}, but calls a callback function {{fun}}
+ *# for each pixel to handle the plotting instead of plotting the pixel directly.\n
+ *# This can be used for some specific post-processing after the position of a pixel is determined
+ *# on the source and destination, but before the pixel is actually plotted.\n
+ *# {{data}} is passed straight through to the callback function.\n
+ *# The other parameters are the same as for {{bm_blit_ex()}}.
+ */
+void bm_blit_ex_fun(Bitmap *dst, int dx, int dy, int dw, int dh, Bitmap *src, int sx, int sy, int sw, int sh, bm_blit_fun fun, void *data);
+
 /*@ void bm_smooth(Bitmap *b)
  *# Smoothes the bitmap by essentially applying a 5x5 Gaussian filter.
  */
