@@ -64,7 +64,7 @@ For example, on Ubuntu 14.04, the following should suffice:
     $ sudo apt-get install libsdl2-dev liblua5.2-dev \
                zlib1g-dev libpng12-dev libjpeg-dev \
                libsdl2-mixer-dev libogg-dev libvorbis-dev \
-               libfltk1.3-dev
+               libfreetype6-dev libfltk1.3-dev
 
 Since SDL2 is relatively new, it may not be available in your
 package manager, and you may have to compile SDL2 and SDL2_mixer yourself
@@ -84,6 +84,9 @@ then you need to install `libasound2-dev` like so
 and recompile SDL2 (`libpulse-dev` may also work - Haven't tried it - more
 info [here](http://www.gamedev.net/topic/646010-sdl2-mixer-no-such-audio-device-solved/)).
 
+If you receive an error `cannot find -lGL`, you need to install OpenGL development libraries:
+
+    $ sudo apt-get install libgl1-mesa-dev
 
 On Windows, Rengine is built with [MinGW](http://mingw.org/). See the
 webpages of the packages mentioned above for details on how to compile
