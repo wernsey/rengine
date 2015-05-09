@@ -46,13 +46,6 @@ TODO:
 	accept is still 0xRRGGBB instead of 0xRRGGBBAA - It probably implies
 	that I should change the type to unsigned int where it currently is
 	just int.
-	
-	PNG support is also fairly new, so it could do with some testing.
-	
-	I may also want to add a function to detect the file types. Both
-	BMP and PNG files have magic numbers in their headers to check them.
-	I should change bm_load() to use this, and add a separate bm_load_bmp
-	function.
 */
 
 #ifndef NO_FONTS
@@ -165,6 +158,53 @@ Bitmap *bm_create(int w, int h) {
 	return b;
 }
 
+/* Wraps around the stdio functions, so I don't have to duplicate my code
+	for SDL2's RWops support.
+	It is unfortunately an abstraction over an abstraction in the case of
+	SDL_RWops, but such is life. */
+typedef struct {
+	void *data;
+	size_t (*fread)(void* ptr, size_t size, size_t nobj, void* stream);
+	long (*ftell)(void* stream);
+	int (*fseek)(void* stream, long offset, int origin);
+} BmReader;
+
+static BmReader make_file_reader(FILE *fp) {
+	BmReader rd;
+	rd.data = fp;
+	rd.fread = (size_t(*)(void*,size_t,size_t,void*))fread;
+	rd.ftell = (long(*)(void* ))ftell;
+	rd.fseek = (int(*)(void*,long,int))fseek;
+	return rd;
+}
+
+#ifdef USESDL
+static size_t rw_fread(void *ptr, size_t size, size_t nobj, SDL_RWops *stream) {
+	return SDL_RWread(stream, ptr, size, nobj);
+}
+static long rw_ftell(SDL_RWops *stream) {
+	return SDL_RWtell(stream);
+}
+static int rw_fseek(SDL_RWops *stream, long offset, int origin) {
+	switch (origin) {
+		case SEEK_SET: origin = RW_SEEK_SET; break;
+		case SEEK_CUR: origin = RW_SEEK_CUR; break;
+		case SEEK_END: origin = RW_SEEK_END; break;
+	}
+	if(SDL_RWseek(stream, offset, origin) < 0) 
+		return 1;
+	return 0;
+}
+static BmReader make_rwops_reader(SDL_RWops *rw) {
+	BmReader rd;
+	rd.data = rw;
+	rd.fread = (size_t(*)(void*,size_t,size_t,void*))rw_fread;
+	rd.ftell = (long(*)(void* ))rw_ftell;
+	rd.fseek = (int(*)(void*,long,int))rw_fseek;
+	return rd;
+}
+#endif
+
 Bitmap *bm_load(const char *filename) {	
 	Bitmap *bmp;
 	FILE *f = fopen(filename, "rb");
@@ -175,8 +215,9 @@ Bitmap *bm_load(const char *filename) {
 	return bmp;
 }
 
-static Bitmap *bm_load_bmp_fp(FILE *f);
-static Bitmap *bm_load_pcx_fp(FILE *f);
+static Bitmap *bm_load_bmp_rd(BmReader rd);
+static Bitmap *bm_load_gif_rd(BmReader rd);
+static Bitmap *bm_load_pcx_rd(BmReader rd);
 #ifdef USEPNG
 static Bitmap *bm_load_png_fp(FILE *f);
 #endif
@@ -218,16 +259,22 @@ Bitmap *bm_load_fp(FILE *f) {
 #else
 	(void)ispng;
 #endif
-	if(isgif)
-		return NULL; /* Not supported yet, but soon... */
-	if(ispcx)
-		return bm_load_pcx_fp(f);
-	if(!isbmp) 
-		return NULL;
-	return bm_load_bmp_fp(f);
+	if(isgif) {
+		BmReader rd = make_file_reader(f);
+		return bm_load_gif_rd(rd);
+	}
+	if(ispcx) {
+		BmReader rd = make_file_reader(f);
+		return bm_load_pcx_rd(rd);
+	}
+	if(isbmp) {
+		BmReader rd = make_file_reader(f);
+		return bm_load_bmp_rd(rd);
+	}
+	return NULL;
 }
 
-static Bitmap *bm_load_bmp_fp(FILE *f) {	
+static Bitmap *bm_load_bmp_rd(BmReader rd) {	
 	struct bmpfile_magic magic; 
 	struct bmpfile_header hdr;
 	struct bmpfile_dibinfo dib;
@@ -238,9 +285,9 @@ static Bitmap *bm_load_bmp_fp(FILE *f) {
 	int rs, i, j;
 	char *data = NULL;
 	
-	long start_offset = ftell(f);
+	long start_offset = rd.ftell(rd.data);
 		
-	if(fread(&magic, sizeof magic, 1, f) != 1) {
+	if(rd.fread(&magic, sizeof magic, 1, rd.data) != 1) {
 		return NULL;
 	}
 	
@@ -248,11 +295,8 @@ static Bitmap *bm_load_bmp_fp(FILE *f) {
 		return NULL;
 	}
 	
-	if(fread(&hdr, sizeof hdr, 1, f) != 1) {
-		return NULL;
-	}
-	
-	if(fread(&dib, sizeof dib, 1, f) != 1) {
+	if(rd.fread(&hdr, sizeof hdr, 1, rd.data) != 1 || 
+		rd.fread(&dib, sizeof dib, 1, rd.data) != 1) {
 		return NULL;
 	}
 	
@@ -274,12 +318,12 @@ static Bitmap *bm_load_bmp_fp(FILE *f) {
 		if(!palette) {
 			goto error;
 		}
-		if(fread(palette, sizeof *palette, dib.ncolors, f) != dib.ncolors) {
+		if(rd.fread(palette, sizeof *palette, dib.ncolors, rd.data) != dib.ncolors) {
 			goto error;
 		}
 	}
 		
-	if(fseek(f, hdr.bmp_offset + start_offset, SEEK_SET) != 0) {
+	if(rd.fseek(rd.data, hdr.bmp_offset + start_offset, SEEK_SET) != 0) {
 		goto error;
 	}
 
@@ -292,11 +336,11 @@ static Bitmap *bm_load_bmp_fp(FILE *f) {
 	}
 	
 	if(dib.bmp_bytesz == 0) {		
-		if(fread(data, 1, rs * b->h, f) != rs * b->h) {
+		if(rd.fread(data, 1, rs * b->h, rd.data) != rs * b->h) {
 			goto error;
 		}
 	} else {		
-		if(fread(data, 1, dib.bmp_bytesz, f) != dib.bmp_bytesz) {
+		if(rd.fread(data, 1, dib.bmp_bytesz, rd.data) != dib.bmp_bytesz) {
 			goto error;
 		}
 	}
@@ -331,6 +375,7 @@ error:
 }
 
 static int bm_save_bmp(Bitmap *b, const char *fname);
+static int bm_save_gif(Bitmap *b, const char *fname);
 static int bm_save_pcx(Bitmap *b, const char *fname);
 #ifdef USEPNG
 static int bm_save_png(Bitmap *b, const char *fname);
@@ -344,11 +389,12 @@ int bm_save(Bitmap *b, const char *fname) {
 	   if the filename contains ".jpg" save as JPG,
 		otherwise save as PNG */
 	char *lname = strdup(fname), *c, 
-		bmp = 0, jpg = 0, png = 0, pcx = 0;
+		bmp = 0, jpg = 0, png = 0, pcx = 0, gif = 0;
 	for(c = lname; *c; c++)
 		*c = tolower(*c);
 	bmp = !!strstr(lname, ".bmp");
 	pcx = !!strstr(lname, ".pcx");
+	gif = !!strstr(lname, ".gif");
 	jpg = !!strstr(lname, ".jpg") || !!strstr(lname, ".jpeg");
 	png = !bmp && !jpg && !pcx;
 	free(lname);
@@ -365,6 +411,8 @@ int bm_save(Bitmap *b, const char *fname) {
 #else
 	(void)jpg;
 #endif	
+	if(gif)
+		return bm_save_gif(b, fname);
 	if(pcx)
 		return bm_save_pcx(b, fname);
 	return bm_save_bmp(b, fname);
@@ -724,9 +772,6 @@ static int bm_save_jpg(Bitmap *b, const char *fname) {
 /* Some functions to load graphics through the SDL_RWops
     related functions.
 */
-
-static Bitmap *bm_load_bmp_rw(SDL_RWops *rw);
-static Bitmap *bm_load_pcx_rw(SDL_RWops *rw);
 #  ifdef USEPNG
 static Bitmap *bm_load_png_rw(SDL_RWops *rw);
 #  endif
@@ -735,12 +780,14 @@ static Bitmap *bm_load_jpg_rw(SDL_RWops *rw);
 #  endif
 
 Bitmap *bm_load_rw(SDL_RWops *rw) {	
-	unsigned char magic[2];	
+	unsigned char magic[3];	
     long start = SDL_RWtell(rw);
-    long isbmp = 0, ispng = 0, isjpg = 0, ispcx = 0;
+    long isbmp = 0, ispng = 0, isjpg = 0, ispcx = 0, isgif = 0;
     if(SDL_RWread(rw, magic, sizeof magic, 1) == 1) {
-		if(magic[0] == 'B' && magic[1] == 'M') 
+		if(!memcmp(magic, "BM", 2)) 
 			isbmp = 1;
+		else if(!memcmp(magic, "GIF", 3))
+			isgif = 1;
 		else if(magic[0] == 0xFF && magic[1] == 0xD8)
 			isjpg = 1;
 		else if(magic[0] == 0x0A)
@@ -763,114 +810,21 @@ Bitmap *bm_load_rw(SDL_RWops *rw) {
 #  else
 	(void)ispng;
 #  endif
-	if(ispcx)
-		return bm_load_pcx_rw(rw);
-	if(isbmp) 
-        return bm_load_bmp_rw(rw);
-    return NULL;
+	if(isgif) {
+		BmReader rd = make_rwops_reader(rw);
+		return bm_load_gif_rd(rd);
+	}
+	if(ispcx) {
+		BmReader rd = make_rwops_reader(rw);
+		return bm_load_pcx_rd(rd);
+	}
+	if(isbmp) {
+		BmReader rd = make_rwops_reader(rw);
+		return bm_load_bmp_rd(rd);
+	}
+	return NULL;
 }
-
-static Bitmap *bm_load_bmp_rw(SDL_RWops *rw) {
-    struct bmpfile_magic magic; 
-	struct bmpfile_header hdr;
-	struct bmpfile_dibinfo dib;
-	struct bmpfile_colinfo *palette = NULL;
 	
-	Bitmap *b = NULL;
-	
-	int rs, i, j;
-	char *data = NULL;
-	
-	long start_offset = SDL_RWtell(rw);
-		
-	if(SDL_RWread(rw, &magic, sizeof magic, 1) != 1) {
-		return NULL;
-	}
-	if(magic.magic[0] != 'B' || magic.magic[1] != 'M') {
-		return NULL;
-	}
-	
-	if(SDL_RWread(rw, &hdr, sizeof hdr, 1) != 1) {
-		return NULL;
-	}
-	
-	if(SDL_RWread(rw, &dib, sizeof dib, 1) != 1) {
-		return NULL;
-	}
-	
-	if((dib.bitspp != 8 && dib.bitspp != 24) || dib.compress_type != 0) {
-		/* Unsupported BMP type. TODO (maybe): support more types? */
-		return NULL;
-	}
-	
-	b = bm_create(dib.width, dib.height);
-	if(!b) {
-		return NULL;
-	}
-	
-	if(dib.bitspp <= 8) {
-		if(!dib.ncolors) {
-			dib.ncolors = 1 << dib.bitspp;
-		}		
-		palette = calloc(dib.ncolors, sizeof *palette);		
-		if(!palette) {
-			goto error;
-		}
-		if(SDL_RWread(rw, palette, sizeof *palette, dib.ncolors) != dib.ncolors) {
-			goto error;
-		}
-	}
-		
-	if(SDL_RWseek(rw, hdr.bmp_offset + start_offset, RW_SEEK_SET) < 0) {
-		goto error;
-	}
-
-	rs = ((dib.width * dib.bitspp / 8) + 3) & ~3;
-	assert(rs % 4 == 0);
-	
-	data = malloc(rs * b->h);
-	if(!data) {
-		goto error;
-	}
-	
-	if(dib.bmp_bytesz == 0) {		
-		if(SDL_RWread(rw, data, 1, rs * b->h) != rs * b->h) {
-			goto error;
-		}
-	} else {		
-		if(SDL_RWread(rw, data, 1, dib.bmp_bytesz) != dib.bmp_bytesz) {
-			goto error;
-		}
-	}
-		
-	if(dib.bitspp == 8) {
-		for(j = 0; j < b->h; j++) {
-			for(i = 0; i < b->w; i++) {
-				uint8_t p = data[(b->h - (j) - 1) * rs + i];
-				assert(p < dib.ncolors);				
-				BM_SETRGB(b, i, j, palette[p].r, palette[p].g, palette[p].b, palette[p].a);
-			}
-		}			
-	} else {	
-		for(j = 0; j < b->h; j++) {
-			for(i = 0; i < b->w; i++) {
-				int p = ((b->h - (j) - 1) * rs + (i)*3);			
-				BM_SETRGB(b, i, j, data[p+2], data[p+1], data[p+0], 0xFF);
-			}
-		}
-	}
-	
-end:
-	if(data) free(data);	
-	if(palette != NULL) free(palette);
-	
-	return b;
-error:
-	if(b) 
-		bm_free(b);
-	b = NULL;
-	goto end;
-}
 #  ifdef USEPNG
 /* 
 Code to read a PNG from a SDL_RWops
@@ -1110,246 +1064,7 @@ static Bitmap *bm_load_jpg_rw(SDL_RWops *rw) {
 
 #endif /* USESDL */
 
-/* PCX support
-http://web.archive.org/web/20100206055706/http://www.qzx.com/pc-gpe/pcx.txt
-http://www.shikadi.net/moddingwiki/PCX_Format
-*/
-struct pcx_header {
-	char manuf;
-	char version;
-	char encoding;
-	char bpp;
-	unsigned short xmin, ymin, xmax, ymax;
-	unsigned short vert_dpi, hori_dpi;
-	
-	union {
-		unsigned char bytes[48];
-		struct rgb_triplet rgb[16];
-	} palette;
-	
-	char reserved;
-	char planes;
-	unsigned short bytes_per_line;
-	unsigned short paltype;
-	unsigned short hscrsize, vscrsize;
-	char pad[54];
-};
-
-static Bitmap *bm_load_pcx_fp(FILE *f) {
-	struct pcx_header hdr;
-	Bitmap *b = NULL;
-	int y;
-	
-	struct rgb_triplet rgb[256];
-		
-	if(fread(&hdr, sizeof hdr, 1, f) != 1) {
-		return NULL;
-	}
-	if(hdr.manuf != 0x0A) {
-		return NULL;
-	}
-	/*
-	printf("Version: %d\n", hdr.version);
-	printf("Encoding: %d\n", hdr.encoding);
-	printf("BPP: %d\n", hdr.bpp);
-	printf("Window: %d %d - %d %d\n", hdr.xmin, hdr.ymin, hdr.xmax, hdr.ymax);
-	printf("DPI: %d %d\n", hdr.vert_dpi, hdr.hori_dpi);
-	printf("planes %d; bytes_per_plane: %d\n", hdr.planes, hdr.bytes_per_line);
-	printf("paltype: %d\n", hdr.paltype);
-	*/
-	if(hdr.version != 5 || hdr.encoding != 1 || hdr.bpp != 8 || (hdr.planes != 1 && hdr.planes != 3)) {
-		/* We might want to support these PCX types at a later stage... */
-		return NULL;
-	}
-	
-	if(hdr.planes == 1) {
-		long pos = ftell(f);
-		char pbyte;
-		
-		fseek(f, -769, SEEK_END);
-		if(fread(&pbyte, sizeof pbyte, 1, f) != 1) {
-			return NULL;
-		}
-		if(pbyte != 12) {
-			return NULL;
-		}
-		if(fread(&rgb, sizeof rgb[0], 256, f) != 256) {
-			return NULL;
-		}
-		
-		fseek(f, pos, SEEK_SET);
-	}
-	
-	b = bm_create(hdr.xmax - hdr.xmin + 1, hdr.ymax - hdr.ymin + 1);
-	
-	for(y = 0; y < b->h; y++) {
-		int p;
-		for(p = 0; p < hdr.planes; p++) {
-			int x = 0;
-			while(x < b->w) {
-				int cnt = 1;
-				int i = fgetc(f);
-				if(i == EOF)
-					goto read_error;
-				
-				if((i & 0xC0) == 0xC0) {
-					cnt = i & 0x3F;
-					i = fgetc(f);
-					if(i == EOF)
-						goto read_error;
-				}
-				if(hdr.planes == 1) {
-					int c = (rgb[i].r << 16) | (rgb[i].g << 8) | rgb[i].b; 
-					while(cnt--) {
-						bm_set(b, x++, y, c);
-					}
-				} else {
-					while(cnt--) {
-						int c = bm_get(b, x, y);
-						switch(p) {
-						case 0: c |= (i << 16); break;
-						case 1: c |= (i << 8); break;
-						case 2: c |= (i << 0); break;
-						}
-						bm_set(b, x++, y, c);
-					}
-				}
-			}
-		}
-	}
-	
-	return b;
-read_error:
-	bm_free(b);
-	return NULL;	
-}
-
-#ifdef USESDL
-static Bitmap *bm_load_pcx_rw(SDL_RWops *rw) {
-	struct pcx_header hdr;
-	Bitmap *b = NULL;
-	
-	struct rgb_triplet rgb[256];
-		
-	if(SDL_RWread(rw, &hdr, sizeof hdr, 1) != 1) {
-		return NULL;
-	}
-	if(hdr.manuf != 0x0A) {
-		return NULL;
-	}
-	if(hdr.version != 5 || hdr.encoding != 1 || hdr.bpp != 8 || (hdr.planes != 1 && hdr.planes != 3)) {
-		return NULL;
-	}
-	
-	if(hdr.planes == 1) {
-		long pos = SDL_RWtell(rw);
-		
-		SDL_RWseek(rw, -769, RW_SEEK_END);
-		char pbyte;
-		if(SDL_RWread(rw, &pbyte, sizeof pbyte, 1) != 1) {
-			return NULL;
-		}
-		if(pbyte != 12) {
-			return NULL;
-		}
-		if(SDL_RWread(rw, &rgb, sizeof rgb[0], 256) != 256) {
-			return NULL;
-		}
-		
-		SDL_RWseek(rw, pos, SEEK_SET);
-	}
-	
-	b = bm_create(hdr.xmax - hdr.xmin + 1, hdr.ymax - hdr.ymin + 1);
-	
-	int y;
-	for(y = 0; y < b->h; y++) {
-		int p;
-		for(p = 0; p < hdr.planes; p++) {
-			int x = 0;
-			while(x < b->w) {
-				int cnt = 1;
-				char i;
-				if(SDL_RWread(rw, &i, sizeof i, 1) != 1) 
-					goto read_error;
-				
-				if((i & 0xC0) == 0xC0) {
-					cnt = i & 0x3F;
-					if(SDL_RWread(rw, &i, sizeof i, 1) != 1) 
-					goto read_error;
-				}
-				if(hdr.planes == 1) {
-					int c = (rgb[(int)i].r << 16) | (rgb[(int)i].g << 8) | rgb[(int)i].b; 
-					while(cnt--) {
-						bm_set(b, x++, y, c);
-					}
-				} else {
-					while(cnt--) {
-						int c = bm_get(b, x, y);
-						switch(p) {
-						case 0: c |= (i << 16); break;
-						case 1: c |= (i << 8); break;
-						case 2: c |= (i << 0); break;
-						}
-						bm_set(b, x++, y, c);
-					}
-				}
-			}
-		}
-	}
-	
-	return b;
-read_error:
-	bm_free(b);
-	return NULL;	
-}
-#endif /* USESDL */
-
-#if 0
-/* Not used anymore, but I keep it until I get my version control in sync */
-/* 
-Also, once you can presumably optimize the palette lookup by building a palette
-from the image (once you've reduced the image to less than 256 colors), sorting it,
-and then using a binary search to find the index of the color you're looking for.
- */
-static int get_palette_idx(struct rgb_triplet rgb[], int *nentries, int c) {
-	int r = (c >> 16) & 0xFF;
-	int g = (c >> 8) & 0xFF;
-	int b = (c >> 0) & 0xFF;
-	
-	int i, mini = 0;
-	
-	double mindist = DBL_MAX;
-	for(i = 0; i < *nentries; i++) {
-		int dr, dg, db;
-		double dist;
-		
-		if(rgb[i].r == r && rgb[i].g == g && rgb[i].b == b) {
-			/* Found an exact match */
-			return i;
-		}
-		/* Compute the distance between c and the current palette entry */
-		dr = rgb[i].r - r;
-		dg = rgb[i].g - g;
-		db = rgb[i].b - b;
-		dist = sqrt(dr * dr + dg * dg + db * db);
-		if(dist < mindist) {
-			mindist = dist;
-			mini = i;
-		}
-	}
-	
-	if(*nentries < 256) {		
-		i = *nentries;
-		rgb[i].r = r;
-		rgb[i].g = g;
-		rgb[i].b = b;
-		(*nentries)++;
-		return i;
-	}
-	
-	return mini;
-}
-#endif
+/* These functions are used for the palettes in my GIF and PCX support: */
 
 static int cnt_comp_mask(const void*ap, const void*bp);
 
@@ -1409,6 +1124,903 @@ static int comp_rgb(const void *ap, const void *bp) {
 	int a = (ta->r << 16) | (ta->g << 8) | ta->b;
 	int b = (tb->r << 16) | (tb->g << 8) | tb->b;
 	return a - b;
+}
+
+/* GIF support
+http://www.w3.org/Graphics/GIF/spec-gif89a.txt
+Nelson, M.R. : "LZW Data Compression", Dr. Dobb's Journal, October 1989.
+http://commandlinefanatic.com/cgi-bin/showarticle.cgi?article=art011
+http://www.matthewflickinger.com/lab/whatsinagif/bits_and_bytes.asp
+*/
+	
+#pragma pack(push, 1) /* Don't use any padding */
+typedef struct {
+
+	/* header */
+	struct {
+		char signature[3];
+		char version[3];
+	} header;
+
+	enum {gif_87a, gif_89a} version;
+
+	/* logical screen descriptor */
+	struct {
+		unsigned short width;
+		unsigned short height;
+		unsigned char fields;
+		unsigned char background;
+		unsigned char par; /* pixel aspect ratio */
+	} lsd;
+
+	Bitmap *bmp;
+
+} GIF;
+
+/* GIF Graphic Control Extension */
+typedef struct {
+	unsigned char block_size;
+	unsigned char fields;
+	unsigned short delay;
+	unsigned char trans_index;
+	unsigned char terminator;
+} GIF_GCE;
+
+/* GIF Image Descriptor */
+typedef struct {
+	unsigned char separator;
+	unsigned short left;
+	unsigned short top;
+	unsigned short width;
+	unsigned short height;
+	unsigned char fields;
+} GIF_ID;
+
+/* GIF Application Extension */
+typedef struct {
+	unsigned char block_size;
+	char app_id[8];
+	char auth_code[3];
+} GIF_APP_EXT;
+
+/* GIF text extension */
+typedef struct {
+	unsigned char block_size;
+	unsigned short grid_left;
+	unsigned short grid_top;
+	unsigned short grid_width;
+	unsigned short grid_height;
+	unsigned char text_fg;
+	unsigned char text_bg;
+} GIF_TXT_EXT;
+#pragma pack(pop)
+
+static int gif_read_image(BmReader rd, GIF *gif, struct rgb_triplet *ct, int sct);
+static int gif_read_tbid(BmReader rd, GIF *gif, GIF_ID *gif_id, GIF_GCE *gce, struct rgb_triplet *ct, int sct);
+static unsigned char *gif_data_sub_blocks(BmReader rd, int *r_tsize);
+static unsigned char *lzw_decode_bytes(unsigned char *bytes, int data_len, int code_size, int *out_len);
+
+static Bitmap *bm_load_gif_rd(BmReader rd) {
+	GIF gif;
+
+	/* From the packed fields in the logical screen descriptor */
+	int gct, sgct;
+
+	struct rgb_triplet *palette = NULL;
+
+	unsigned char trailer;
+
+	gif.bmp = NULL;
+
+	/* Section 17. Header. */
+	if(rd.fread(&gif.header, sizeof gif.header, 1, rd.data) != 1) {
+		return NULL;
+	}
+	if(memcmp(gif.header.signature, "GIF", 3)){
+		return NULL;
+	}
+	if(!memcmp(gif.header.version, "87a", 3)){
+		gif.version = gif_87a;
+	} else if(!memcmp(gif.header.version, "89a", 3)){
+		gif.version = gif_89a;
+	} else {
+		return NULL;
+	}
+
+	/* Section 18. Logical Screen Descriptor. */
+
+	/* Ugh, I once used a compiler that added a padding byte */
+	assert(sizeof gif.lsd == 7);
+	assert(sizeof *palette == 3);
+
+	if(rd.fread(&gif.lsd, sizeof gif.lsd, 1, rd.data) != 1) {
+		return NULL;
+	}
+
+	gct = !!(gif.lsd.fields & 0x80);
+	sgct = gif.lsd.fields & 0x07;
+	
+	if(gct) {
+		/* raise 2 to the power of [sgct+1] */
+		sgct = 1 << (sgct + 1);
+	}
+
+	gif.bmp = bm_create(gif.lsd.width, gif.lsd.height);
+	
+	if(gct) {
+		/* Section 19. Global Color Table. */
+		struct rgb_triplet *bg;
+		palette = calloc(sgct, sizeof *palette);
+		
+		if(rd.fread(palette, sizeof *palette, sgct, rd.data) != sgct) {
+			free(palette);
+		return NULL;
+	}
+		
+		/* Set the Bitmap's color to the background color.*/
+		bg = &palette[gif.lsd.background];
+		bm_set_color(gif.bmp, bg->r, bg->g, bg->b);
+		bm_clear(gif.bmp);
+		bm_set_color(gif.bmp, 0, 0, 0);
+		bm_set_alpha(gif.bmp, 0);
+
+	} else {
+		/* what? */
+		palette = NULL;
+	}
+
+	for(;;) {
+		long pos = rd.ftell(rd.data);
+		if(!gif_read_image(rd, &gif, palette, sgct)) {
+			rd.fseek(rd.data, pos, SEEK_SET);
+			break;
+		}
+	}
+
+	if(palette)
+		free(palette);
+
+	/* Section 27. Trailer. */
+	if((rd.fread(&trailer, 1, 1, rd.data) != 1) || trailer != 0x3B) {
+		bm_free(gif.bmp);
+		return NULL;
+	}
+
+	return gif.bmp;
+}
+
+static int gif_read_extension(BmReader rd, GIF_GCE *gce) {
+	unsigned char introducer, label;
+
+	if((rd.fread(&introducer, 1, 1, rd.data) != 1) || introducer != 0x21) {
+		return 0;
+	}
+	if(rd.fread(&label, 1, 1, rd.data) != 1) {
+		return 0;
+	}
+
+	if(label == 0xF9) {
+		/* 23. Graphic Control Extension. */
+		if(rd.fread(gce, sizeof *gce, 1, rd.data) != 1) {
+			return 0;
+		}
+	} else if(label == 0xFE) {
+		/* Section 24. Comment Extension. */
+		int len;
+		gif_data_sub_blocks(rd, &len);
+	} else if(label == 0x01) {
+		/* Section 25. Plain Text Extension. */
+		GIF_TXT_EXT te;
+		int len;
+		if(rd.fread(&te, sizeof te, 1, rd.data) != 1) {
+			return 0;
+		}
+		gif_data_sub_blocks(rd, &len);
+	} else if(label == 0xFF) {
+		/* Section 26. Application Extension. */
+		GIF_APP_EXT ae;
+		int len;
+		if(rd.fread(&ae, sizeof ae, 1, rd.data) != 1) {
+			return 0;
+		}
+		gif_data_sub_blocks(rd, &len); /* Skip it */
+	} else {
+		return 0;
+	}
+	return 1;
+}
+
+/* Section 20. Image Descriptor. */
+static int gif_read_image(BmReader rd, GIF *gif, struct rgb_triplet *ct, int sct) {
+	GIF_GCE gce;
+	GIF_ID gif_id;
+	int rv = 1;
+	
+	/* Packed fields in the Image Descriptor */
+	int lct, slct;
+
+	memset(&gce, 0, sizeof gce);
+
+	if(gif->version >= gif_89a) {
+		for(;;) {
+			long pos = rd.ftell(rd.data);
+			if(!gif_read_extension(rd, &gce)) {
+				rd.fseek(rd.data, pos, SEEK_SET);
+				break;
+			}
+		}
+	}
+
+	if(rd.fread(&gif_id, sizeof gif_id, 1, rd.data) != 1) {
+		return 0; /* no more blocks to read */
+	}
+
+	if(gif_id.separator != 0x2C) {
+		return 0;
+	}
+
+	lct = !!(gif_id.fields & 0x80);
+	slct = gif_id.fields & 0x07;
+	if(lct) {
+		/* Section 21. Local Color Table. */
+		/* raise 2 to the power of [slct+1] */
+		slct = 1 << (slct + 1);
+
+		ct = calloc(slct, sizeof *ct);
+
+		if(rd.fread(ct, sizeof *ct, slct, rd.data) != slct) {
+			free(ct);
+			return 0;
+		}
+		sct = slct;
+	}
+	
+	if(!gif_read_tbid(rd, gif, &gif_id, &gce, ct, sct)) {
+		rv = 0; /* what? */
+	}
+
+	if(lct) {
+		free(ct);
+	}
+
+	return rv;
+}
+
+/* Section 15. Data Sub-blocks. */
+static unsigned char *gif_data_sub_blocks(BmReader rd, int *r_tsize) {
+	unsigned char *buffer = NULL, *pos, size;
+	int tsize = 0;
+
+	if(r_tsize)
+		*r_tsize = 0;
+		
+	if(rd.fread(&size, 1, 1, rd.data) != 1) {
+		return NULL;
+	}
+	buffer = realloc(buffer, 1);
+	
+	while(size > 0) {
+		buffer = realloc(buffer, tsize + size + 1);
+		pos = buffer + tsize;
+		
+		if(rd.fread(pos, sizeof *pos, size, rd.data) != size) {
+			free(buffer);
+			return NULL;
+		}
+
+		tsize += size;
+		if(rd.fread(&size, 1, 1, rd.data) != 1) {
+			free(buffer);
+			return NULL;
+		}
+	} 
+
+	if(r_tsize)
+		*r_tsize = tsize;
+	buffer[tsize] = '\0';
+	return buffer;
+}
+
+/* Section 22. Table Based Image Data. */
+static int gif_read_tbid(BmReader rd, GIF *gif, GIF_ID *gif_id, GIF_GCE *gce, struct rgb_triplet *ct, int sct) {
+	int len, rv = 1;
+	unsigned char *bytes, min_code_size;
+
+	if(rd.fread(&min_code_size, 1, 1, rd.data) != 1) {
+		return 0;
+	}
+
+	bytes = gif_data_sub_blocks(rd, &len);
+	if(bytes && len > 0) {
+		int i, outlen, x, y;
+		
+		/* Packed fields in the Graphic Control Extension */
+		int intl, dispose = 0, trans_flag = 0;
+
+		intl = !!(gif_id->fields & 0x40); /* Interlaced? */
+
+		if(gce->block_size) {
+			/* gce->block_size will be 4 if the GCE is present, 0 otherwise */
+			dispose = (gce->fields >> 2) & 0x07;
+			trans_flag = gce->fields & 0x01;
+			if(trans_flag) {
+				/* Mmmm, my bitmap module won't be able to handle 
+					situations where different image blocks in the
+					GIF has different transparent colors */
+				struct rgb_triplet *bg = &ct[gce->trans_index];
+				bm_set_color(gif->bmp, bg->r, bg->g, bg->b);
+			}
+		}
+	
+		if(dispose == 2) {
+			/* Restore the background color */
+			for(y = 0; y < gif_id->height; y++) {
+				for(x = 0; x < gif_id->width; x++) {
+					bm_set_rgb(gif->bmp, x + gif_id->left, y + gif_id->top, gif->bmp->r, gif->bmp->g, gif->bmp->b);
+				}
+			}
+		} else if(dispose != 3) {
+			/* dispose = 0 or 1; if dispose is 3, we leave ignore the new image */
+			unsigned char *decoded = lzw_decode_bytes(bytes, len, min_code_size, &outlen);
+			if(decoded) {
+				if(outlen != gif_id->width * gif_id->height) {
+					/* Shouldn't happen unless the file is corrupt */
+					rv = 0;
+				} else {
+					/* Vars for interlacing: */
+					int grp = 1, /* Group we're in */
+						inty = 0, /* Y we're currently at */
+						inti = 8, /* amount by which we should increment inty */
+						truey; /* True Y, taking interlacing and the image descriptor into account */
+					for(i = 0, y = 0; y < gif_id->height && rv; y++) {
+						/* Appendix E. Interlaced Images. */
+						if(intl) {
+							truey = inty + gif_id->top;
+							inty += inti;
+							if(inty >= gif_id->height) {
+								switch(++grp) {
+									case 2: inti = 8; inty = 4; break;
+									case 3: inti = 4; inty = 2; break;
+									case 4: inti = 2; inty = 1;break;
+								}
+							}
+						} else {
+							truey = y + gif_id->top;
+						}
+						for(x = 0; x < gif_id->width && rv; x++, i++) {
+							int c = decoded[i];							
+							if(c < sct) {
+								struct rgb_triplet *rgb = &ct[c];							
+								if(trans_flag && c == gce->trans_index) {								
+									bm_set_rgb_a(gif->bmp, x + gif_id->left, truey, rgb->r, rgb->g, rgb->b, 0x00);
+								} else {
+									bm_set_rgb(gif->bmp, x + gif_id->left, truey, rgb->r, rgb->g, rgb->b);
+								}
+							} else {
+								/* Decode error */
+								rv = 0;
+							}
+						}
+					}
+				}
+				free(decoded);
+			}
+		}
+		free(bytes);
+	}
+	return rv;
+}
+
+typedef struct {
+	int prev;
+	int code;
+} gif_dict;
+
+static int lzw_read_code(unsigned char bytes[], int bits, int *pos) {
+	int i, bi, code = 0;
+	assert(pos);
+	for(i = *pos, bi=1; i < *pos + bits; i++, bi <<=1) {
+		int byte = i >> 3;
+		int bit = i & 0x07;
+		if(bytes[byte] & (1 << bit))
+			code |= bi;
+	}
+	*pos = i;
+	return code;
+}
+
+static unsigned char *lzw_decode_bytes(unsigned char *bytes, int data_len, int code_size, int *out_len) {
+	unsigned char *out = NULL;
+	int out_size = 32;
+	int outp = 0;
+
+	int base_size = code_size;
+
+	int pos = 0, code, old = -1;
+
+	/* Clear and end of stream codes */
+	int clr = 1 << code_size;
+	int end = clr + 1;
+
+	/* Dictionary */
+	int di, dict_size = 1 << (code_size + 1);
+	gif_dict *dict = realloc(NULL, dict_size * sizeof *dict);
+
+	/* Stack so we don't need to recurse down the dictionary */
+	int stack_size = 2;
+	unsigned char *stack = realloc(NULL, stack_size);
+	int sp = 0;
+	int sym = -1, ptr;
+
+	*out_len = 0;
+	out = realloc(NULL, out_size);
+
+	/* Initialize the dictionary */
+	for(di = 0; di < dict_size; di++) {
+		dict[di].prev = -1;
+		dict[di].code = di;
+	}
+	di = end + 1;
+	
+	code = lzw_read_code(bytes, code_size + 1, &pos);
+	while((pos >> 3) <= data_len + 1) {
+		if(code == clr) {
+			code_size = base_size;
+			dict_size = 1 << (code_size + 1);
+			di = end + 1;
+			code = lzw_read_code(bytes, code_size + 1, &pos);
+			old = -1;
+			continue;
+		} else if(code == end) {
+			break;
+		}
+
+		if(code > di) {
+			/* Shouldn't happen, unless file corrupted */
+			free(out);
+			return NULL;
+		}
+		
+		if(code == di) {
+			/* Code is not in the table */
+			ptr = old;
+			stack[sp++] = sym;
+		} else {
+			/* Code is in the table */
+			ptr = code;
+		}
+
+		/* Walk down the dictionary and push the codes onto a stack */
+		while(ptr >= 0) {
+			stack[sp++] = dict[ptr].code;
+			if(sp == stack_size) {
+				stack_size <<= 1;
+				stack = realloc(stack, stack_size);
+			}
+			ptr = dict[ptr].prev;
+		}
+		sym = stack[sp-1];
+
+		/* Output the decoded bytes */
+		while(sp > 0) {
+			out[outp++] = stack[--sp];
+			if(outp == out_size) {
+				out_size <<= 1;
+				out = realloc(out, out_size);
+			}
+		}
+
+		/* update the dictionary */
+		if(old >= 0) {
+			if(di < dict_size) {
+				dict[di].prev = old;
+				dict[di].code = sym;
+				di++;
+			}
+			/* Resize the dictionary? */
+			if(di == dict_size && code_size < 11) {
+				code_size++;
+				dict_size = 1 << (code_size + 1);
+				dict = realloc(dict, dict_size * sizeof *dict);
+			}
+		}
+
+		old = code;
+		code = lzw_read_code(bytes, code_size + 1, &pos);
+	}
+	free(stack);
+	free(dict);
+	
+	*out_len = outp;
+	return out;
+}
+
+static void lzw_emit_code(unsigned char **buffer, int *buf_size, int *pos, int c, int bits) {
+	int i, m;
+	for(i = *pos, m = 1; i < *pos + bits; i++, m <<= 1) {
+		int byte = i >> 3;
+		int bit = i & 0x07;
+		if(!bit) {		
+			if(byte == *buf_size) {		
+				*buf_size <<= 1;
+				*buffer = realloc(*buffer, *buf_size);
+	}
+			(*buffer)[byte] = 0x00;
+		}
+		if(c & m)
+			(*buffer)[byte] |= (1 << bit);
+	}
+	*pos += bits;
+}
+
+static unsigned char *lzw_encode_bytes(unsigned char *bytes, int data_len, int code_size, int *out_len) {
+	int base_size = code_size;
+	
+	/* Clear and end of stream codes */
+	int clr = 1 << code_size;
+	int end = clr + 1;
+	
+	/* dictionary */
+	int i, di, dict_size = 1 << (code_size + 1);
+	gif_dict *dict = realloc(NULL, dict_size * sizeof *dict);
+	
+	int buf_size = 4;
+	int pos = 0;
+	unsigned char *buffer = realloc(NULL, buf_size);
+	
+	int ii, string, prev, tlen;
+	
+	*out_len = 0;
+	
+	/* Initialize the dictionary */
+	for(di = 0; di < dict_size; di++) {
+		dict[di].prev = -1;
+		dict[di].code = di;
+	}
+	di = end+1; 
+	
+	dict[clr].prev = -1;
+	dict[clr].code = -1;
+	dict[end].prev = -1;
+	dict[end].code = -1;
+	
+	string = -1;
+	prev = clr;
+
+	lzw_emit_code(&buffer, &buf_size, &pos, clr, code_size + 1);
+	
+	for(ii = 0; ii < data_len; ii++) {
+		int character, res;
+reread:
+		character = bytes[ii];
+		
+		/* Find it in the dictionary; If the entry is in the dict, it can't be 
+		before dict[string], therefore we can eliminate the first couple of entries. */
+		for(res = -1, i = string>0?string:0; i < di; i++) {
+			if(dict[i].prev == string && dict[i].code == character) {
+				res = i;
+				break;
+			}
+		}
+		
+		if(res >= 0) {
+			/* Found */
+			string = res;
+			prev = res;
+		} else {
+			/* Not found */
+			lzw_emit_code(&buffer, &buf_size, &pos, prev, code_size + 1);
+			
+			/* update the dictionary */
+			if(di == dict_size) {
+				/* Resize the dictionary */
+				if(code_size < 11) {
+					code_size++;					
+					dict_size = 1 << (code_size + 1);
+					dict = realloc(dict, dict_size * sizeof *dict);
+				} else {
+					/* lzw_emit_code a clear code */
+					lzw_emit_code(&buffer, &buf_size, &pos, clr,code_size + 1);
+					code_size = base_size;
+					dict_size = 1 << (code_size + 1);
+					di = end + 1;
+					string = -1;
+					prev = clr;
+					goto reread;
+				}
+			}
+	
+			dict[di].prev = string;
+			dict[di].code = character;		
+			di++;
+			
+			string = character;
+			prev = character;
+		}
+	}	
+	
+	lzw_emit_code(&buffer, &buf_size, &pos, prev,code_size + 1);
+	lzw_emit_code(&buffer, &buf_size, &pos, end,code_size + 1);
+	
+	/* Total length */
+	tlen = (pos >> 3);
+	if(pos & 0x07) tlen++;
+	*out_len = tlen;
+	
+	return buffer;
+}
+
+static int bm_save_gif(Bitmap *b, const char *fname) {	
+	GIF gif;	
+	GIF_GCE gce;
+	GIF_ID gif_id;
+	int nc, sgct, bg;
+	struct rgb_triplet gct[256];
+	Bitmap *bo = b;
+	unsigned char code_size = 0x08;	
+	
+	/* For encoding */
+	int len, x, y, p;
+	unsigned char *bytes, *pixels;
+	
+	FILE *f = fopen(fname, "wb");
+	if(!f) {
+		return 0;
+	}
+	
+	memcpy(gif.header.signature, "GIF", 3);
+	memcpy(gif.header.version, "89a", 3);
+	gif.version = gif_89a;
+	gif.lsd.width = b->w;
+	gif.lsd.height = b->h;
+	gif.lsd.background = 0;
+	gif.lsd.par = 0;
+	
+	/* Using global color table, color resolution = 8-bits */
+	gif.lsd.fields = 0xF0;
+	
+	nc = count_colors_build_palette(b, gct);
+	if(nc < 0) {
+		int palette[256], q;
+		
+		/* Too many colors */
+		sgct = 256; 
+		gif.lsd.fields |= 0x07;
+				
+		/* color quantization - see bm_save_pcx() */
+		nc = 0;
+		for(nc = 0; nc < 256; nc++) {
+			int c = bm_get(b, rand()%b->w, rand()%b->h);
+			gct[nc].r = (c >> 16) & 0xFF;
+			gct[nc].g = (c >> 8) & 0xFF;
+			gct[nc].b = (c >> 0) & 0xFF;
+		}
+		qsort(gct, nc, sizeof gct[0], comp_rgb);
+		for(q = 0; q < nc; q++) {
+			palette[q] = (gct[q].r << 16) | (gct[q].g << 8) | gct[q].b;
+		}		
+		/* Copy the image and dither it to match the palette */
+		b = bm_copy(b);		
+		bm_reduce_palette(b, palette, nc);				
+	} else {
+		if(nc > 128) {
+			sgct = 256;
+			gif.lsd.fields |= 0x07;
+		} else if(nc > 64) {
+			sgct = 128;
+			gif.lsd.fields |= 0x06;
+			code_size = 7;
+		} else if(nc > 32) {
+			sgct = 64;
+			gif.lsd.fields |= 0x05;
+			code_size = 6;
+		} else if(nc > 16) {
+			sgct = 32;
+			gif.lsd.fields |= 0x04;
+			code_size = 5;
+		} else if(nc > 8) {
+			sgct = 16;
+			gif.lsd.fields |= 0x03;
+			code_size = 4;
+		} else {
+			sgct = 8;
+			gif.lsd.fields |= 0x02;
+			code_size = 3;
+		}
+	}
+	
+	/* See if we can find the background color in the palette */
+	bg = (b->r << 16) | (b->g << 8) | b->b;
+	bg = bsrch_palette_lookup(gct, bg, 0, nc - 1);
+	if(bg >= 0) {		
+		gif.lsd.background = bg;
+	}
+	
+	/* Map the pixels in the image to their palette indices */
+	pixels = malloc(b->w * b->h);
+	for(y = 0, p = 0; y < b->h; y++) {
+		for(x = 0; x < b->w; x++) {
+			int i, c = bm_get(b, x, y);
+			i = bsrch_palette_lookup(gct, c, 0, nc - 1);
+			/* At this point in time, the color MUST be in the palette */
+			assert(i >= 0); 
+			assert(i < sgct);
+			pixels[p++] = i;
+		}
+	}
+	assert(p == b->w * b->h);
+		
+	if(fwrite(&gif.header, sizeof gif.header, 1, f) != 1 || 
+		fwrite(&gif.lsd, sizeof gif.lsd, 1, f) != 1 || 
+		fwrite(gct, sizeof *gct, sgct, f) != sgct) {
+		fclose(f);
+		return 0;
+	}
+				
+	/* Nothing of use here */
+	gce.block_size = 4;
+	gce.fields = 0;
+	gce.delay = 0;
+	if(bg >= 0) {
+		gce.fields |= 0x01;
+		gce.trans_index = bg;
+				} else {
+		gce.trans_index = 0;
+						}
+	gce.terminator = 0x00;
+	
+	fputc(0x21, f);
+	fputc(0xF9, f);
+	if(fwrite(&gce, sizeof gce, 1, f) != 1) {
+		fclose(f);
+		return 0;
+					}
+	
+	gif_id.separator = 0x2C;
+	gif_id.left = 0x00;
+	gif_id.top = 0x00;
+	gif_id.width = b->w;
+	gif_id.height = b->h;
+	/* Not using local color table or interlacing */
+	gif_id.fields = 0;
+	if(fwrite(&gif_id, sizeof gif_id, 1, f) != 1) {
+		fclose(f);
+		return 0;
+				}
+	
+	fputc(code_size, f);
+	
+	/* Perform the LZW compression */
+	bytes = lzw_encode_bytes(pixels, b->w * b->h, code_size, &len);
+	free(pixels);	
+	
+	/* Write out the data sub-blocks */
+	for(p = 0; p < len; p++) {
+		if(p % 0xFF == 0) {
+			/* beginning of a new block; lzw_emit_code the length byte */
+			if(len - p >= 0xFF) {
+				fputc(0xFF, f);
+			} else {
+				fputc(len - p, f);
+			}
+		}
+		fputc(bytes[p], f);
+	}
+	free(bytes);	
+	
+	fputc(0x00, f); /* terminating block */
+	
+	fputc(0x3B, f); /* trailer byte */
+			
+	if(bo != b) 
+	bm_free(b);
+	
+	fclose(f);
+	return 1;
+}
+
+/* PCX support
+http://web.archive.org/web/20100206055706/http://www.qzx.com/pc-gpe/pcx.txt
+http://www.shikadi.net/moddingwiki/PCX_Format
+*/
+struct pcx_header {
+	char manuf;
+	char version;
+	char encoding;
+	char bpp;
+	unsigned short xmin, ymin, xmax, ymax;
+	unsigned short vert_dpi, hori_dpi;
+	
+	union {
+		unsigned char bytes[48];
+		struct rgb_triplet rgb[16];
+	} palette;
+	
+	char reserved;
+	char planes;
+	unsigned short bytes_per_line;
+	unsigned short paltype;
+	unsigned short hscrsize, vscrsize;
+	char pad[54];
+};
+
+static Bitmap *bm_load_pcx_rd(BmReader rd) {
+	struct pcx_header hdr;
+	Bitmap *b = NULL;
+	int y;
+	
+	struct rgb_triplet rgb[256];
+		
+	if(rd.fread(&hdr, sizeof hdr, 1, rd.data) != 1) {
+		return NULL;
+	}
+	if(hdr.manuf != 0x0A) {
+		return NULL;
+	}
+	if(hdr.version != 5 || hdr.encoding != 1 || hdr.bpp != 8 || (hdr.planes != 1 && hdr.planes != 3)) {
+		/* We might want to support these PCX types at a later stage... */
+		return NULL;
+	}
+	
+	if(hdr.planes == 1) {
+		long pos = rd.ftell(rd.data);
+		char pbyte;
+		
+		rd.fseek(rd.data, -769, SEEK_END);
+		if(rd.fread(&pbyte, sizeof pbyte, 1, rd.data) != 1) {
+			return NULL;
+		}
+		if(pbyte != 12) {
+			return NULL;
+		}
+		if(rd.fread(&rgb, sizeof rgb[0], 256, rd.data) != 256) {
+			return NULL;
+		}
+		
+		rd.fseek(rd.data, pos, SEEK_SET);
+	}
+	
+	b = bm_create(hdr.xmax - hdr.xmin + 1, hdr.ymax - hdr.ymin + 1);
+	
+	for(y = 0; y < b->h; y++) {
+		int p;
+		for(p = 0; p < hdr.planes; p++) {
+			int x = 0;
+			while(x < b->w) {
+				int cnt = 1;
+				unsigned char i;
+				if(rd.fread(&i, sizeof i, 1, rd.data) != 1)
+					goto read_error;
+				
+				if((i & 0xC0) == 0xC0) {
+					cnt = i & 0x3F;
+					if(rd.fread(&i, sizeof i, 1, rd.data) != 1)
+					goto read_error;
+				}
+				if(hdr.planes == 1) {
+					int c = (rgb[i].r << 16) | (rgb[i].g << 8) | rgb[i].b; 
+					while(cnt--) {
+						bm_set(b, x++, y, c);
+					}
+				} else {
+					while(cnt--) {
+						int c = bm_get(b, x, y);
+						switch(p) {
+						case 0: c |= (i << 16); break;
+						case 1: c |= (i << 8); break;
+						case 2: c |= (i << 0); break;
+						}
+						bm_set(b, x++, y, c);
+					}
+				}
+			}
+		}
+	}
+	
+	return b;
+read_error:
+	bm_free(b);
+	return NULL;	
 }
 
 static int bm_save_pcx(Bitmap *b, const char *fname) {	

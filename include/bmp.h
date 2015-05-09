@@ -1,7 +1,7 @@
 /*1 bmp.h
  *# Low-level routines to manipulate bitmap graphic files.\n
  *{
- ** It supports BMP and PCX files without any third party dependencies.
+ ** It supports BMP, GIF and PCX files without any third party dependencies.
  ** PNG support is optional through libpng (http://www.libpng.org/pub/png/libpng.html). Use {{-DUSEPNG}} when compiling.
  ** JPG support is optional through libjpeg (http://www.ijg.org/). Use {{-DUSEJPG}} when compiling.
  *} 
@@ -14,6 +14,12 @@
  ** http://en.wikipedia.org/wiki/Midpoint_circle_algorithm
  ** http://web.archive.org/web/20110706093850/http://free.pages.at/easyfilter/bresenham.html
  ** http://damieng.com/blog/2011/02/20/typography-in-8-bits-system-fonts
+ ** http://www.w3.org/Graphics/GIF/spec-gif89a.txt
+ ** Nelson, M.R. : "LZW Data Compression", Dr. Dobb's Journal, October 1989.
+ ** http://commandlinefanatic.com/cgi-bin/showarticle.cgi?article=art011
+ ** http://www.matthewflickinger.com/lab/whatsinagif/bits_and_bytes.asp
+ ** http://web.archive.org/web/20100206055706/http://www.qzx.com/pc-gpe/pcx.txt
+ ** http://www.shikadi.net/moddingwiki/PCX_Format
  *} 
  *2 License
  *[
@@ -70,15 +76,17 @@ void bm_free(Bitmap *b);
 /*@ Bitmap *bm_load(const char *filename)
  *# Loads a bitmap file {{filename}} into a bitmap structure.\n
  *# It tries to detect the file type from the first bytes in the file.\n
- *# BMP and PCX support is always enabled, while JPG and PNG support is optional.\n
- *# Returns NULL if the file could not be loaded.
+ *# BMP, GIF and PCX support is always enabled, while JPG and PNG support 
+ *# depends on how the library was compiled.\n
+ *# Returns {{NULL}} if the file could not be loaded.
  */
 Bitmap *bm_load(const char *filename);
 
 #ifdef EOF /* <stdio.h> included? http://stackoverflow.com/q/29117606/115589 */
 /*@ Bitmap *bm_load_fp(FILE *f)
  *# Loads a bitmap from a {{FILE*}} that's already open.\n
- *# BMP and PCX support is always enabled, while JPG and PNG support is optional.\n
+ *# BMP, GIF and PCX support is always enabled, while JPG and PNG support 
+ *# depends on how the library was compiled.\n
  *# Returns {{NULL}} if the file could not be loaded.
  */
 Bitmap *bm_load_fp(FILE *f);
@@ -90,7 +98,8 @@ Bitmap *bm_load_fp(FILE *f);
  *# for use with the SDL library (http://www.libsdl.org).\n
  *# This function is only available if the USESDL preprocessor macro
  *# is defined, and {{SDL.h}} is included before {{bmp.h}}.\n
- *# BMP support is always enabled, while JPG and PNG support is optional.\n
+ *# BMP, GIF and PCX support is always enabled, while JPG and PNG support 
+ *# depends on how the library was compiled.\n
  *# Returns {{NULL}} if the file could not be loaded.\n
  */
 Bitmap *bm_load_rw(SDL_RWops *file);
@@ -98,8 +107,8 @@ Bitmap *bm_load_rw(SDL_RWops *file);
 
 /*@ int bm_save(Bitmap *b, const char *fname)
  *# Saves the bitmap {{b}} to a BMP, JPG or PNG file named {{fname}}.\n
- *# If the filename contains {{".bmp"}}, {{".pcx"}} or {{".jpg"}} the file is 
- *# saved as a BMP, PCX or JPG, otherwise the PNG format is the default.
+ *# If the filename contains {{".bmp"}}, {{".gif"}}, {{".pcx"}} or {{".jpg"}} the file is 
+ *# saved as a BMP, GIF, PCX or JPG, respectively, otherwise the PNG format is the default.
  *# It can only save to JPG or PNG if JPG or PNG support is enabled
  *# at compile time, otherwise it saves to a BMP file.\n
  *# Returns 1 on success, 0 on failure.
