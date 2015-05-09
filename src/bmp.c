@@ -76,6 +76,8 @@ TODO:
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
+#pragma pack(push, 1) /* Don't use any padding (Windows compilers) */
+
 /* Data structures for the header of BMP files. */
 struct bmpfile_magic {
   unsigned char magic[2];
@@ -105,6 +107,12 @@ struct bmpfile_dibinfo {
 struct bmpfile_colinfo {
 	uint8_t b, g, r, a;
 };
+
+/* RGB triplet used for palettes in PCX and GIF support */
+struct rgb_triplet {
+	unsigned char r, g, b;
+};
+#pragma pack(pop)
 
 #define BM_BPP			4 /* Bytes per Pixel */
 #define BM_BLOB_SIZE(B)	(B->w * B->h * BM_BPP)
@@ -177,21 +185,24 @@ static Bitmap *bm_load_jpg_fp(FILE *f);
 #endif
 
 Bitmap *bm_load_fp(FILE *f) {
-	unsigned char magic[2];	
+	unsigned char magic[3];	
 
 	long start = ftell(f), 
-		isbmp = 0, ispng = 0, isjpg = 0, ispcx = 0;	
+		isbmp = 0, ispng = 0, isjpg = 0, ispcx = 0, isgif = 0;	
 	/* Tries to detect the type of file by looking at the first bytes. */
 	if(fread(magic, sizeof magic, 1, f) == 1) {
-		if(magic[0] == 'B' && magic[1] == 'M') 
+		if(!memcmp(magic, "BM", 2))
 			isbmp = 1;
+		else if(!memcmp(magic, "GIF", 3))
+			isgif = 1;
 		else if(magic[0] == 0xFF && magic[1] == 0xD8)
 			isjpg = 1;
 		else if(magic[0] == 0x0A)
 			ispcx = 1;
 		else
-			ispng = 1; /* Assume PNG by default. 
-					JPG and BMP magic numbers are simpler */
+			ispng = 1; /* Assume PNG by default; the other magic numbers are simpler */
+	} else {
+		return NULL;
 	}
 	fseek(f, start, SEEK_SET);
 	
@@ -207,6 +218,8 @@ Bitmap *bm_load_fp(FILE *f) {
 #else
 	(void)ispng;
 #endif
+	if(isgif)
+		return NULL; /* Not supported yet, but soon... */
 	if(ispcx)
 		return bm_load_pcx_fp(f);
 	if(!isbmp) 
@@ -230,7 +243,8 @@ static Bitmap *bm_load_bmp_fp(FILE *f) {
 	if(fread(&magic, sizeof magic, 1, f) != 1) {
 		return NULL;
 	}
-	if(magic.magic[0] != 'B' || magic.magic[1] != 'M') {
+	
+	if(memcmp(magic.magic, "BM", 2)) {
 		return NULL;
 	}
 	
@@ -357,6 +371,11 @@ int bm_save(Bitmap *b, const char *fname) {
 }
 
 static int bm_save_bmp(Bitmap *b, const char *fname) {	
+
+	/* TODO: Now that I have a function to count colors, maybe
+		I should choose to save a bitmap as 8-bit if there
+		are <= 256 colors in the image? */
+
 	struct bmpfile_magic magic = {{'B','M'}}; 
 	struct bmpfile_header hdr;
 	struct bmpfile_dibinfo dib;
@@ -1095,10 +1114,6 @@ static Bitmap *bm_load_jpg_rw(SDL_RWops *rw) {
 http://web.archive.org/web/20100206055706/http://www.qzx.com/pc-gpe/pcx.txt
 http://www.shikadi.net/moddingwiki/PCX_Format
 */
-struct rbg_triplet {
-	unsigned char r, g, b;
-};
-
 struct pcx_header {
 	char manuf;
 	char version;
@@ -1109,7 +1124,7 @@ struct pcx_header {
 	
 	union {
 		unsigned char bytes[48];
-		struct rbg_triplet rgb[16];
+		struct rgb_triplet rgb[16];
 	} palette;
 	
 	char reserved;
@@ -1125,7 +1140,7 @@ static Bitmap *bm_load_pcx_fp(FILE *f) {
 	Bitmap *b = NULL;
 	int y;
 	
-	struct rbg_triplet rgb[256];
+	struct rgb_triplet rgb[256];
 		
 	if(fread(&hdr, sizeof hdr, 1, f) != 1) {
 		return NULL;
@@ -1143,7 +1158,7 @@ static Bitmap *bm_load_pcx_fp(FILE *f) {
 	printf("paltype: %d\n", hdr.paltype);
 	*/
 	if(hdr.version != 5 || hdr.encoding != 1 || hdr.bpp != 8 || (hdr.planes != 1 && hdr.planes != 3)) {
-		/* TODO: We might wat to support these PCX types at a later stage. */
+		/* We might want to support these PCX types at a later stage... */
 		return NULL;
 	}
 	
@@ -1214,7 +1229,7 @@ static Bitmap *bm_load_pcx_rw(SDL_RWops *rw) {
 	struct pcx_header hdr;
 	Bitmap *b = NULL;
 	
-	struct rbg_triplet rgb[256];
+	struct rgb_triplet rgb[256];
 		
 	if(SDL_RWread(rw, &hdr, sizeof hdr, 1) != 1) {
 		return NULL;
@@ -1289,12 +1304,14 @@ read_error:
 }
 #endif /* USESDL */
 
-/* Returns the index of the color c in the PCX pallette.
-	If c is not in the palette, but *nentries is less than 256 a new
-	entry in the palette will be created, otherwise it will return the
-	colour in the palette closest to c.
+#if 0
+/* Not used anymore, but I keep it until I get my version control in sync */
+/* 
+Also, once you can presumably optimize the palette lookup by building a palette
+from the image (once you've reduced the image to less than 256 colors), sorting it,
+and then using a binary search to find the index of the color you're looking for.
  */
-static int get_pcx_pal_idx(struct rbg_triplet rgb[], int *nentries, int c) {
+static int get_palette_idx(struct rgb_triplet rgb[], int *nentries, int c) {
 	int r = (c >> 16) & 0xFF;
 	int g = (c >> 8) & 0xFF;
 	int b = (c >> 0) & 0xFF;
@@ -1322,23 +1339,84 @@ static int get_pcx_pal_idx(struct rbg_triplet rgb[], int *nentries, int c) {
 	}
 	
 	if(*nentries < 256) {		
-		(*nentries)++;
 		i = *nentries;
 		rgb[i].r = r;
 		rgb[i].g = g;
 		rgb[i].b = b;
+		(*nentries)++;
 		return i;
 	}
 	
 	return mini;
 }
+#endif
+
+static int cnt_comp_mask(const void*ap, const void*bp);
+
+/* Variation on bm_count_colors() that builds an 8-bit palette while it is counting.
+ * It returns -1 in case there are more than 256 colours in the palette, meaning the
+ * image will have to be quantized first.
+ * It also ignores the alpha values of the pixels.
+ * It also has the side effect that the returned palette contains sorted colors.
+ */
+static int count_colors_build_palette(Bitmap *b, struct rgb_triplet rgb[256]) {	
+	int count = 1, i, c;
+	int npx = b->w * b->h;
+	int *sort = malloc(npx * sizeof *sort);
+	memcpy(sort, b->data, npx * sizeof *sort);
+	qsort(sort, npx, sizeof(int), cnt_comp_mask);
+	c = sort[0] & 0x00FFFFFF;
+	rgb[0].r = (c >> 16) & 0xFF;
+	rgb[0].g = (c >> 8) & 0xFF;
+	rgb[0].b = (c >> 0) & 0xFF;	
+	for(i = 1; i < npx; i++){
+		c = sort[i] & 0x00FFFFFF;
+		if(c != (sort[i-1]& 0x00FFFFFF)) {
+			if(count == 256) {
+				return -1;
+			}
+			rgb[count].r = (c >> 16) & 0xFF;
+			rgb[count].g = (c >> 8) & 0xFF;
+			rgb[count].b = (c >> 0) & 0xFF;			
+			count++;
+		}
+	}
+	free(sort);
+	return count;
+}
+
+/* Uses a binary search to find the index of a colour in a palette.
+It (almost) goes without saying that the palette must be sorted */
+static int bsrch_palette_lookup(struct rgb_triplet rgb[], int c, int imin, int imax) {
+	c &= 0x00FFFFFF; /* Ignore the alpha value */
+	while(imax >= imin) {
+		int imid = (imin + imax) >> 1, c2;
+		assert(imid <= 255);
+		c2 = (rgb[imid].r << 16) | (rgb[imid].g << 8) | rgb[imid].b;
+		if(c == c2) 
+			return imid;
+		else if(c2 < c)
+			imin = imid + 1;
+		else
+			imax = imid - 1;
+	}
+	return -1;
+}
+
+/* Comparison function for sorting an array of rgb_triplets with qsort() */
+static int comp_rgb(const void *ap, const void *bp) {
+	const struct rgb_triplet *ta = ap, *tb = bp;
+	int a = (ta->r << 16) | (ta->g << 8) | ta->b;
+	int b = (tb->r << 16) | (tb->g << 8) | tb->b;
+	return a - b;
+}
 
 static int bm_save_pcx(Bitmap *b, const char *fname) {	
 	FILE *f;
-	struct pcx_header hdr;
-	int nentries = 0;
-	struct rbg_triplet rgb[256];
-	int q, y;
+	struct rgb_triplet rgb[256];
+	int ncolors, x, y, rv = 1;
+	struct pcx_header hdr;	
+	Bitmap *bo = b;
 	
 	if(!b) 
 		return 0;
@@ -1376,26 +1454,31 @@ static int bm_save_pcx(Bitmap *b, const char *fname) {
 		return 0;
 	}
 	
+	ncolors = count_colors_build_palette(b, rgb);
+	if(ncolors < 0) {	
 	/* This is my poor man's color quantization hack:
-		Sample 128 random pixels from the bitmap and
-		generate a palette from that. The remainder of
-		the palette can be generated as the save goes
-		on.
-		Otherwise the palette is generated only from the
-		first 256 unique pixels in the image, which my
-		have undesirable results.
-	*/
-	for(q = 0; q < 128; q++) {
+			Sample random pixels and generate a palette from them.
+			A better solution would be to use some clustering, but
+			I don't have the stomach for that now. */	
+		int palette[256], q;
+		ncolors = 0;
+		for(ncolors = 0; ncolors < 256; ncolors++) {
 		int c = bm_get(b, rand()%b->w, rand()%b->h);
-		get_pcx_pal_idx(rgb, &nentries, c);
+			rgb[ncolors].r = (c >> 16) & 0xFF;
+			rgb[ncolors].g = (c >> 8) & 0xFF;
+			rgb[ncolors].b = (c >> 0) & 0xFF;
+		}
+		qsort(rgb, ncolors, sizeof rgb[0], comp_rgb);
+		for(q = 0; q < ncolors; q++) {
+			palette[q] = (rgb[q].r << 16) | (rgb[q].g << 8) | rgb[q].b;
+		}		
+		b = bm_copy(b);
+		/* Copy the image and dither it to match the palette */
+		bm_reduce_palette(b, palette, ncolors);		
 	}
 	
-	/* FIXME: We can use Floyd–Steinberg dithering to get
-	better results, but it will require some rework of
-	the get_pcx_pal_idx() function. 
-	See bm_reduce_palette() below. */
 	for(y = 0; y < b->h; y++) {
-		int x = 0;
+		x = 0;
 		while(x < b->w) {
 			int i, cnt = 1;
 			int c = bm_get(b, x++, y);			
@@ -1406,8 +1489,8 @@ static int bm_save_pcx(Bitmap *b, const char *fname) {
 				x++;
 				cnt++;				
 			}
-			
-			i = get_pcx_pal_idx(rgb, &nentries, c);
+			i = bsrch_palette_lookup(rgb, c, 0, ncolors - 1);			
+			assert(i >= 0); /* At this point in time, the color MUST be in the palette */			
 			if(cnt == 1 && i < 192) {
 				fputc(i, f);
 			} else {
@@ -1419,15 +1502,15 @@ static int bm_save_pcx(Bitmap *b, const char *fname) {
 	
 	fputc(12, f);	
 	if(fwrite(rgb, sizeof rgb[0], 256, f) != 256) {
-		goto write_error;
+		rv = 0;
+	}
+	
+	if(b != bo) {
+		bm_free(b);
 	}
 	
 	fclose(f);
-	return 1;
-	
-write_error:
-	fclose(f);
-	return 0;	
+	return rv;
 }
 
 Bitmap *bm_copy(Bitmap *b) {
@@ -2146,6 +2229,51 @@ Bitmap *bm_resample_bcub(const Bitmap *in, int nw, int nh) {
         BM_SETRGB(out, x, y, sum[0]/denom[0], sum[1]/denom[1], sum[2]/denom[2], sum[3]/denom[3]);            
     }
 	return out;
+}
+
+/* Sort functions for bm_count_colors() */
+static int cnt_comp(const void *ap, const void *bp) {
+	int a = *(int*)ap, b = *(int*)bp;
+	return a - b;
+}
+static int cnt_comp_mask(const void*ap, const void*bp) {
+	int a = *(int*)ap, b = *(int*)bp;
+	return (a & 0x00FFFFFF) - (b & 0x00FFFFFF);
+}
+
+int bm_count_colors(Bitmap *b, int use_mask) {
+	/* Counts the number of colours in an image by
+	treating the pixels in the image as an array
+	of integers, sorting them and then counting the
+	number of times the value of the array changes.
+	Based on this suggestion: 
+	http://stackoverflow.com/a/128055/115589
+	(according to the comments, certain qsort() 
+	implementations may have problems with large
+	images if it is recursive)
+	*/
+	int count = 1, i;
+	int npx = b->w * b->h;
+	int *sort = malloc(npx * sizeof *sort);
+	memcpy(sort, b->data, npx * sizeof *sort);
+	if(use_mask) {
+		qsort(sort, npx, sizeof(int), cnt_comp_mask);
+	} else {
+		qsort(sort, npx, sizeof(int), cnt_comp);
+	}
+	if(use_mask) {
+		for(i = 1; i < npx; i++){
+			if((sort[i] & 0x00FFFFFF) != (sort[i-1]& 0x00FFFFFF))
+				count++;
+		}
+	} else {
+		for(i = 1; i < npx; i++){
+			if(sort[i] != sort[i-1])
+				count++;
+		}
+	}
+	free(sort);
+	return count;
 }
 
 void bm_set_color(Bitmap *bm, unsigned char r, unsigned char g, unsigned char b) {

@@ -60,7 +60,7 @@ typedef struct bitmap {
 /*@ struct bitmap *bm_create(int w, int h)
  *# Creates a bitmap of the specified dimensions
  */
-struct bitmap *bm_create(int w, int h);
+Bitmap *bm_create(int w, int h);
 
 /*@ void bm_free(struct bitmap *b)
  *# Destroys a bitmap previously created with bm_create()
@@ -69,7 +69,7 @@ void bm_free(Bitmap *b);
 
 /*@ Bitmap *bm_load(const char *filename)
  *# Loads a bitmap file {{filename}} into a bitmap structure.\n
- *# It tries to detect the file type from the first bytes in the file.
+ *# It tries to detect the file type from the first bytes in the file.\n
  *# BMP and PCX support is always enabled, while JPG and PNG support is optional.\n
  *# Returns NULL if the file could not be loaded.
  */
@@ -109,9 +109,9 @@ int bm_save(Bitmap *b, const char *fname);
 /*@ Bitmap *bm_bind(int w, int h, unsigned char *data)
  *# Creates a bitmap structure bound to an existing array
  *# of pixel data (for example, an OpenGL texture or a SDL surface). The 
- *# {{data}} must be an array of {{w}} * {{h}} * 4 bytes of pixel data.
+ *# {{data}} must be an array of {{w}} * {{h}} * 4 bytes of ARGB pixel data.
  *# The returned {{bitmap*}} must be deallocated with {{bm_unbind()}}
- *# rather than {{bm_free()}}
+ *# rather than {{bm_free()}}.
  */
 Bitmap *bm_bind(int w, int h, unsigned char *data);
 
@@ -125,7 +125,7 @@ void bm_rebind(Bitmap *b, unsigned char *data);
 
 /*@ void bm_unbind(Bitmap *b)
  *# Deallocates the memory of a bitmap structure previously created 
- *# through {{bm_bind()}}
+ *# through {{bm_bind()}}.
  */
 void bm_unbind(Bitmap *b);
 
@@ -165,34 +165,41 @@ int bm_get(Bitmap *b, int x, int y);
 void bm_set(Bitmap *b, int x, int y, int c);
 
 /*@ void bm_set_rgb(Bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B)
- *# Sets a pixel at x,y in the bitmap b to the specified R,G,B color
+ *# Sets a pixel at x,y in the bitmap {{b}} to the specified R,G,B color
  */ 
 void bm_set_rgb(Bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B);
 
 /*@ void bm_set_rgb_a(Bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B, unsigned char A)
- *# Sets a pixel at x,y in the bitmap b to the specified R,G,B,A color
+ *# Sets a pixel at x,y in the bitmap {{b}} to the specified R,G,B,A color
  */ 
 void bm_set_rgb_a(Bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B, unsigned char A);
 
 /*@ unsigned char bm_getr(Bitmap *b, int x, int y)
- *# Retrieves the R value of the pixel at x,y in bitmap b 
+ *# Retrieves the R value of the pixel at x,y in bitmap {{b}} 
  */
 unsigned char bm_getr(Bitmap *b, int x, int y);
 
 /*@ unsigned char bm_getg(Bitmap *b, int x, int y)
- *# Retrieves the G value of the pixel at x,y in bitmap b 
+ *# Retrieves the G value of the pixel at x,y in bitmap {{b}} 
  */
 unsigned char bm_getg(Bitmap *b, int x, int y);
 
 /*@ unsigned char bm_getb(Bitmap *b, int x, int y)
- *# Retrieves the B value of the pixel at x,y in bitmap b 
+ *# Retrieves the B value of the pixel at x,y in bitmap {{b}} 
  */
 unsigned char bm_getb(Bitmap *b, int x, int y);
 
 /*@ unsigned char bm_geta(Bitmap *b, int x, int y)
- *# Retrieves the A (alpha) value of the pixel at x,y in bitmap b 
+ *# Retrieves the A (alpha) value of the pixel at x,y in bitmap {{b}} 
  */
 unsigned char bm_geta(Bitmap *b, int x, int y);
+
+/*@ int bm_count_colors(Bitmap *b, int use_mask)
+ *# Counts the number of distinct colours in the bitmap {{b}}.\n
+ *# If {{use_mask}} is set, a mask is used internally to ignore the
+ *# alpha value of each pixel.
+ */
+int bm_count_colors(Bitmap *b, int use_mask);
 
 /*@ void bm_set_color(Bitmap *bm, unsigned char r, unsigned char g, unsigned char b)
  *# Sets the colour of the pen to (r,g,b)
@@ -358,7 +365,7 @@ Bitmap *bm_resample_blin(const Bitmap *in, int nw, int nh);
 Bitmap *bm_resample_bcub(const Bitmap *in, int nw, int nh);
 
 /*@ void bm_swap_colour(Bitmap *b, unsigned char sR, unsigned char sG, unsigned char sB, unsigned char dR, unsigned char dG, unsigned char dB)
- *# Replaces all pixels of colour [sR,sG,sB] in bitmap b with the colour [dR,dG,dB]
+ *# Replaces all pixels of colour [sR,sG,sB] in bitmap {{b}} with the colour [dR,dG,dB]
  */
 void bm_swap_colour(Bitmap *b, unsigned char sR, unsigned char sG, unsigned char sB, unsigned char dR, unsigned char dG, unsigned char dB);
 
