@@ -1923,6 +1923,7 @@ static int bm_save_gif(Bitmap *b, const char *fname) {
 http://web.archive.org/web/20100206055706/http://www.qzx.com/pc-gpe/pcx.txt
 http://www.shikadi.net/moddingwiki/PCX_Format
 */
+#pragma pack(push, 1)
 struct pcx_header {
 	char manuf;
 	char version;
@@ -1943,6 +1944,7 @@ struct pcx_header {
 	unsigned short hscrsize, vscrsize;
 	char pad[54];
 };
+#pragma pack(pop)
 
 static Bitmap *bm_load_pcx_rd(BmReader rd) {
 	struct pcx_header hdr;
