@@ -41,7 +41,7 @@ TODO:
 	I may also decide to change the API around it (especially wrt. 
 	blitting) in the future.
 	
-	Also, functions like bm_color_atoi() and bm_set_color_i() does 
+	Also, functions like bm_color_atoi() and bm_set_color() does 
 	not take the alpha value into account. The integers they return and
 	accept is still 0xRRGGBB instead of 0xRRGGBBAA - It probably implies
 	that I should change the type to unsigned int where it currently is
@@ -152,7 +152,7 @@ Bitmap *bm_create(int w, int h) {
 	bm_std_font(b, BM_FONT_NORMAL);
 #endif
 
-	bm_set_color(b, 255, 255, 255);
+	bm_set_color_rgb(b, 255, 255, 255);
 	bm_set_alpha(b, 255);
 	
 	return b;
@@ -1260,9 +1260,9 @@ static Bitmap *bm_load_gif_rd(BmReader rd) {
 		
 		/* Set the Bitmap's color to the background color.*/
 		bg = &palette[gif.lsd.background];
-		bm_set_color(gif.bmp, bg->r, bg->g, bg->b);
+		bm_set_color_rgb(gif.bmp, bg->r, bg->g, bg->b);
 		bm_clear(gif.bmp);
-		bm_set_color(gif.bmp, 0, 0, 0);
+		bm_set_color_rgb(gif.bmp, 0, 0, 0);
 		bm_set_alpha(gif.bmp, 0);
 
 	} else {
@@ -1449,12 +1449,12 @@ static int gif_read_tbid(BmReader rd, GIF *gif, GIF_ID *gif_id, GIF_GCE *gce, st
 					situations where different image blocks in the
 					GIF has different transparent colors */
 				struct rgb_triplet *bg = &ct[gce->trans_index];
-				bm_set_color(gif->bmp, bg->r, bg->g, bg->b);
+				bm_set_color_rgb(gif->bmp, bg->r, bg->g, bg->b);
 			}
 		}
 	
-		if(gif_id->top + gif_id->height >= gif->bmp->h ||
-			gif_id->left + gif_id->width >= gif->bmp->w) {
+		if(gif_id->top + gif_id->height > gif->bmp->h ||
+			gif_id->left + gif_id->width > gif->bmp->w) {
 			/* This image descriptor doesn't fall within the bounds of the image */
 			return 0;
 		}
@@ -1463,7 +1463,7 @@ static int gif_read_tbid(BmReader rd, GIF *gif, GIF_ID *gif_id, GIF_GCE *gce, st
 			/* Restore the background color */
 			for(y = 0; y < gif_id->height; y++) {
 				for(x = 0; x < gif_id->width; x++) {
-					bm_set_rgb(gif->bmp, x + gif_id->left, y + gif_id->top, gif->bmp->r, gif->bmp->g, gif->bmp->b);
+					bm_set(gif->bmp, x + gif_id->left, y + gif_id->top, gif->bmp->color);
 				}
 			}
 		} else if(dispose != 3) {
@@ -1839,7 +1839,7 @@ static int bm_save_gif(Bitmap *b, const char *fname) {
 	}
 	
 	/* See if we can find the background color in the palette */
-	bg = (b->r << 16) | (b->g << 8) | b->b;
+	bg = b->color & 0x00FFFFFF;
 	bg = bsrch_palette_lookup(gct, bg, 0, nc - 1);
 	if(bg >= 0) {		
 		gif.lsd.background = bg;
@@ -2140,7 +2140,7 @@ Bitmap *bm_copy(Bitmap *b) {
 	Bitmap *out = bm_create(b->w, b->h);
 	memcpy(out->data, b->data, BM_BLOB_SIZE(b));
 	
-	out->r = b->r; out->g = b->g; out->b = b->b;
+	out->color = b->color;
 	
 	/* Caveat: The input bitmap is technically the owner
 	of its own font, so we can't just copy the pointer
@@ -2179,7 +2179,7 @@ Bitmap *bm_bind(int w, int h, unsigned char *data) {
 	bm_std_font(b, BM_FONT_NORMAL);
 #endif
 
-	bm_set_color(b, 255, 255, 255);
+	bm_set_color_rgb(b, 255, 255, 255);
 	bm_set_alpha(b, 255);
 	
 	return b;
@@ -2226,7 +2226,7 @@ void bm_set(Bitmap *b, int x, int y, int c) {
 
 void bm_set_rgb(Bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B) {
 	assert(x >= 0 && x < b->w && y >= 0 && y < b->h);
-	BM_SETRGB(b, x, y, R, G, B, b->a);
+	BM_SETRGB(b, x, y, R, G, B, (b->color >> 24));
 }
 
 void bm_set_rgb_a(Bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B, unsigned char A) {
@@ -2467,12 +2467,9 @@ void bm_maskedblit(Bitmap *dst, int dx, int dy, Bitmap *src, int sx, int sy, int
 	for(y = dy; y < dy + h; y++) {		
 		i = sx;
 		for(x = dx; x < dx + w; x++) {
-			int r = BM_GETR(src, i, j),
-				g = BM_GETG(src, i, j),
-				b = BM_GETB(src, i, j),
-				a = BM_GETA(src, i, j);
-			if(r != src->r || g != src->g || b != src->b)
-				BM_SETRGB(dst, x, y, r, g, b, a);
+			int c = BM_GET(src, i, j);
+			if(c != src->color)
+				BM_SET(dst, x, y, c);
 			i++;
 		}
 		j++;
@@ -2483,7 +2480,7 @@ void bm_blit_ex(Bitmap *dst, int dx, int dy, int dw, int dh, Bitmap *src, int sx
 	int x, y, ssx;
 	int ynum = 0;	
 	int xnum = 0;
-	int maskc = bm_get_color_i(src) & 0xFFFFFF;
+	unsigned int maskc = bm_get_color(src) & 0xFFFFFF;
 	/*
 	Uses Bresenham's algoritm to implement a simple scaling while blitting.
 	See the article "Scaling Bitmaps with Bresenham" by Tim Kientzle in the
@@ -2578,7 +2575,7 @@ void bm_blit_ex_fun(Bitmap *dst, int dx, int dy, int dw, int dh, Bitmap *src, in
 	int x, y, ssx;
 	int ynum = 0;	
 	int xnum = 0;
-	int maskc = bm_get_color_i(src) & 0xFFFFFF;
+	unsigned int maskc = bm_get_color(src) & 0xFFFFFF;
 	
 	if(!fun || sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0)
 		return;
@@ -2896,16 +2893,14 @@ int bm_count_colors(Bitmap *b, int use_mask) {
 	return count;
 }
 
-void bm_set_color(Bitmap *bm, unsigned char r, unsigned char g, unsigned char b) {
-	bm->r = r;
-	bm->g = g;
-	bm->b = b;
+void bm_set_color_rgb(Bitmap *bm, unsigned char r, unsigned char g, unsigned char b) {
+	bm->color = 0xFF000000 | (r << 16) | (g << 8) | b;
 }
 
 void bm_set_alpha(Bitmap *bm, int a) {
 	if(a < 0) a = 0;
 	if(a > 255) a = 255;
-	bm->a = a;
+	bm->color = (bm->color & 0x00FFFFFF) | (a << 24);
 }
 
 void bm_adjust_rgba(Bitmap *bm, float rf, float gf, float bf, float af) {
@@ -3098,8 +3093,8 @@ static const struct color_map_entry {
 	{NULL, 0}
 };
 
-int bm_color_atoi(const char *text) {	
-	int col = 0;
+unsigned int bm_color_atoi(const char *text) {	
+	unsigned int col = 0;
 	
     if(!text) return 0;
     
@@ -3197,33 +3192,28 @@ int bm_color_atoi(const char *text) {
 }
 
 void bm_set_color_s(Bitmap *bm, const char *text) {	
-	bm_set_color_i(bm, bm_color_atoi(text));
+	bm_set_color(bm, bm_color_atoi(text));
 }
 
-void bm_set_color_i(Bitmap *bm, int col) {	
-	bm_set_color(bm, (col >> 16) & 0xFF, (col >> 8) & 0xFF, (col >> 0) & 0xFF);
+void bm_set_color(Bitmap *bm, unsigned int col) {	
+	bm->color = col;	
 }
 
-void bm_get_color(Bitmap *bm, int *r, int *g, int *b) {
-	*r = bm->r;
-	*g = bm->g;
-	*b = bm->b;
+void bm_get_color_rgb(Bitmap *bm, int *r, int *g, int *b) {
+	*r = (bm->color >> 16) & 0xFF;
+	*g = (bm->color >> 8) & 0xFF;
+	*b = bm->color & 0xFF;
 }
 
-int bm_get_color_i(Bitmap *bm) {
-	return (bm->a << 24) | (bm->r << 16) | (bm->g << 8) | (bm->b << 0);
+unsigned int bm_get_color(Bitmap *bm) {
+	return bm->color;
 }
 
 int bm_picker(Bitmap *bm, int x, int y) {
-	int c;
 	if(x < 0 || x >= bm->w || y < 0 || y >= bm->h) 
 		return 0;
-	c = bm_get(bm, x, y);
-	bm->r = (c >> 16) & 0xFF;
-	bm->g = (c >> 8) & 0xFF;
-	bm->b = (c >> 0) & 0xFF;
-	bm->a = (c >> 24) & 0xFF;
-    return c;
+	bm->color = bm_get(bm, x, y);
+    return bm->color;
 }
 
 int bm_color_is(Bitmap *bm, int x, int y, int r, int g, int b) {
@@ -3292,14 +3282,14 @@ void bm_clear(Bitmap *b) {
 	int i, j;
 	for(j = 0; j < b->h; j++) 
 		for(i = 0; i < b->w; i++) {
-			BM_SETRGB(b, i, j, b->r, b->g, b->b, b->a);
+			BM_SET(b, i, j, b->color);
 		}
 }
 
 void bm_putpixel(Bitmap *b, int x, int y) {
 	if(x < b->clip.x0 || x >= b->clip.x1 || y < b->clip.y0 || y >= b->clip.y1) 
 		return;
-	BM_SETRGB(b, x, y, b->r, b->g, b->b, b->a);
+	BM_SET(b, x, y, b->color);
 }
 
 void bm_line(Bitmap *b, int x0, int y0, int x1, int y1) {
@@ -3325,7 +3315,7 @@ void bm_line(Bitmap *b, int x0, int y0, int x1, int y1) {
 	for(;;) {
 		/* Clipping can probably be more effective... */
 		if(x0 >= b->clip.x0 && x0 < b->clip.x1 && y0 >= b->clip.y0 && y0 < b->clip.y1) 
-			BM_SETRGB(b, x0, y0, b->r, b->g, b->b, b->a);
+			BM_SET(b, x0, y0, b->color);
 			
 		if(x0 == x1 && y0 == y1) break;
 		
@@ -3364,7 +3354,7 @@ void bm_fillrect(Bitmap *b, int x0, int y0, int x1, int y1) {
 	for(y = MAX(y0, b->clip.y0); y < MIN(y1 + 1, b->clip.y1); y++) {		
 		for(x = MAX(x0, b->clip.x0); x < MIN(x1 + 1, b->clip.x1); x++) {
 			assert(y >= 0 && y < b->h && x >= 0 && x < b->w);
-			BM_SETRGB(b, x, y, b->r, b->g, b->b, b->a);
+			BM_SET(b, x, y, b->color);
 		}
 	}	
 }
@@ -3385,7 +3375,7 @@ void bm_dithrect(Bitmap *b, int x0, int y0, int x1, int y1) {
 		for(x = MAX(x0, b->clip.x0); x < MIN(x1 + 1, b->clip.x1); x++) {
             if((x + y) % 2) continue;
 			assert(y >= 0 && y < b->h && x >= 0 && x < b->w);
-			BM_SETRGB(b, x, y, b->r, b->g, b->b, b->a);
+			BM_SET(b, x, y, b->color);
 		}
 	}	
 }
@@ -3400,22 +3390,22 @@ void bm_circle(Bitmap *b, int x0, int y0, int r) {
 		/* Lower Right */
 		xp = x0 - x; yp = y0 + y;
 		if(xp >= b->clip.x0 && xp < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
-			BM_SETRGB(b, xp, yp, b->r, b->g, b->b, b->a);
+			BM_SET(b, xp, yp, b->color);
 		
 		/* Lower Left */
 		xp = x0 - y; yp = y0 - x;
 		if(xp >= b->clip.x0 && xp < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
-			BM_SETRGB(b, xp, yp, b->r, b->g, b->b, b->a);
+			BM_SET(b, xp, yp, b->color);
 		
 		/* Upper Left */
 		xp = x0 + x; yp = y0 - y;
 		if(xp >= b->clip.x0 && xp < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
-			BM_SETRGB(b, xp, yp, b->r, b->g, b->b, b->a);
+			BM_SET(b, xp, yp, b->color);
 		
 		/* Upper Right */
 		xp = x0 + y; yp = y0 + x;
 		if(xp >= b->clip.x0 && xp < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
-			BM_SETRGB(b, xp, yp, b->r, b->g, b->b, b->a);
+			BM_SET(b, xp, yp, b->color);
 				
 		r = err;
 		if(r > x) {
@@ -3439,10 +3429,10 @@ void bm_fillcircle(Bitmap *b, int x0, int y0, int r) {
 			/* Maybe the clipping can be more effective... */
 			int yp = y0 + y;
 			if(i >= b->clip.x0 && i < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
-				BM_SETRGB(b, i, yp, b->r, b->g, b->b, b->a);
+				BM_SET(b, i, yp, b->color);
 			yp = y0 - y;
 			if(i >= b->clip.x0 && i < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
-				BM_SETRGB(b, i, yp, b->r, b->g, b->b, b->a);			
+				BM_SET(b, i, yp, b->color);			
 		}		
 		
 		r = err;
@@ -3472,16 +3462,16 @@ void bm_ellipse(Bitmap *b, int x0, int y0, int x1, int y1) {
 	
 	do {
 		if(x1 >= b->clip.x0 && x1 < b->clip.x1 && y0 >= b->clip.y0 && y0 < b->clip.y1)
-			BM_SETRGB(b, x1, y0, b->r, b->g, b->b, b->a);	
+			BM_SET(b, x1, y0, b->color);	
 		
 		if(x0 >= b->clip.x0 && x0 < b->clip.x1 && y0 >= b->clip.y0 && y0 < b->clip.y1)
-			BM_SETRGB(b, x0, y0, b->r, b->g, b->b, b->a);	
+			BM_SET(b, x0, y0, b->color);	
 		
 		if(x0 >= b->clip.x0 && x0 < b->clip.x1 && y1 >= b->clip.y0 && y1 < b->clip.y1)
-			BM_SETRGB(b, x0, y1, b->r, b->g, b->b, b->a);	
+			BM_SET(b, x0, y1, b->color);	
 		
 		if(x1 >= b->clip.x0 && x1 < b->clip.x1 && y1 >= b->clip.y0 && y1 < b->clip.y1)
-			BM_SETRGB(b, x1, y1, b->r, b->g, b->b, b->a);	
+			BM_SET(b, x1, y1, b->color);	
 		
 		e2 = 2 * err;
 		if(e2 <= dy) {
@@ -3494,17 +3484,17 @@ void bm_ellipse(Bitmap *b, int x0, int y0, int x1, int y1) {
 	
 	while(y0 - y1 < b0) {
 		if(x0 - 1 >= b->clip.x0 && x0 - 1 < b->clip.x1 && y0 >= b->clip.y0 && y0 < b->clip.y1)
-			BM_SETRGB(b, x0 - 1, y0, b->r, b->g, b->b, b->a);
+			BM_SET(b, x0 - 1, y0, b->color);
 		
 		if(x1 + 1 >= b->clip.x0 && x1 + 1 < b->clip.x1 && y0 >= b->clip.y0 && y0 < b->clip.y1)
-			BM_SETRGB(b, x1 + 1, y0, b->r, b->g, b->b, b->a);
+			BM_SET(b, x1 + 1, y0, b->color);
 		y0++;
 		
 		if(x0 - 1 >= b->clip.x0 && x0 - 1 < b->clip.x1 && y0 >= b->clip.y0 && y0 < b->clip.y1)
-			BM_SETRGB(b, x0 - 1, y1, b->r, b->g, b->b, b->a);
+			BM_SET(b, x0 - 1, y1, b->color);
 		
 		if(x1 + 1 >= b->clip.x0 && x1 + 1 < b->clip.x1 && y0 >= b->clip.y0 && y0 < b->clip.y1)
-			BM_SETRGB(b, x1 + 1, y1, b->r, b->g, b->b, b->a);	
+			BM_SET(b, x1 + 1, y1, b->color);	
 		y1--;
 	}
 }
@@ -3526,22 +3516,22 @@ void bm_roundrect(Bitmap *b, int x0, int y0, int x1, int y1, int r) {
 		/* Lower Right */
 		xp = x1 - x - rad; yp = y1 + y - rad;
 		if(xp >= b->clip.x0 && xp < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
-			BM_SETRGB(b, xp, yp, b->r, b->g, b->b, b->a);
+			BM_SET(b, xp, yp, b->color);
 		
 		/* Lower Left */
 		xp = x0 - y + rad; yp = y1 - x - rad;
 		if(xp >= b->clip.x0 && xp < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
-			BM_SETRGB(b, xp, yp, b->r, b->g, b->b, b->a);
+			BM_SET(b, xp, yp, b->color);
 		
 		/* Upper Left */
 		xp = x0 + x + rad; yp = y0 - y + rad;
 		if(xp >= b->clip.x0 && xp < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
-			BM_SETRGB(b, xp, yp, b->r, b->g, b->b, b->a);
+			BM_SET(b, xp, yp, b->color);
 		
 		/* Upper Right */
 		xp = x1 + y - rad; yp = y0 + x + rad;
 		if(xp >= b->clip.x0 && xp < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
-			BM_SETRGB(b, xp, yp, b->r, b->g, b->b, b->a);
+			BM_SET(b, xp, yp, b->color);
 		
 		r = err;
 		if(r > x) {
@@ -3568,10 +3558,10 @@ void bm_fillroundrect(Bitmap *b, int x0, int y0, int x1, int y1, int r) {
 		for(i = xp; i <= xq; i++) {
 			yp = y1 + y - rad;
 			if(i >= b->clip.x0 && i < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
-				BM_SETRGB(b, i, yp, b->r, b->g, b->b, b->a);
+				BM_SET(b, i, yp, b->color);
 			yp = y0 - y + rad;
 			if(i >= b->clip.x0 && i < b->clip.x1 && yp >= b->clip.y0 && yp < b->clip.y1)
-				BM_SETRGB(b, i, yp, b->r, b->g, b->b, b->a);
+				BM_SET(b, i, yp, b->color);
 		}
 		
 		r = err;
@@ -3588,7 +3578,7 @@ void bm_fillroundrect(Bitmap *b, int x0, int y0, int x1, int y1, int r) {
 	for(y = MAX(y0 + rad + 1, b->clip.y0); y < MIN(y1 - rad, b->clip.y1); y++) {
 		for(x = MAX(x0, b->clip.x0); x <= MIN(x1,b->clip.x1 - 1); x++) {
 			assert(x >= 0 && x < b->w && y >= 0 && y < b->h);
-			BM_SETRGB(b, x, y, b->r, b->g, b->b, b->a);
+			BM_SET(b, x, y, b->color);
 		}			
 	}
 }
@@ -3622,17 +3612,17 @@ void bm_fill(Bitmap *b, int x, int y) {
 		n;		
 	int qs = 0, /* queue size */
 		mqs = 128; /* Max queue size */
-	int sr, sg, sb; /* Source colour */
-	int dr, dg, db; /* Destination colour */
+	int sc; /* Source colour */
+	int dc; /* Destination colour */
 			
-	bm_get_color(b, &dr, &dg, &db);
+	dc = b->color;
 	bm_picker(b, x, y);
-	bm_get_color(b, &sr, &sg, &sb);
+	sc = b->color;
 	
 	/* Don't fill if source == dest
 	 * It leads to major performance problems otherwise
 	 */
-	if(sr == dr && sg == dg && sb == db)
+	if(sc == dc)
 		return;
 		
 	queue = calloc(mqs, sizeof *queue);
@@ -3650,26 +3640,26 @@ void bm_fill(Bitmap *b, int x, int y) {
 		w = n;
 		e = n;
 		
-		if(!bm_color_is(b, n.x, n.y, sr, sg, sb))
+		if(!bm_picker(b, n.x, n.y) == sc)
 			continue;
 		
 		while(w.x > b->clip.x0) {			
-			if(!bm_color_is(b, w.x-1, w.y, sr, sg, sb)) {
+			if(bm_picker(b, w.x-1, w.y) != sc) {
 				break;
 			}
 			w.x--;
 		}
 		while(e.x < b->clip.x1 - 1) {
-			if(!bm_color_is(b, e.x+1, e.y, sr, sg, sb)) {
+			if(bm_picker(b, e.x+1, e.y) != sc) {
 				break;
 			}
 			e.x++;
 		}
 		for(i = w.x; i <= e.x; i++) {
 			assert(i >= 0 && i < b->w);
-			BM_SETRGB(b, i, w.y, dr, dg, db, b->a);			
+			BM_SET(b, i, w.y, dc);			
 			if(w.y > b->clip.y0) {
-				if(bm_color_is(b, i, w.y - 1, sr, sg, sb)) {
+				if(bm_picker(b, i, w.y - 1) == sc) {
 					nn.x = i; nn.y = w.y - 1;
 					queue[qs++] = nn;
 					if(qs == mqs) {
@@ -3681,7 +3671,7 @@ void bm_fill(Bitmap *b, int x, int y) {
 				}
 			}
 			if(w.y < b->clip.y1 - 1) {
-				if(bm_color_is(b, i, w.y + 1, sr, sg, sb)) {
+				if(bm_picker(b, i, w.y + 1) == sc) {
 					nn.x = i; nn.y = w.y + 1;
 					queue[qs++] = nn;
 					if(qs == mqs) {
@@ -3695,6 +3685,7 @@ void bm_fill(Bitmap *b, int x, int y) {
 		}		
 	}
 	free(queue);
+	b->color = dc;
 }
 
 static void fs_add_factor(Bitmap *b, int x, int y, int er, int eg, int eb, double f) {
@@ -3826,7 +3817,8 @@ typedef struct {
 } XbmFontInfo;
 
 static void xbmf_putc(Bitmap *b, XbmFontInfo *info, int x, int y, char c) {
-	int frow, fcol, byte, col;
+	int frow, fcol, byte;
+	unsigned int col;
 	int i, j;
 	if(!info || !info->bits || c < 32 || c > 127) return;
 	c -= 32;
@@ -3834,7 +3826,7 @@ static void xbmf_putc(Bitmap *b, XbmFontInfo *info, int x, int y, char c) {
 	frow = c & 0x7;
 	byte = frow * FONT_WIDTH + fcol;
 	
-	col = bm_get_color_i(b);
+	col = bm_get_color(b);
 	
 	for(j = 0; j < 8 && y + j < b->clip.y1; j++) {
 		if(y + j >= b->clip.y0) {

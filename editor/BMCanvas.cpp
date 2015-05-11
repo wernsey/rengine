@@ -63,12 +63,12 @@ bitmap *BMCanvas::getBitmap() {
 
 void BMCanvas::pen(int r, int g, int b)
 {
-	bm_set_color(bmp, r, g, b);
+	bm_set_color_rgb(bmp, r, g, b);
 }
 
 void BMCanvas::pen(int c)
 {
-	bm_set_color_i(bmp, c);
+	bm_set_color(bmp, c);
 }
 
 void BMCanvas::pen(const char *s)
@@ -78,7 +78,7 @@ void BMCanvas::pen(const char *s)
 
 void BMCanvas::pen(int *r, int *g, int *b)
 {
-	bm_get_color(bmp, r, g, b);
+	bm_get_color_rgb(bmp, r, g, b);
 }
 
 void BMCanvas::picker(int x, int y) {

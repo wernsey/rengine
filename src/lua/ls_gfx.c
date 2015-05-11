@@ -44,7 +44,7 @@ static int gr_setcolor(lua_State *L) {
 		int R = luaL_checkinteger(L,1);
 		int G = luaL_checkinteger(L,2);
 		int B = luaL_checkinteger(L,3);		
-		bm_set_color(sd->bmp, R, G, B);
+		bm_set_color_rgb(sd->bmp, R, G, B);
 	} else if(lua_gettop(L) == 1) {
 		const char *c = luaL_checkstring(L,1);
 		bm_set_color_s(sd->bmp, c);
@@ -62,7 +62,7 @@ static int gr_getcolor(lua_State *L) {
 	int r,g,b;
 	struct lustate_data *sd = get_state_data(L);
 	assert(sd->bmp);
-	bm_get_color(sd->bmp, &r, &g, &b);
+	bm_get_color_rgb(sd->bmp, &r, &g, &b);
 	lua_pushinteger(L, r);
 	lua_pushinteger(L, g);
 	lua_pushinteger(L, b);
@@ -275,8 +275,8 @@ static int gr_lerp(lua_State *L) {
 	const char *c1 = luaL_checkstring(L,1);
 	const char *c2 = luaL_checkstring(L,2);
 	lua_Number v = luaL_checknumber(L,3);	
-	int col = bm_lerp(bm_color_atoi(c1), bm_color_atoi(c2), v);
-	bm_set_color_i(sd->bmp, col);
+	unsigned int col = bm_lerp(bm_color_atoi(c1), bm_color_atoi(c2), v);
+	bm_set_color(sd->bmp, col);
 	
 	lua_pushinteger(L, col);
 	return 1;

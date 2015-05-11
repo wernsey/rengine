@@ -239,7 +239,7 @@ int ts_write_all(struct tile_collection *tc, FILE *f) {
 		fprintf(f, "    \"name\" : \"%s\",\n", json_escape(t->name, buffer, sizeof buffer));
 		fprintf(f, "    \"nmeta\" : %d,\n", t->nmeta);
 		fprintf(f, "    \"border\" : %d,\n", t->border);
-		fprintf(f, "    \"mask\" : \"#%06X\",\n", bm_get_color_i(t->bm));
+		fprintf(f, "    \"mask\" : \"#%06X\",\n", bm_get_color(t->bm));
 		fprintf(f, "    \"meta\" : [\n");
 		for(j = 0; j < t->nmeta; j++) {
 			struct tile_meta *m = &t->meta[j];
@@ -337,10 +337,10 @@ int ts_read_all(struct tile_collection *tc, struct json *j) {
 		
 		if(version > 1.1f) {
 			t->border = json_get_number(e, "border");
-			bm_set_color_i(t->bm, bm_color_atoi(json_get_string(e, "mask")));
+			bm_set_color(t->bm, bm_color_atoi(json_get_string(e, "mask")));
 		} else {
 			t->border = border;
-			bm_set_color_i(t->bm, 0xFF00FF);
+			bm_set_color(t->bm, 0xFF00FF);
 		}
 		
 		aa = json_get_array(e, "meta");

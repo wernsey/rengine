@@ -291,11 +291,11 @@ void tileset_reload_img_cb(Fl_Menu_*, void*) {
 	if(!ts) 
 		return;
 	bitmap *bm = ts->bm;
-	int mask = bm_get_color_i(bm);
+	unsigned int mask = bm_get_color(bm);
 	
 	ts->bm = bm_load(ts->name);
 	if(ts->bm) {
-		bm_set_color_i(ts->bm, mask);
+		bm_set_color(ts->bm, mask);
 		bm_free(bm);
 		canvas->redraw();
 		tiles->redraw();
@@ -312,7 +312,7 @@ void tileset_props_cb(Fl_Menu_*, void*) {
 	
 	int r, g, b;
 	
-	bm_get_color(ts->bm, &r, &g, &b);
+	bm_get_color_rgb(ts->bm, &r, &g, &b);
 	mask_color_box->color(fl_rgb_color(r,g,b));
 	
 	tile_border_input->value(ts->border);
@@ -488,11 +488,11 @@ void tileDrawBarrier_cb(Fl_Check_Button*w, void*p) {
  * TILESET PROPERTIES CALLBACKS *********************************************************/
 
 void tile_props_ok_cb(Fl_Button*, void*) {
-	int col = mask_color_box->color() >> 8;
+	unsigned int col = mask_color_box->color() >> 8;
 	
 	tileset *ts = tiles->getTileset();	
 	if(ts) {
-		bm_set_color_i(ts->bm, col);
+		bm_set_color(ts->bm, col);
 		ts->border = tile_border_input->value();
 	}
 	

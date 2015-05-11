@@ -144,7 +144,7 @@ static int bmp_getcolor(lua_State *L) {
 		if(y >= (*bp)->h) y = (*bp)->h - 1;		
 		bm_picker(*bp, x, y);
 	}
-	bm_get_color(*bp, &r, &g, &b);
+	bm_get_color_rgb(*bp, &r, &g, &b);
 	lua_pushinteger(L, r);
 	lua_pushinteger(L, g);
 	lua_pushinteger(L, b);

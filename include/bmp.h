@@ -47,8 +47,8 @@ typedef struct bitmap {
 	/* The actual pixel data in RGBA format */
 	unsigned char *data;
 		
-	/* Color for the pen, of the canvas */
-	unsigned char r,g,b,a;
+	/* Color for the pen of the canvas */
+	unsigned int color;
 	
 	/* Font object for rendering text */
 	struct bitmap_font *font;
@@ -210,10 +210,10 @@ unsigned char bm_geta(Bitmap *b, int x, int y);
  */
 int bm_count_colors(Bitmap *b, int use_mask);
 
-/*@ void bm_set_color(Bitmap *bm, unsigned char r, unsigned char g, unsigned char b)
+/*@ void bm_set_color_rgb(Bitmap *bm, unsigned char r, unsigned char g, unsigned char b)
  *# Sets the colour of the pen to (r,g,b)
  */
-void bm_set_color(Bitmap *bm, unsigned char r, unsigned char g, unsigned char b);
+void bm_set_color_rgb(Bitmap *bm, unsigned char r, unsigned char g, unsigned char b);
 
 /*@ void bm_set_alpha(Bitmap *bm, int a)
  *# Sets the alpha value of the pen to {{a}}
@@ -234,7 +234,7 @@ void bm_adjust_rgba(Bitmap *bm, float rf, float gf, float bf, float af);
  */
 void bm_set_color_s(Bitmap *bm, const char *text);
 
-/*@ int bm_color_atoi(const char *text)
+/*@ unsigned int bm_color_atoi(const char *text)
  *# Converts a text string like "#FF00FF" or "white" to
  *# an integer of the form 0xFF00FF.
  *# The {{text}} parameter is not case sensitive and spaces are 
@@ -246,23 +246,23 @@ void bm_set_color_s(Bitmap *bm, const char *text);
  *# list of HTML and X11 Web colors:
  *# http://en.wikipedia.org/wiki/Web_colors
  */
-int bm_color_atoi(const char *text);
+unsigned int bm_color_atoi(const char *text);
 
-/*@ void bm_set_color_i(Bitmap *bm, int col)
+/*@ void bm_set_color(Bitmap *bm, unsigned int col)
  *# Sets the colour of the pen to a colour represented 
- *# by an integer, like 0x00RRGGBB
+ *# by an integer, like 0xAARRGGBB
  */
-void bm_set_color_i(Bitmap *bm, int col);
+void bm_set_color(Bitmap *bm, unsigned int col);
 
-/*@ void bm_get_color(Bitmap *bc, int *r, int *g, int *b)
+/*@ void bm_get_color_rgb(Bitmap *bc, int *r, int *g, int *b)
  *# Retrieves the pen colour into &r, &g and &b.
  */
-void bm_get_color(Bitmap *bm, int *r, int *g, int *b);
+void bm_get_color_rgb(Bitmap *bm, int *r, int *g, int *b);
 
-/*@ int bm_get_color_i(Bitmap *bc)
+/*@ unsigned int bm_get_color(Bitmap *bc)
  *# Retrieves the pen colour.
  */
-int bm_get_color_i(Bitmap *bm);
+unsigned int bm_get_color(Bitmap *bm);
 
 /*@ void bm_picker(Bitmap *bm, int x, int y)
  *# Sets the colour of the pen to the colour of the pixel at <x,y>
