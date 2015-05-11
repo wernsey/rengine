@@ -1072,7 +1072,8 @@ static int cnt_comp_mask(const void*ap, const void*bp);
  * It returns -1 in case there are more than 256 colours in the palette, meaning the
  * image will have to be quantized first.
  * It also ignores the alpha values of the pixels.
- * It also has the side effect that the returned palette contains sorted colors.
+ * It also has the side effect that the returned palette contains sorted colors, which 
+ * is useful for bsrch_palette_lookup().
  */
 static int count_colors_build_palette(Bitmap *b, struct rgb_triplet rgb[256]) {	
 	int count = 1, i, c;
@@ -1101,7 +1102,7 @@ static int count_colors_build_palette(Bitmap *b, struct rgb_triplet rgb[256]) {
 }
 
 /* Uses a binary search to find the index of a colour in a palette.
-It (almost) goes without saying that the palette must be sorted */
+It (almost) goes without saying that the palette must be sorted. */
 static int bsrch_palette_lookup(struct rgb_triplet rgb[], int c, int imin, int imax) {
 	c &= 0x00FFFFFF; /* Ignore the alpha value */
 	while(imax >= imin) {
@@ -1452,6 +1453,12 @@ static int gif_read_tbid(BmReader rd, GIF *gif, GIF_ID *gif_id, GIF_GCE *gce, st
 			}
 		}
 	
+		if(gif_id->top + gif_id->height >= gif->bmp->h ||
+			gif_id->left + gif_id->width >= gif->bmp->w) {
+			/* This image descriptor doesn't fall within the bounds of the image */
+			return 0;
+		}
+		
 		if(dispose == 2) {
 			/* Restore the background color */
 			for(y = 0; y < gif_id->height; y++) {
@@ -1487,10 +1494,12 @@ static int gif_read_tbid(BmReader rd, GIF *gif, GIF_ID *gif_id, GIF_GCE *gce, st
 						} else {
 							truey = y + gif_id->top;
 						}
+						assert(truey >= 0 && truey < gif->bmp->h);
 						for(x = 0; x < gif_id->width && rv; x++, i++) {
 							int c = decoded[i];							
 							if(c < sct) {
 								struct rgb_triplet *rgb = &ct[c];							
+								assert(x + gif_id->left >= 0 && x + gif_id->left < gif->bmp->w);
 								if(trans_flag && c == gce->trans_index) {								
 									bm_set_rgb_a(gif->bmp, x + gif_id->left, truey, rgb->r, rgb->g, rgb->b, 0x00);
 								} else {
@@ -2369,11 +2378,8 @@ void bm_blit(Bitmap *dst, int dx, int dy, Bitmap *src, int sx, int sy, int w, in
 	for(y = dy; y < dy + h; y++) {		
 		i = sx;
 		for(x = dx; x < dx + w; x++) {
-			int r = BM_GETR(src, i, j),
-				g = BM_GETG(src, i, j),
-				b = BM_GETB(src, i, j),
-				a = BM_GETA(src, i, j);
-			BM_SETRGB(dst, x, y, r, g, b, a);
+			int c = BM_GET(src, i, j);
+			BM_SET(dst, x, y, c);
 			i++;
 		}
 		j++;
@@ -2751,7 +2757,7 @@ Bitmap *bm_resample(const Bitmap *in, int nw, int nh) {
 			int sx = x * in->w/nw;
 			int sy = y * in->h/nh;
 			assert(sx < in->w && sy < in->h);
-			BM_SETRGB(out, x, y, BM_GETR(in,sx,sy), BM_GETG(in,sx,sy), BM_GETB(in,sx,sy), BM_GETA(in,sx,sy));
+			BM_SET(out, x, y, BM_GET(in,sx,sy));
 		}
 	return out;
 }
@@ -3611,9 +3617,6 @@ void bm_bezier3(Bitmap *b, int x0, int y0, int x1, int y1, int x2, int y2) {
 }
 
 void bm_fill(Bitmap *b, int x, int y) {
-	/* TODO: The function does not take the clipping into account. 
-	 * I'm not really sure how to handle it, to be honest.
-	 */	
 	struct node {int x; int y;} 
 		*queue,
 		n;		
@@ -3650,13 +3653,13 @@ void bm_fill(Bitmap *b, int x, int y) {
 		if(!bm_color_is(b, n.x, n.y, sr, sg, sb))
 			continue;
 		
-		while(w.x > 0) {			
+		while(w.x > b->clip.x0) {			
 			if(!bm_color_is(b, w.x-1, w.y, sr, sg, sb)) {
 				break;
 			}
 			w.x--;
 		}
-		while(e.x < b->w - 1) {
+		while(e.x < b->clip.x1 - 1) {
 			if(!bm_color_is(b, e.x+1, e.y, sr, sg, sb)) {
 				break;
 			}
@@ -3665,7 +3668,7 @@ void bm_fill(Bitmap *b, int x, int y) {
 		for(i = w.x; i <= e.x; i++) {
 			assert(i >= 0 && i < b->w);
 			BM_SETRGB(b, i, w.y, dr, dg, db, b->a);			
-			if(w.y > 0) {
+			if(w.y > b->clip.y0) {
 				if(bm_color_is(b, i, w.y - 1, sr, sg, sb)) {
 					nn.x = i; nn.y = w.y - 1;
 					queue[qs++] = nn;
@@ -3677,7 +3680,7 @@ void bm_fill(Bitmap *b, int x, int y) {
 					}
 				}
 			}
-			if(w.y < b->h - 1) {
+			if(w.y < b->clip.y1 - 1) {
 				if(bm_color_is(b, i, w.y + 1, sr, sg, sb)) {
 					nn.x = i; nn.y = w.y + 1;
 					queue[qs++] = nn;
