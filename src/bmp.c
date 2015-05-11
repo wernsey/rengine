@@ -130,8 +130,8 @@ struct rgb_triplet {
 /* TODO: These macros are fairly new additions and can probably be used to improve
  * performance in some of the older functions that still uses BM_SETRGB and friends.
  */
-#define BM_GET(b, x, y) (*((int*)(b->data + y * BM_ROW_SIZE(b) + x * BM_BPP)))
-#define BM_SET(b, x, y, c) *((int*)(b->data + y * BM_ROW_SIZE(b) + x * BM_BPP)) = c
+#define BM_GET(b, x, y) (*((unsigned int*)(b->data + y * BM_ROW_SIZE(b) + x * BM_BPP)))
+#define BM_SET(b, x, y, c) *((unsigned int*)(b->data + y * BM_ROW_SIZE(b) + x * BM_BPP)) = c
 
 Bitmap *bm_create(int w, int h) {	
 	Bitmap *b = malloc(sizeof *b);
@@ -2086,7 +2086,7 @@ static int bm_save_pcx(Bitmap *b, const char *fname) {
 		int palette[256], q;
 		ncolors = 0;
 		for(ncolors = 0; ncolors < 256; ncolors++) {
-		int c = bm_get(b, rand()%b->w, rand()%b->h);
+			unsigned int c = bm_get(b, rand()%b->w, rand()%b->h);
 			rgb[ncolors].r = (c >> 16) & 0xFF;
 			rgb[ncolors].g = (c >> 8) & 0xFF;
 			rgb[ncolors].b = (c >> 0) & 0xFF;
@@ -2104,9 +2104,9 @@ static int bm_save_pcx(Bitmap *b, const char *fname) {
 		x = 0;
 		while(x < b->w) {
 			int i, cnt = 1;
-			int c = bm_get(b, x++, y);			
+			unsigned int c = bm_get(b, x++, y);			
 			while(x < b->w && cnt < 63) {
-				int n = bm_get(b, x, y);
+				unsigned int n = bm_get(b, x, y);
 				if(c != n) 
 					break;
 				x++;
@@ -2210,17 +2210,17 @@ void bm_flip_vertical(Bitmap *b) {
 	free(trow);
 }
 
-int bm_get(Bitmap *b, int x, int y) {	
-	int *p;
+unsigned int bm_get(Bitmap *b, int x, int y) {	
+	unsigned int *p;
 	assert(x >= 0 && x < b->w && y >= 0 && y < b->h);
-	p = (int*)(b->data + y * BM_ROW_SIZE(b) + x * BM_BPP);
+	p = (unsigned int*)(b->data + y * BM_ROW_SIZE(b) + x * BM_BPP);
 	return *p;
 }
 
-void bm_set(Bitmap *b, int x, int y, int c) {	
-	int *p;
+void bm_set(Bitmap *b, int x, int y, unsigned int c) {	
+	unsigned int *p;
 	assert(x >= 0 && x < b->w && y >= 0 && y < b->h);
-	p = (int*)(b->data + y * BM_ROW_SIZE(b) + x * BM_BPP);
+	p = (unsigned int*)(b->data + y * BM_ROW_SIZE(b) + x * BM_BPP);
 	*p = c;
 }
 
@@ -2930,7 +2930,7 @@ void bm_adjust_rgba(Bitmap *bm, float rf, float gf, float bf, float af) {
  */
 static const struct color_map_entry {
 	const char *name;
-	int color;
+	unsigned int color;
 } color_map[] = {
 	{"ALICEBLUE", 0xF0F8FF},
 	{"ANTIQUEWHITE", 0xFAEBD7},
@@ -3209,7 +3209,7 @@ unsigned int bm_get_color(Bitmap *bm) {
 	return bm->color;
 }
 
-int bm_picker(Bitmap *bm, int x, int y) {
+unsigned int bm_picker(Bitmap *bm, int x, int y) {
 	if(x < 0 || x >= bm->w || y < 0 || y >= bm->h) 
 		return 0;
 	bm->color = bm_get(bm, x, y);
@@ -3612,8 +3612,7 @@ void bm_fill(Bitmap *b, int x, int y) {
 		n;		
 	int qs = 0, /* queue size */
 		mqs = 128; /* Max queue size */
-	int sc; /* Source colour */
-	int dc; /* Destination colour */
+	unsigned int sc, dc; /* Source and Destination colours */
 			
 	dc = b->color;
 	bm_picker(b, x, y);

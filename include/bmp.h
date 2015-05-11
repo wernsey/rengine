@@ -161,17 +161,17 @@ void bm_clip(Bitmap *b, int x0, int y0, int x1, int y1);
  */
 void bm_unclip(Bitmap *b);
 
-/*@ int bm_get(Bitmap *b, int x, int y)
+/*@ unsigned int bm_get(Bitmap *b, int x, int y)
  *# Retrieves the value of the pixel at x,y as an integer.\n
  *# The return value is in the form 0xAABBGGRR
  */
-int bm_get(Bitmap *b, int x, int y);
+unsigned int bm_get(Bitmap *b, int x, int y);
 
 /*@ void bm_set(Bitmap *b, int x, int y, int c)
  *# Sets the value of the pixel at x,y to the color c.\n
  *# {{c}} is in the form 0xAABBGGRR
  */
-void bm_set(Bitmap *b, int x, int y, int c);
+void bm_set(Bitmap *b, int x, int y, unsigned int c);
 
 /*@ void bm_set_rgb(Bitmap *b, int x, int y, unsigned char R, unsigned char G, unsigned char B)
  *# Sets a pixel at x,y in the bitmap {{b}} to the specified R,G,B color
@@ -264,13 +264,13 @@ void bm_get_color_rgb(Bitmap *bm, int *r, int *g, int *b);
  */
 unsigned int bm_get_color(Bitmap *bm);
 
-/*@ void bm_picker(Bitmap *bm, int x, int y)
+/*@ unsigned int bm_picker(Bitmap *bm, int x, int y)
  *# Sets the colour of the pen to the colour of the pixel at <x,y>
  *# on the bitmap.
  *# The pen colour can then be retrieved through {{bm_get_color()}}.\n
  *# It returns the integer representation of the colour.
  */
-int bm_picker(Bitmap *bm, int x, int y);
+unsigned int bm_picker(Bitmap *bm, int x, int y);
 
 /*@ int bm_color_is(Bitmap *bm, int x, int y, int r, int g, int b) 
  *# Returns 1 if the colour at <x,y> on the bitmap is (r,g,b), 0 otherwise

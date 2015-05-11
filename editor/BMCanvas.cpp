@@ -66,7 +66,7 @@ void BMCanvas::pen(int r, int g, int b)
 	bm_set_color_rgb(bmp, r, g, b);
 }
 
-void BMCanvas::pen(int c)
+void BMCanvas::pen(unsigned int c)
 {
 	bm_set_color(bmp, c);
 }

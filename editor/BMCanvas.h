@@ -22,7 +22,7 @@ public:
 	 * bitmap.
 	 */
 	void pen(int r, int g, int b);
-	void pen(int c);
+	void pen(unsigned int c);
 	void pen(const char *s);
 	
 	void pen(int *r, int *g, int *b);
