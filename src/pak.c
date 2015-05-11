@@ -47,7 +47,7 @@ struct pak_file {
 #else
 #define OPENFUN(name, mode) fopen(name, mode);
 #define READFUN(ptr, size, n, f) fread(ptr, size, n, f)
-#define SEEKFUN(f, offs, mode) fseek(f, offs, SEEK_SET)
+#define SEEKFUN(f, offs, mode) fseek(f, offs, mode)
 #define SEEKOK(exp) ((exp)==0)
 #define TELLFUN(f) ftell(f)
 #define WRITFUN(ptr, size, n, f) fwrite(ptr, size, n, f)
@@ -115,7 +115,8 @@ struct pak_file *pak_open(const char *name) {
 	p->next_offset = hdr.offset;
 	for(i = 0; i < p->nf; i++) {
 		if(p->dir[i].offset > hdr.offset) {
-			if(pak_verbose) perror("[pak_open] directory is not at the end of the file");
+			if(pak_verbose) 
+				fprintf(stderr, "[pak_open] directory is not at the end of the file\n");
 			SEEKFUN(p->f, 0, SEEK_END);
 			p->next_offset = TELLFUN(p->f);
 			break;
@@ -145,7 +146,8 @@ static void write_header(struct pak_file *p, int dir_offset) {
 struct pak_file *pak_create(const char *name) {
 	struct pak_file *p;
 	
-	if(pak_verbose > 1) printf("[pak_create] creating new file %s\n", name);
+	if(pak_verbose > 1) 
+		printf("[pak_create] creating new file %s\n", name);
 	
 	p = malloc(sizeof *p);
 	p->nf = 0;	
@@ -154,7 +156,8 @@ struct pak_file *pak_create(const char *name) {
 	
 	p->f = OPENFUN(name, "wb");
 	if(!p->f) {
-		if(pak_verbose) fprintf(stderr, "[pak_create] unable to open %s: %s\n", name, strerror(errno));
+		if(pak_verbose) 
+			fprintf(stderr, "[pak_create] unable to open %s: %s\n", name, strerror(errno));
 		free(p);
 		return NULL;
 	}
@@ -168,7 +171,14 @@ struct pak_file *pak_create(const char *name) {
 }
 
 int pak_append_blob(struct pak_file *p, const char *filename, const char *blob, int len) {
-	if(pak_verbose > 1) printf("[pak_append_blob] Appending blob as %s\n", filename);
+
+	/*if(len <= 0) {
+		printf("[pak_append_blob] warning: length of %s is %d bytes\n", filename, len);
+		return 0;
+	}*/
+
+	if(pak_verbose > 1) 
+		printf("[pak_append_blob] Appending blob of %d bytes as %s\n", len, filename);
 	
 	if(!p->dir) {
 		assert(p->nf == 0);
@@ -181,10 +191,14 @@ int pak_append_blob(struct pak_file *p, const char *filename, const char *blob, 
 		if(pak_verbose) perror("[pak_append_blob] couldn't fseek next offset\n");
 		return 0;
 	}
+	
 	if(WRITFUN(blob, 1, len, p->f) != len) {
 		if(pak_verbose) fprintf(stderr, "[pak_append_blob] unable to write %s: %s\n", filename, strerror(errno));
 		return 0;
 	}
+	
+	if(pak_verbose > 2) 
+		printf("[pak_append_blob] Appended blob; Position is now %d\n", (int)TELLFUN(p->f));		
 	
 	p->dir[p->nf].length = len;
 	p->dir[p->nf].offset = p->next_offset;
@@ -207,27 +221,38 @@ int pak_append_file(struct pak_file *p, const char *filename) {
 	FILE *infile;
 #endif
 
-	if(pak_verbose > 1) printf("[pak_append_file] loading contents of %s\n", filename);
-	
+	if(pak_verbose > 1)
+		printf("[pak_append_file] loading contents of %s\n", filename);
+
 	infile = OPENFUN(filename, "rb");		
 	if(!infile) {
-		if(pak_verbose) fprintf(stderr, "[pak_append_file] unable to open %s: %s\n", filename, strerror(errno));
+		if(pak_verbose) 
+			fprintf(stderr, "[pak_append_file] unable to open %s: %s\n", filename, strerror(errno));
 		return 0;
 	}	
 	
-	SEEKFUN(infile, 0, SEEK_END);
+	if(!SEEKOK(SEEKFUN(infile, 0, SEEK_END))) {
+		if(pak_verbose) 
+			fprintf(stderr, "[pak_append_file] determine length of %s: %s\n", filename, strerror(errno));
+		return 0;
+	}
 	len = TELLFUN(infile);
 	REWIND(infile);
 	
+	if(pak_verbose > 1) 
+		printf("[pak_append_file] %s contains %d bytes\n", filename, len);
+	
 	bytes = malloc(len);
 	if(!bytes) {
-		if(pak_verbose) perror("[pak_append_file] unable to allocate memory");
+		if(pak_verbose) 
+			perror("[pak_append_file] unable to allocate memory");
 		CLOSFUN(infile);
 		return 0;
 	}
 	
 	if(READFUN(bytes, 1, len, infile) != len) {
-		if(pak_verbose) fprintf(stderr, "[pak_append_file] unable to read %s: %s\n", filename, strerror(errno));
+		if(pak_verbose) 
+			fprintf(stderr, "[pak_append_file] unable to read %s: %s\n", filename, strerror(errno));
 		free(bytes);
 		CLOSFUN(infile);
 		return 0;
@@ -247,19 +272,26 @@ int pak_close(struct pak_file * p) {
 	
 	if(p->dirty) {
 		int offset;
-		if(pak_verbose > 1) printf("[pak_close] writing changes to file\n");
+		if(pak_verbose > 1) 
+			printf("[pak_close] writing changes to file\n");
 		/* Seek the end of the file and write the directory */
-		SEEKFUN(p->f, 0, SEEK_END);
+		if(!SEEKOK(SEEKFUN(p->f, 0, SEEK_END))) {
+			if(pak_verbose) 
+				fprintf(stderr, "[pak_append_file] unable to seek end of PAK for writing directory: %s\n", strerror(errno));
+			return 0;
+		}
 		offset = TELLFUN(p->f);
 		if(WRITFUN(p->dir, sizeof *p->dir, p->nf, p->f) != p->nf) {
-			if(pak_verbose) perror("[pak_close] couldn't write directory");
+			if(pak_verbose) 
+				perror("[pak_close] couldn't write directory");
 			rv = 0;
 		} else {		
 			/* Seek the start of the file and write the header */
 			write_header(p, offset);
 		}
 	} else {
-		if(pak_verbose > 1) printf("[pak_close] no changes need to be written\n");
+		if(pak_verbose > 1) 
+			printf("[pak_close] no changes need to be written\n");
 	}
 	
 	free(p->dir);
@@ -293,7 +325,8 @@ char *pak_get_blob(struct pak_file * p, const char *filename, size_t *len) {
 	char *blob;
 	struct pak_dir *dir;
 
-	if(pak_verbose > 1) printf("[pak_get_blob] retrieving file %s\n", filename);
+	if(pak_verbose > 1) 
+		printf("[pak_get_blob] retrieving file %s\n", filename);
 
 	dir = get_file(p, filename);
 	if(!dir) {
@@ -363,7 +396,8 @@ char *pak_get_text(struct pak_file * p, const char *filename) {
 FILE *pak_get_file(struct pak_file * p, const char *filename) {
 	struct pak_dir *dir;
 
-	if(pak_verbose > 1) printf("[pak_get_file] retrieving file %s from archieve\n", filename);
+	if(pak_verbose > 1) 
+		printf("[pak_get_file] retrieving file %s from archieve\n", filename);
 	
 	dir = get_file(p, filename);
 		
@@ -384,7 +418,8 @@ FILE *pak_get_file(struct pak_file * p, const char *filename) {
 SDL_RWops *pak_get_rwops(struct pak_file * p, const char *filename) {
 	struct pak_dir *dir;
 
-	if(pak_verbose > 1) printf("[pak_get_file] retrieving file %s from archieve\n", filename);
+	if(pak_verbose > 1) 
+		printf("[pak_get_file] retrieving file %s from archieve\n", filename);
 	
 	dir = get_file(p, filename);
 		
@@ -413,7 +448,8 @@ int pak_extract_file(struct pak_file * p, const char *filename, const char *to) 
     
 	int rv = 1;
 	
-	if(pak_verbose > 1) printf("[pak_extract_file] extracting %s to %s\n", filename, to);
+	if(pak_verbose > 1) 
+		printf("[pak_extract_file] extracting %s to %s\n", filename, to);
 	
 	blob = pak_get_blob(p, filename, &len);
 	if(!blob) {
@@ -422,7 +458,8 @@ int pak_extract_file(struct pak_file * p, const char *filename, const char *to) 
 	
 	out = OPENFUN(to, "wb");
 	if(!out) {
-		if(pak_verbose) fprintf(stderr, "[pak_get_text] couldn't open %s for output: %s\n", to, strerror(errno));
+		if(pak_verbose) 
+			fprintf(stderr, "[pak_get_text] couldn't open %s for output: %s\n", to, strerror(errno));
 		rv = 0;
 	} else {
 		if(WRITFUN(blob, 1, len, out) != len) {
