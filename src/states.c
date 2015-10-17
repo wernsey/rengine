@@ -517,8 +517,6 @@ struct game_state *get_state(const char *name) {
 		next = get_lua_state(name);
 	} else if(!my_stricmp(type, "leftright")) {
 		next = get_leftright_state(name);
-	} else if(!my_stricmp(type, "musl")) {
-		next = get_mus_state(name);
 	} else {
 		rerror("Invalid type '%s' for state '%s' in ini file", type, name);
 		quit = 1;

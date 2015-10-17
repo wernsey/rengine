@@ -42,7 +42,7 @@ endif
 EXECUTABLES = $(GAME_BIN) $(PAKR_BIN)
 
 SOURCES= bmp.c game.c ini.c utils.c pak.c \
-	states.c demo.c resources.c musl.c mustate.c hash.c \
+	states.c demo.c resources.c hash.c \
 	lexer.c tileset.c map.c json.c luastate.c log.c \
 	gamedb.c sound.c paths.c mappings.c bmpfont.c \
     lua/ls_audio.c lua/ls_game.c lua/ls_map.c lua/ls_gamedb.c \
@@ -100,11 +100,6 @@ map.o: ../src/map.c ../include/tileset.h \
 luastate.o: luastate.c ../include/bmp.h \
  ../include/states.h ../include/map.h ../include/game.h ../include/ini.h \
  ../include/resources.h ../include/tileset.h ../include/utils.h \
- ../include/log.h ../include/gamedb.h
-musl.o: musl.c ../include/musl.h
-mustate.o: mustate.c ../include/bmp.h \
- ../include/states.h ../include/musl.h ../include/game.h ../include/ini.h \
- ../include/resources.h ../include/utils.h \
  ../include/log.h ../include/gamedb.h
 pak.o: pak.c ../include/pak.h
 resources.o: resources.c ../include/pak.h \

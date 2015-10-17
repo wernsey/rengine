@@ -1,3 +1,5 @@
+# Notes on how I compiled everything with Mingw on Windows
+
 # Environment
 export INCLUDE_PATH=/usr/local/include
 export LIBRARY_PATH=/usr/local/lib

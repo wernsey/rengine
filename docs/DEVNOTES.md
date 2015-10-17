@@ -87,12 +87,6 @@ I should have a way to map physical input
 (like move left, jump, open door). This will help if I ever get around
 to porting it to devices without keyboards and mouses.
 
-## Musl
-
-I should remove Musl from Rengine completely. The thing I had in mind when
-I put it in can now be done in Lua as the engine evolved. Keeping Musl now
-forces me to maintain two scripting language bindings.
-
 ## Audio
 
 In order to compile SDL_mixer with support for Ogg Vorbis (under MinGW), I 
@@ -182,3 +176,7 @@ To use the script, invoke it like so:
 > awk -f mddoc.awk src/luastate.c > output.md
 ```
 and then paste the contents of `output.md` in GitHub's wiki editor.
+
+# Known Bugs
+
+* lots...

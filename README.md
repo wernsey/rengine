@@ -34,15 +34,15 @@ tested against:
 * SDL (2.0.1) - Cross-platform low level game library -
 http://www.libsdl.org
 
-* Lua (5.2.2) - Scripting language - http://www.lua.org
+* Lua (5.3.1) - Scripting language - http://www.lua.org
 
 * SDL_mixer (2.0.0) - Mixer library (audio) for SDL -
 http://www.libsdl.org/projects/SDL_mixer/
 
-* libvorbis-1.3.4 and libogg-1.3.1 - Open audio encoding and
+* libvorbis (1.3.5) and libogg (1.3.2) - Open audio encoding and
     streaming technology - https://www.xiph.org/downloads/
 
-* libpng (1.5.4) - Portable Network Graphics reference library
+* libpng (1.6.18) - Portable Network Graphics reference library
     used for support of the PNG file format
     http://www.libpng.org/pub/png/libpng.html
 
@@ -52,10 +52,10 @@ http://www.libsdl.org/projects/SDL_mixer/
 * libjpeg (release 9a) - Library for working with JPEG image files.
     http://www.ijg.org/
 
-* freetype (2.5.5) - Library for loading and rendering fonts.
+* freetype (2.6) - Library for loading and rendering fonts.
     http://www.freetype.org/
 
-* FLTK (1.3.2) - Cross-platform GUI toolkit, used for the map editor -
+* FLTK (1.3.3) - Cross-platform GUI toolkit, used for the map editor -
 http://www.fltk.org
 
 On Linux systems, these libraries can be found in your package manager.
