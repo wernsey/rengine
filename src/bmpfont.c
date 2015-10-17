@@ -227,7 +227,7 @@ static void ft_draw_bitmap(Bitmap *bm, FT_Bitmap *fb, FT_Int x, FT_Int y) {
 	FT_Int y_max = y + fb->rows;
 	
 	int r, g, b;
-	bm_get_color(bm, &r, &g, &b);
+	bm_get_color_rgb(bm, &r, &g, &b);
 	
 	for(i = x, p = 0; i < x_max; i++, p++) {
 		if(i < 0) 

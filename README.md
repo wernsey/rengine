@@ -42,7 +42,7 @@ http://www.libsdl.org/projects/SDL_mixer/
 * libvorbis-1.3.4 and libogg-1.3.1 - Open audio encoding and
     streaming technology - https://www.xiph.org/downloads/
 
-* libpng (1.5.4) - Portable network graphics reference library
+* libpng (1.5.4) - Portable Network Graphics reference library
     used for support of the PNG file format
     http://www.libpng.org/pub/png/libpng.html
 

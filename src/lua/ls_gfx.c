@@ -111,8 +111,8 @@ static int gr_unclip(lua_State *L) {
 static int gr_putpixel(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
 	assert(sd->bmp);
-	int x = luaL_checkint(L,1);
-	int y = luaL_checkint(L,2);
+	int x = luaL_checkinteger(L,1);
+	int y = luaL_checkinteger(L,2);
 	bm_putpixel(sd->bmp, x, y);
 	return 0;
 }
@@ -123,10 +123,10 @@ static int gr_putpixel(lua_State *L) {
 static int gr_line(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
 	assert(sd->bmp);
-	int x0 = luaL_checkint(L,1);
-	int y0 = luaL_checkint(L,2);
-	int x1 = luaL_checkint(L,3);
-	int y1 = luaL_checkint(L,4);
+	int x0 = luaL_checkinteger(L,1);
+	int y0 = luaL_checkinteger(L,2);
+	int x1 = luaL_checkinteger(L,3);
+	int y1 = luaL_checkinteger(L,4);
 	bm_line(sd->bmp, x0, y0, x1, y1);
 	return 0;
 }
@@ -137,10 +137,10 @@ static int gr_line(lua_State *L) {
 static int gr_rect(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
 	assert(sd->bmp);
-	int x0 = luaL_checkint(L,1);
-	int y0 = luaL_checkint(L,2);
-	int x1 = luaL_checkint(L,3);
-	int y1 = luaL_checkint(L,4);
+	int x0 = luaL_checkinteger(L,1);
+	int y0 = luaL_checkinteger(L,2);
+	int x1 = luaL_checkinteger(L,3);
+	int y1 = luaL_checkinteger(L,4);
 	bm_rect(sd->bmp, x0, y0, x1, y1);
 	return 0;
 }
@@ -151,10 +151,10 @@ static int gr_rect(lua_State *L) {
 static int gr_fillrect(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
 	assert(sd->bmp);
-	int x0 = luaL_checkint(L,1);
-	int y0 = luaL_checkint(L,2);
-	int x1 = luaL_checkint(L,3);
-	int y1 = luaL_checkint(L,4);
+	int x0 = luaL_checkinteger(L,1);
+	int y0 = luaL_checkinteger(L,2);
+	int x1 = luaL_checkinteger(L,3);
+	int y1 = luaL_checkinteger(L,4);
 	bm_fillrect(sd->bmp, x0, y0, x1, y1);
 	return 0;
 }
@@ -165,10 +165,10 @@ static int gr_fillrect(lua_State *L) {
 static int gr_dithrect(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
 	assert(sd->bmp);
-	int x0 = luaL_checkint(L,1);
-	int y0 = luaL_checkint(L,2);
-	int x1 = luaL_checkint(L,3);
-	int y1 = luaL_checkint(L,4);
+	int x0 = luaL_checkinteger(L,1);
+	int y0 = luaL_checkinteger(L,2);
+	int x1 = luaL_checkinteger(L,3);
+	int y1 = luaL_checkinteger(L,4);
 	bm_dithrect(sd->bmp, x0, y0, x1, y1);
 	return 0;
 }
@@ -179,9 +179,9 @@ static int gr_dithrect(lua_State *L) {
 static int gr_circle(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
 	assert(sd->bmp);
-	int x = luaL_checkint(L,1);
-	int y = luaL_checkint(L,2);
-	int r = luaL_checkint(L,3);
+	int x = luaL_checkinteger(L,1);
+	int y = luaL_checkinteger(L,2);
+	int r = luaL_checkinteger(L,3);
 	bm_circle(sd->bmp, x, y, r);
 	return 0;
 }
@@ -192,9 +192,9 @@ static int gr_circle(lua_State *L) {
 static int gr_fillcircle(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
 	assert(sd->bmp);
-	int x = luaL_checkint(L,1);
-	int y = luaL_checkint(L,2);
-	int r = luaL_checkint(L,3);
+	int x = luaL_checkinteger(L,1);
+	int y = luaL_checkinteger(L,2);
+	int r = luaL_checkinteger(L,3);
 	bm_fillcircle(sd->bmp, x, y, r);
 	return 0;
 }
@@ -205,10 +205,10 @@ static int gr_fillcircle(lua_State *L) {
 static int gr_ellipse(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
 	assert(sd->bmp);
-	int x0 = luaL_checkint(L,1);
-	int y0 = luaL_checkint(L,2);
-	int x1 = luaL_checkint(L,3);
-	int y1 = luaL_checkint(L,4);
+	int x0 = luaL_checkinteger(L,1);
+	int y0 = luaL_checkinteger(L,2);
+	int x1 = luaL_checkinteger(L,3);
+	int y1 = luaL_checkinteger(L,4);
 	bm_ellipse(sd->bmp, x0, y0, x1, y1);
 	return 0;
 }
@@ -220,11 +220,11 @@ static int gr_ellipse(lua_State *L) {
 static int gr_roundrect(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
 	assert(sd->bmp);
-	int x0 = luaL_checkint(L,1);
-	int y0 = luaL_checkint(L,2);
-	int x1 = luaL_checkint(L,3);
-	int y1 = luaL_checkint(L,4);
-	int r = luaL_checkint(L,5);
+	int x0 = luaL_checkinteger(L,1);
+	int y0 = luaL_checkinteger(L,2);
+	int x1 = luaL_checkinteger(L,3);
+	int y1 = luaL_checkinteger(L,4);
+	int r = luaL_checkinteger(L,5);
 	bm_roundrect(sd->bmp, x0, y0, x1, y1, r);
 	return 0;
 }
@@ -236,11 +236,11 @@ static int gr_roundrect(lua_State *L) {
 static int gr_fillroundrect(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
 	assert(sd->bmp);
-	int x0 = luaL_checkint(L,1);
-	int y0 = luaL_checkint(L,2);
-	int x1 = luaL_checkint(L,3);
-	int y1 = luaL_checkint(L,4);
-	int r = luaL_checkint(L,5);
+	int x0 = luaL_checkinteger(L,1);
+	int y0 = luaL_checkinteger(L,2);
+	int x1 = luaL_checkinteger(L,3);
+	int y1 = luaL_checkinteger(L,4);
+	int r = luaL_checkinteger(L,5);
 	bm_fillroundrect(sd->bmp, x0, y0, x1, y1, r);
 	return 0;
 }
@@ -253,12 +253,12 @@ static int gr_fillroundrect(lua_State *L) {
 static int gr_bezier3(lua_State *L) {
 	struct lustate_data *sd = get_state_data(L);
 	assert(sd->bmp);
-	int x0 = luaL_checkint(L,1);
-	int y0 = luaL_checkint(L,2);
-	int x1 = luaL_checkint(L,3);
-	int y1 = luaL_checkint(L,4);
-	int x2 = luaL_checkint(L,5);
-	int y2 = luaL_checkint(L,6);
+	int x0 = luaL_checkinteger(L,1);
+	int y0 = luaL_checkinteger(L,2);
+	int x1 = luaL_checkinteger(L,3);
+	int y1 = luaL_checkinteger(L,4);
+	int x2 = luaL_checkinteger(L,5);
+	int y2 = luaL_checkinteger(L,6);
 	bm_bezier3(sd->bmp, x0, y0, x1, y1, x2, y2);
 	return 0;
 }

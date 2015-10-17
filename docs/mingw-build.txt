@@ -1,0 +1,72 @@
+# Environment
+export INCLUDE_PATH=/usr/local/include
+export LIBRARY_PATH=/usr/local/lib
+export BINARY_PATH=/usr/local/bin
+export C_INCLUDE_PATH=/usr/local/include
+
+# zlib-1.2.8
+make -f win32/Makefile.gcc
+make -f  win32/Makefile.gcc install
+
+# libpng-1.6.18
+./configure
+make
+make install
+
+# jpeg-9a
+./configure
+make
+make install
+
+# freetype-2.6
+./configure
+make
+make install
+
+# libogg-1.3.2
+./configure
+make
+make install
+
+# libvorbis-1.3.5
+./configure --with-ogg=/usr/local
+make
+make install
+
+# lua-5.3.1
+make mingw
+make mingw install
+
+# fltk-1.3.3
+./configure
+make
+make install
+
+# SDL
+#I had a bit of trouble with SDL 2.0.3 and Mingw32
+
+#Apparently it is best to switch to mingw-w64, but
+#good luck with that. So I used SDL 2.0.1 for the 
+#time being.
+
+# SDL2_mixer-2.0.0
+./configure
+make
+make install
+# (But make sure the environment is set to be able to use Ogg) 
+
+
+# ---------------------------------------------------------------------------------------------------
+#
+# SDL2-2.0.3
+# You need to replace SDL_platform.h in SDL2-2.0.3/include first.  
+# http://stackoverflow.com/a/22600114
+#
+# MinGW-w64
+# http://sourceforge.net/projects/mingw-w64/
+#
+# Some links that may bring luck:
+# https://wiki.qt.io/MinGW-64-bit
+# http://ascend4.org/Setting_up_a_MinGW-w64_build_environment
+# DirectX headers for MinGW
+# http://www.libsdl.org/extras/win32/common/directx-devel.tar.gz see also https://www.libsdl.org/extras/win32/mingw32/README.txt
