@@ -779,7 +779,7 @@ static Bitmap *bm_load_png_rw(SDL_RWops *rw);
 static Bitmap *bm_load_jpg_rw(SDL_RWops *rw);
 #  endif
 
-Bitmap *bm_load_rw(SDL_RWops *rw) {	
+Bitmap *bm_load_rw(SDL_RWops *rw) {
 	unsigned char magic[3];	
     long start = SDL_RWtell(rw);
     long isbmp = 0, ispng = 0, isjpg = 0, ispcx = 0, isgif = 0;
@@ -822,9 +822,9 @@ Bitmap *bm_load_rw(SDL_RWops *rw) {
 		BmReader rd = make_rwops_reader(rw);
 		return bm_load_bmp_rd(rd);
 	}
-	return NULL;
+    return NULL;
 }
-	
+
 #  ifdef USEPNG
 /* 
 Code to read a PNG from a SDL_RWops
@@ -932,13 +932,13 @@ done:
 }
 #  endif /* USEPNG */
 #  ifdef USEJPG
+
 /*
 Code to read a JPEG from an SDL_RWops.
 Refer to jdatasrc.c in libjpeg's code.
 See also 
 http://www.cs.stanford.edu/~acoates/decompressJpegFromMemory.txt
 */
-
 #define JPEG_INPUT_BUFFER_SIZE  4096
 struct rw_jpeg_src_mgr {
     struct jpeg_source_mgr pub;
@@ -1133,7 +1133,7 @@ Nelson, M.R. : "LZW Data Compression", Dr. Dobb's Journal, October 1989.
 http://commandlinefanatic.com/cgi-bin/showarticle.cgi?article=art011
 http://www.matthewflickinger.com/lab/whatsinagif/bits_and_bytes.asp
 */
-	
+
 #pragma pack(push, 1) /* Don't use any padding */
 typedef struct {
 
@@ -1240,23 +1240,23 @@ static Bitmap *bm_load_gif_rd(BmReader rd) {
 
 	gct = !!(gif.lsd.fields & 0x80);
 	sgct = gif.lsd.fields & 0x07;
-	
+
 	if(gct) {
 		/* raise 2 to the power of [sgct+1] */
 		sgct = 1 << (sgct + 1);
 	}
 
 	gif.bmp = bm_create(gif.lsd.width, gif.lsd.height);
-	
+
 	if(gct) {
 		/* Section 19. Global Color Table. */
 		struct rgb_triplet *bg;
 		palette = calloc(sgct, sizeof *palette);
-		
+
 		if(rd.fread(palette, sizeof *palette, sgct, rd.data) != sgct) {
 			free(palette);
-		return NULL;
-	}
+			return NULL;
+		}
 		
 		/* Set the Bitmap's color to the background color.*/
 		bg = &palette[gif.lsd.background];
@@ -1397,13 +1397,13 @@ static unsigned char *gif_data_sub_blocks(BmReader rd, int *r_tsize) {
 		
 	if(rd.fread(&size, 1, 1, rd.data) != 1) {
 		return NULL;
-	}
+	}	
 	buffer = realloc(buffer, 1);
 	
 	while(size > 0) {
 		buffer = realloc(buffer, tsize + size + 1);
 		pos = buffer + tsize;
-		
+
 		if(rd.fread(pos, sizeof *pos, size, rd.data) != size) {
 			free(buffer);
 			return NULL;
@@ -1452,7 +1452,7 @@ static int gif_read_tbid(BmReader rd, GIF *gif, GIF_ID *gif_id, GIF_GCE *gce, st
 				bm_set_color_rgb(gif->bmp, bg->r, bg->g, bg->b);
 			}
 		}
-	
+		
 		if(gif_id->top + gif_id->height > gif->bmp->h ||
 			gif_id->left + gif_id->width > gif->bmp->w) {
 			/* This image descriptor doesn't fall within the bounds of the image */
@@ -1498,7 +1498,7 @@ static int gif_read_tbid(BmReader rd, GIF *gif, GIF_ID *gif_id, GIF_GCE *gce, st
 						for(x = 0; x < gif_id->width && rv; x++, i++) {
 							int c = decoded[i];							
 							if(c < sct) {
-								struct rgb_triplet *rgb = &ct[c];							
+								struct rgb_triplet *rgb = &ct[c];
 								assert(x + gif_id->left >= 0 && x + gif_id->left < gif->bmp->w);
 								if(trans_flag && c == gce->trans_index) {								
 									bm_set_rgb_a(gif->bmp, x + gif_id->left, truey, rgb->r, rgb->g, rgb->b, 0x00);
@@ -1589,7 +1589,7 @@ static unsigned char *lzw_decode_bytes(unsigned char *bytes, int data_len, int c
 			free(out);
 			return NULL;
 		}
-		
+
 		if(code == di) {
 			/* Code is not in the table */
 			ptr = old;
@@ -1653,7 +1653,7 @@ static void lzw_emit_code(unsigned char **buffer, int *buf_size, int *pos, int c
 			if(byte == *buf_size) {		
 				*buf_size <<= 1;
 				*buffer = realloc(*buffer, *buf_size);
-	}
+			}
 			(*buffer)[byte] = 0x00;
 		}
 		if(c & m)
@@ -1738,7 +1738,7 @@ reread:
 					goto reread;
 				}
 			}
-	
+			
 			dict[di].prev = string;
 			dict[di].code = character;		
 			di++;
@@ -1865,7 +1865,7 @@ static int bm_save_gif(Bitmap *b, const char *fname) {
 		fclose(f);
 		return 0;
 	}
-				
+	
 	/* Nothing of use here */
 	gce.block_size = 4;
 	gce.fields = 0;
@@ -1873,9 +1873,9 @@ static int bm_save_gif(Bitmap *b, const char *fname) {
 	if(bg >= 0) {
 		gce.fields |= 0x01;
 		gce.trans_index = bg;
-				} else {
+	} else {
 		gce.trans_index = 0;
-						}
+	}
 	gce.terminator = 0x00;
 	
 	fputc(0x21, f);
@@ -1883,7 +1883,7 @@ static int bm_save_gif(Bitmap *b, const char *fname) {
 	if(fwrite(&gce, sizeof gce, 1, f) != 1) {
 		fclose(f);
 		return 0;
-					}
+	}
 	
 	gif_id.separator = 0x2C;
 	gif_id.left = 0x00;
@@ -1895,7 +1895,7 @@ static int bm_save_gif(Bitmap *b, const char *fname) {
 	if(fwrite(&gif_id, sizeof gif_id, 1, f) != 1) {
 		fclose(f);
 		return 0;
-				}
+	}
 	
 	fputc(code_size, f);
 	
@@ -1922,7 +1922,7 @@ static int bm_save_gif(Bitmap *b, const char *fname) {
 	fputc(0x3B, f); /* trailer byte */
 			
 	if(bo != b) 
-	bm_free(b);
+		bm_free(b);
 	
 	fclose(f);
 	return 1;
@@ -1968,6 +1968,7 @@ static Bitmap *bm_load_pcx_rd(BmReader rd) {
 	if(hdr.manuf != 0x0A) {
 		return NULL;
 	}
+
 	if(hdr.version != 5 || hdr.encoding != 1 || hdr.bpp != 8 || (hdr.planes != 1 && hdr.planes != 3)) {
 		/* We might want to support these PCX types at a later stage... */
 		return NULL;
@@ -2006,7 +2007,7 @@ static Bitmap *bm_load_pcx_rd(BmReader rd) {
 				if((i & 0xC0) == 0xC0) {
 					cnt = i & 0x3F;
 					if(rd.fread(&i, sizeof i, 1, rd.data) != 1)
-					goto read_error;
+						goto read_error;
 				}
 				if(hdr.planes == 1) {
 					int c = (rgb[i].r << 16) | (rgb[i].g << 8) | rgb[i].b; 
@@ -2035,7 +2036,7 @@ read_error:
 }
 
 static int bm_save_pcx(Bitmap *b, const char *fname) {	
-	FILE *f;
+	FILE *f;	
 	struct rgb_triplet rgb[256];
 	int ncolors, x, y, rv = 1;
 	struct pcx_header hdr;	
@@ -2079,7 +2080,7 @@ static int bm_save_pcx(Bitmap *b, const char *fname) {
 	
 	ncolors = count_colors_build_palette(b, rgb);
 	if(ncolors < 0) {	
-	/* This is my poor man's color quantization hack:
+		/* This is my poor man's color quantization hack:
 			Sample random pixels and generate a palette from them.
 			A better solution would be to use some clustering, but
 			I don't have the stomach for that now. */	
@@ -2111,7 +2112,7 @@ static int bm_save_pcx(Bitmap *b, const char *fname) {
 					break;
 				x++;
 				cnt++;				
-			}
+			}			
 			i = bsrch_palette_lookup(rgb, c, 0, ncolors - 1);			
 			assert(i >= 0); /* At this point in time, the color MUST be in the palette */			
 			if(cnt == 1 && i < 192) {
@@ -2467,8 +2468,8 @@ void bm_maskedblit(Bitmap *dst, int dx, int dy, Bitmap *src, int sx, int sy, int
 	for(y = dy; y < dy + h; y++) {		
 		i = sx;
 		for(x = dx; x < dx + w; x++) {
-			int c = BM_GET(src, i, j);
-			if(c != src->color)
+			int c = BM_GET(src, i, j) & 0xFFFFFF;
+			if(c != (src->color & 0xFFFFFF))
 				BM_SET(dst, x, y, c);
 			i++;
 		}
@@ -2543,7 +2544,7 @@ void bm_blit_ex(Bitmap *dst, int dx, int dy, int dw, int dh, Bitmap *src, int sx
 		sx = ssx;
 		
 		assert(y >= dst->clip.y0 && sy >= 0);
-		for(x = dx; x < dx + dw; x++) {	
+		for(x = dx; x < dx + dw; x++) {			
 			int c;
 			if(sx >= src->w || x >= dst->clip.x1)
 				break;
@@ -3790,6 +3791,11 @@ int bm_text_height(Bitmap *b, const char *s) {
 		s++;
 	}
 	return height * glyph_height;
+}
+
+int bm_putc(Bitmap *b, int x, int y, char c) {
+	char text[2] = {c, 0};
+	return bm_puts(b, x, y, text);
 }
 
 int bm_puts(Bitmap *b, int x, int y, const char *text) {

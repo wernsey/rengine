@@ -297,27 +297,29 @@ int bm_lerp(int color1, int color2, double t);
 int bm_brightness(int color, double adj);
 
 /*@ Bitmap *bm_fromXbm(int w, int h, unsigned char *data)
- *# Creates a Bitmap object from XBM data 
+ *# Creates a Bitmap object from XBM data. 
  */
 Bitmap *bm_fromXbm(int w, int h, unsigned char *data);
 
 /*@ void bm_blit(Bitmap *dst, int dx, int dy, Bitmap *src, int sx, int sy, int w, int h)
  *# Blits an area of w*h pixels at sx,sy on the src bitmap to 
- *# dx,dy on the dst bitmap.
+ *# dx,dy on the {{dst}} bitmap.
  */
 void bm_blit(Bitmap *dst, int dx, int dy, Bitmap *src, int sx, int sy, int w, int h);
 
 /*@ void bm_maskedblit(Bitmap *dst, int dx, int dy, Bitmap *src, int sx, int sy, int w, int h)
  *# Blits an area of w*h pixels at sx,sy on the src bitmap to 
- *# dx,dy on the dst bitmap.
- *# Pixels on the src bitmap that matches the src bitmap colour are not blitted.
+ *# dx,dy on the {{dst}} bitmap.\n
+ *# Pixels on the {{src}} bitmap that matches the src bitmap colour are not blitted.
+ *# The alpha value of the pixels on the {{src}} bitmap is not taken into account.
  */
 void bm_maskedblit(Bitmap *dst, int dx, int dy, Bitmap *src, int sx, int sy, int w, int h);
 
 /*@ void bm_blit_ex(Bitmap *dst, int dx, int dy, int dw, int dh, Bitmap *src, int sx, int sy, int sw, int sh, int mask)
  *# Extended blit function. Blits an area of sw*sh pixels at sx,sy from the {{src}} bitmap to 
- *# dx,dy on the {{dst}} bitmap into an area of dw*dh pixels, stretching or shrinking the blitted area as neccessary.
+ *# dx,dy on the {{dst}} bitmap into an area of dw*dh pixels, stretching or shrinking the blitted area as neccessary.\n
  *# If {{mask}} is non-zero, pixels on the src bitmap that matches the src bitmap colour are not blitted.
+ *# The alpha value of the pixels on the {{src}} bitmap is not taken into account.
  */
 void bm_blit_ex(Bitmap *dst, int dx, int dy, int dw, int dh, Bitmap *src, int sx, int sy, int sw, int sh, int mask);
 
@@ -378,6 +380,7 @@ Bitmap *bm_resample_bcub(const Bitmap *in, int nw, int nh);
  */
 void bm_swap_colour(Bitmap *b, unsigned char sR, unsigned char sG, unsigned char sB, unsigned char dR, unsigned char dG, unsigned char dB);
 
+#ifdef NULL /* <stdlib.h> included? - required for size_t */
 /*@ void bm_reduce_palette(Bitmap *b, int palette[], size_t n)
  *# Reduces the colours in the bitmap {{b}} to the colors in {{palette}}
  *# by applying Floyd-Steinberg dithering.\n
@@ -385,6 +388,7 @@ void bm_swap_colour(Bitmap *b, unsigned char sR, unsigned char sG, unsigned char
  *# {{n}} is the number of entries in the palette.
  */
 void bm_reduce_palette(Bitmap *b, int palette[], size_t n);
+#endif
 
 /*2 Drawing Primitives
  *# {{bmp.h}} provides these methods for drawing graphics primitives.
@@ -515,6 +519,11 @@ int bm_text_width(Bitmap *b, const char *s);
  *# returns the height in pixels of a string of text.
  */
 int bm_text_height(Bitmap *b, const char *s);
+
+/*@ void bm_putc(Bitmap *b, int x, int y, char c)
+ *# Prints the character {{c}} at position {{x,y}} on the bitmap {{b}}.
+ */
+int bm_putc(Bitmap *b, int x, int y, char c);
 
 /*@ void bm_puts(Bitmap *b, int x, int y, const char *s)
  *# Prints the string {{s}} at position {{x,y}} on the bitmap {{b}}.
