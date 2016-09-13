@@ -8,7 +8,7 @@ enum json_type {
 	j_null
 };
 
-struct json {
+typedef struct json {
 	enum json_type type;
 	void *value;
 	
@@ -17,36 +17,48 @@ struct json {
 	so the linked list provides some convenience.
 	*/
 	struct json *next; 
-};
+} JSON;
+
+extern void (*json_error)(const char *fmt, ...);
 
 char *json_escape(const char *in, char *out, size_t len);
 
-struct json *json_read(const char *filename);
+JSON *json_read(const char *filename);
 
-struct json *json_parse(const char *text);
+JSON *json_parse(const char *text);
 
-void json_free(struct json *v);
+void json_free(JSON *v);
 
-void json_dump(struct json *v);
+void json_dump(JSON *v);
 
-double json_as_number(struct json *j);
+/* TODO: Missing boolean, null types */
 
-const char *json_as_string(struct json *j);
+double json_as_number(JSON *j);
 
-struct json *json_as_object(struct json *j);
+const char *json_as_string(JSON *j);
 
-struct json *json_as_array(struct json *j);
+JSON *json_as_object(JSON *j);
 
-struct json *json_get_member(struct json *j, const char *name);
+JSON *json_as_array(JSON *j);
 
-double json_get_number(struct json *j, const char *name);
+int json_is_number(JSON *j);
 
-const char *json_get_string(struct json *j, const char *name);
+int json_is_string(JSON *j);
 
-struct json *json_get_object(struct json *j, const char *name);
+int json_is_object(JSON *j);
 
-struct json *json_get_array(struct json *j, const char *name);
+int json_is_array(JSON *j);
 
-int json_array_len(struct json *j);
+JSON *json_get_member(JSON *j, const char *name);
 
-struct json *json_array_nth(struct json *j, int n);
+double json_get_number(JSON *j, const char *name);
+
+const char *json_get_string(JSON *j, const char *name);
+
+JSON *json_get_object(JSON *j, const char *name);
+
+JSON *json_get_array(JSON *j, const char *name);
+
+int json_array_len(JSON *j);
+
+JSON *json_array_nth(JSON *j, int n);

@@ -1,11 +1,11 @@
 /*1 Hash.h
  *# A quick and dirty hash table implementation.\n
  *{
- ** {{struct hash_tbl}} is created with {{~~ht_create()}}
- ** {{struct hash_tbl}} is destroyed with {{~~ht_free()}}
+ ** {{Hash_Tbl}} is created with {{~~ht_create()}}
+ ** {{Hash_Tbl}} is destroyed with {{~~ht_free()}}
  ** Resize hash tables with {{~~ht_rehash()}}
- ** Insert entries into the table with {{~~ht_insert()}}
- ** Search for entries with {{~~ht_find()}}
+ ** Insert entries into the table with {{~~ht_put()}}
+ ** Search for entries with {{~~ht_get()}}
  ** Remove entries with {{~~ht_delete()}}
  ** Iterate through the table with {{~~ht_next()}}
  *}
@@ -50,46 +50,46 @@ extern "C"
  *# Allocate this structure through {{~~ht_create()}}
  *# and deallocate it with {{~~ht_free()}}
  */
-  struct hash_tbl
+ typedef struct hash_tbl
   {
     struct hash_el **buckets;
     int size;
     int cnt;
-  };
+  } Hash_Tbl;
 
-/*@ struct hash_tbl *##ht_create (int size)
+/*@ Hash_Tbl *##ht_create (int size)
  *# Allocates memory for a hash table.\n
  *# The hash table size must be a power of two, because
  *# the mod operation is performed by the bitwise AND of
  *# the sum and (size - 1).\n
  *# Setting size to 0 specifies a default value.
  */
-  struct hash_tbl *ht_create (int size);
+  Hash_Tbl *ht_create (int size);
 
-/*@ int ##ht_rehash (struct hash_tbl *ht, int new_size)
+/*@ int ##ht_rehash (Hash_Tbl *ht, int new_size)
  *# Resizes the hashtable {{ht}} to the {{new_size}}, by rehashing 
  *# each key in the table.\n
  *# The new size must be a power of two.\n
- *# This function is normally called automatically in {{~~ht_insert()}}
+ *# This function is normally called automatically in {{~~ht_put()}}
  *# if the table reaches a certain size.
  */
-  int ht_rehash (struct hash_tbl *ht, int new_size);
+  int ht_rehash (Hash_Tbl *ht, int new_size);
 
-/*@ void *##ht_insert (struct hash_tbl *h, const char *key, void *value)
+/*@ void *##ht_put (Hash_Tbl *h, const char *key, void *value)
  *# Inserts a {{value}} referenced by the string {{key}} 
  *# into the hash table {{h}}.\n
  *# It returns {{value}} on success, or {{NULL}} if an internal {{malloc()}}
  *# failed.
  */
-  void *ht_insert (struct hash_tbl *h, const char *key, void *value);
+  void *ht_put (Hash_Tbl *h, const char *key, void *value);
 
-/*@ void *##ht_find (struct hash_tbl *h, const char *key)
+/*@ void *##ht_get (Hash_Tbl *h, const char *key)
  *# Finds an element referenced by {{key}} in the table {{h}}.\n
  *# It will return {{NULL}} if the key was not found in the table
  */
-  void *ht_find (struct hash_tbl *h, const char *key);
+  void *ht_get (Hash_Tbl *h, const char *key);
 
-/*@ const char *##ht_next (struct hash_tbl *h, const char *key)
+/*@ const char *##ht_next (Hash_Tbl *h, const char *key)
  *# Given a specific {{key}}, this finds the key of the next element in 
  *# a particular hash table {{h}}. This can be used to iterate through 
  *# the table.\n
@@ -97,28 +97,28 @@ extern "C"
  *# It returns {{NULL}} if there are no more entries in the table.\n
  *# Keys in the table are not sorted.
  */
-  const char *ht_next (struct hash_tbl *h, const char *key);
+  const char *ht_next (Hash_Tbl *h, const char *key);
 
-/*@ void *##ht_delete (struct hash_tbl *h, const char *key)
+/*@ void *##ht_delete (Hash_Tbl *h, const char *key)
  *# Deletes an element indexed by {{key}} from the hash table {{h}}\n
  *# It returns the value associated with the key.
  */
-  void *ht_delete (struct hash_tbl *h, const char *key);
+  void *ht_delete (Hash_Tbl *h, const char *key);
 
-/*@ void ##ht_free (struct hash_tbl *h, clear_all_dtor dtor)
+/*@ void ##ht_free (Hash_Tbl *h, clear_all_dtor dtor)
  *# Deletes a hash table {{h}}.\n
  *# The parameter {{dtor}} can point to a function that will free
  *# resources (memory, handles, etc) allocated to the values in the table.
  *# This function will be called for each value in the table.
  */
-  void ht_free (struct hash_tbl *h, clear_all_dtor dtor);
+  void ht_free (Hash_Tbl *h, clear_all_dtor dtor);
 
-/*@ void ##ht_foreach(struct hash_tbl *h, int (*f)(const char *key, void *value, void *data), void *data)
+/*@ void ##ht_foreach(Hash_Tbl *h, int (*f)(const char *key, void *value, void *data), void *data)
  *# Perform the function {{f()}} for each {{key-value}} pair in the hashtable {{h}}.\n
  *# The {{data}} parameter is passed to {{f()}} unmodified.\n
  *# If {{f()}} returns 0, the iteration is terminated.
  */
-  void ht_foreach (struct hash_tbl *h,
+  void ht_foreach (Hash_Tbl *h,
                    int (*f) (const char *key, void *value, void *data),
                    void *data);
 

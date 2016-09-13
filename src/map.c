@@ -223,7 +223,7 @@ struct map *map_parse(const char *text, int cd) {
 	double version;
 	struct map *m = NULL;
 	int nr, nc, tw, th, nl;
-	struct json *j, *a, *e;
+	JSON *j, *a, *e;
 	int p,q;
 	const char *s;
 	
@@ -276,7 +276,7 @@ struct map *map_parse(const char *text, int cd) {
 	p = 0;
 	while(e) {		
 		struct map_cell *c;	
-		struct json *aa, *ee;
+		JSON *aa, *ee;
 		
 		assert(p < nr * nc);
 		c = &m->cells[p++];	

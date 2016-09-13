@@ -85,7 +85,7 @@ game.o: game.c ../include/bmp.h \
  ../include/ini.h ../include/game.h \
  ../include/utils.h ../include/states.h ../include/resources.h \
  ../include/log.h ../include/gamedb.h ../include/sound.h \
- ../include/bmpfont.h
+ ../include/bmpfont.h ../include/json.h
 hash.o: hash.c ../include/hash.h
 ini.o: ini.c ../include/ini.h \
  ../include/utils.h

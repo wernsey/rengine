@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
+#include <stdarg.h>
 #include <assert.h>
 
 #include "json.h"
@@ -22,9 +23,20 @@
 #define J_FALSE 257
 #define J_NULL  258
 
-static struct json *json_parse_value(struct lexer *lx);
-static struct json *json_parse_array(struct lexer *lx);
-static struct json *json_parse_object(struct lexer *lx);
+static void _json_error(const char *fmt, ...) {
+	va_list arg;	
+	va_start(arg, fmt);
+	fputs("error:", stderr);
+	vfprintf(stderr, fmt, arg);
+	fputc('\n', stderr);
+	va_end(arg);
+}
+
+void (*json_error)(const char *fmt, ...) = _json_error;
+
+static JSON *json_parse_value(struct lexer *lx);
+static JSON *json_parse_array(struct lexer *lx);
+static JSON *json_parse_object(struct lexer *lx);
 
 char *json_escape(const char *in, char *out, size_t len) {
 	size_t i = 0;
@@ -75,8 +87,8 @@ char *json_escape(const char *in, char *out, size_t len) {
 	return out;
 }
 
-struct json *json_read(const char *filename) {
-	struct json *v = NULL;
+JSON *json_read(const char *filename) {
+	JSON *v = NULL;
 	char *text = my_readfile(filename);	
 	if(!text)
 		return NULL;
@@ -89,17 +101,17 @@ static void json_free_member(const char *key, void *val) {
 	json_free(val);
 }
 
-void json_free(struct json *v) {
+void json_free(JSON *v) {
 	switch(v->type) {
 		case j_string:
 		case j_number: free(v->value); break;
 		case j_object: {
-			struct hash_tbl *h = v->value;
+			Hash_Tbl *h = v->value;
 			 ht_free(h, json_free_member);
 		} break;
 		case j_array: {
 			while(v->value) {
-				struct json *t = v->value;
+				JSON *t = v->value;
 				v->value = t->next;
 				json_free(t);
 			} 
@@ -116,30 +128,30 @@ static struct lx_keywords json_keywds[] = {
 	{"null", J_NULL},
 	{NULL, 0}};
 
-struct json *json_parse(const char *text) {
+JSON *json_parse(const char *text) {
 	struct lexer * lx = lx_create(text, "{}[]-:,", json_keywds);
-	struct json *v = json_parse_object(lx);
+	JSON *v = json_parse_object(lx);
 	lx_free(lx);
 	return v;
 }
 
-static struct json *json_parse_object(struct lexer *lx) {
+static JSON *json_parse_object(struct lexer *lx) {
 	
-	struct hash_tbl *h = ht_create (16);
-	struct json *v = malloc(sizeof *v);
+	Hash_Tbl *h = ht_create (16);
+	JSON *v = malloc(sizeof *v);
 	v->type = j_object;
 	v->value = h;
 	v->next = NULL;
 	
 	if(!lx_expect(lx, '{')) {
-		fprintf(stderr, "error:%d: %s\n", lx_lineno(lx), lx_text(lx));
+		json_error("line %d: %s", lx_lineno(lx), lx_text(lx));
 		free(v);
 		return NULL;
 	}
 	if(lx_sym(lx) != '}') {
 		do {
 			char *key;
-			struct json *value;
+			JSON *value;
 			lx_accept(lx, LX_STRING);
 			key = strdup(lx_text(lx));
 			lx_accept(lx, ':');		
@@ -150,14 +162,14 @@ static struct json *json_parse_object(struct lexer *lx) {
 				return NULL;
 			}
 			
-			ht_insert (h, key, value);
+			ht_put (h, key, value);
 			
 			free(key);	
 			
 		} while(lx_accept(lx, ','));
 	}
 	if(!lx_expect(lx, '}')) {
-		fprintf(stderr, "error:%d: %s\n", lx_lineno(lx), lx_text(lx));
+		json_error("line %d: %s", lx_lineno(lx), lx_text(lx));
 		free(v);
 		return NULL;
 	}
@@ -165,22 +177,22 @@ static struct json *json_parse_object(struct lexer *lx) {
 	return v;
 }
 
-static struct json *json_parse_array(struct lexer *lx) {
+static JSON *json_parse_array(struct lexer *lx) {
 	
-	struct json *v = malloc(sizeof *v);
+	JSON *v = malloc(sizeof *v);
 	v->type = j_array;
 	v->value = NULL;
 	v->next = NULL;
 	
-	struct json *tail = NULL;
+	JSON *tail = NULL;
 	
 	if(!lx_expect(lx, '[')) {
-		fprintf(stderr, "error:%d: %s\n", lx_lineno(lx), lx_text(lx));
+		json_error("line %d: %s", lx_lineno(lx), lx_text(lx));
 		return NULL;
 	}
 	if(lx_sym(lx) != ']') {
 		do {		
-			struct json *value = json_parse_value(lx);
+			JSON *value = json_parse_value(lx);
 			if(!value) 
 				return NULL;
 			if(v->value) {
@@ -194,20 +206,20 @@ static struct json *json_parse_array(struct lexer *lx) {
 		} while(lx_accept(lx, ','));
 	}
 	if(!lx_expect(lx, ']')) {
-		fprintf(stderr, "error:%d: %s\n", lx_lineno(lx), lx_text(lx));
+		json_error("line %d: %s", lx_lineno(lx), lx_text(lx));
 		return NULL;
 	}
 	
 	return v;
 }
 
-static struct json *json_parse_value(struct lexer *lx) {
+static JSON *json_parse_value(struct lexer *lx) {
 	if(lx_sym(lx) == '{')
 		return json_parse_object(lx);	
 	else if(lx_sym(lx) == '[')
 		return json_parse_array(lx);
 	else {
-		struct json *v = malloc(sizeof *v);
+		JSON *v = malloc(sizeof *v);
 		v->type = j_null;
 		v->value = NULL;
 		v->next = NULL;
@@ -231,9 +243,9 @@ static struct json *json_parse_value(struct lexer *lx) {
 			v->type = j_null;
 		} else {
 			if(isprint(lx_sym(lx))) {
-				printf("%3d: OPERATOR: %c\n", lx_lineno(lx), lx_sym(lx));
+				json_error("line %d: Unexpected operator: %c", lx_lineno(lx), lx_sym(lx));
 			} else {
-				fprintf(stderr, "error:%d: Unexpected symbol type %d\n", lx_lineno(lx), lx_sym(lx));
+				json_error("line %d: Unexpected symbol type %d", lx_lineno(lx), lx_sym(lx));
 			}
 			return NULL;
 		}
@@ -243,7 +255,7 @@ static struct json *json_parse_value(struct lexer *lx) {
 	}
 }
 
-static void json_dump_L(struct json *v, int L) {
+static void json_dump_L(JSON *v, int L) {
 	char buffer[256];
 	switch(v->type) {
 		case j_string: {
@@ -251,12 +263,12 @@ static void json_dump_L(struct json *v, int L) {
 		} break;
 		case j_number: printf("%s", (const char *)v->value); break;
 		case j_object: {
-			struct hash_tbl *h = v->value;
+			Hash_Tbl *h = v->value;
 			const char *key = ht_next (h, NULL);			
 			puts("{");
 			while(key) {
 				printf("%*c\"%s\" : ", L*2 + 1, ' ', json_escape(key, buffer, sizeof buffer));
-				json_dump_L(ht_find(h, key), L + 1);
+				json_dump_L(ht_get(h, key), L + 1);
 				key = ht_next(h, key);
 				if(key) 
 					puts(",");
@@ -264,7 +276,7 @@ static void json_dump_L(struct json *v, int L) {
 			printf("}");
 		} break;
 		case j_array: {
-			struct json *m = v->value;
+			JSON *m = v->value;
 			puts("[");
 			while(m) {
 				printf("%*c", L*2, ' ');
@@ -288,68 +300,84 @@ static void json_dump_L(struct json *v, int L) {
 	}
 }
 
-void json_dump(struct json *v) {
+void json_dump(JSON *v) {
 	json_dump_L(v, 0);
 }
 
-double json_as_number(struct json *j) {
+double json_as_number(JSON *j) {
 	if(j->type == j_number)
 		return atof(j->value);
 	return 0.0;
 }
 
-const char *json_as_string(struct json *j) {
+const char *json_as_string(JSON *j) {
 	if(j->type == j_string)
 		return j->value;
 	return NULL;
 }
 
-struct json *json_as_object(struct json *j) {
+JSON *json_as_object(JSON *j) {
 	if(j->type == j_object)
 		return j;
 	return NULL;	
 }
 
-struct json *json_as_array(struct json *j) {
+JSON *json_as_array(JSON *j) {
 	if(j->type == j_array)
 		return j;
 	return NULL;
 }
 
-struct json *json_get_member(struct json *j, const char *name) {
-	struct hash_tbl *h = j->value;
-	return ht_find(h, name);
+int json_is_number(JSON *j) {
+	return j->type == j_number;
 }
 
-double json_get_number(struct json *j, const char *name) {
-	struct json *v = json_get_member(j, name);
+int json_is_string(JSON *j) {
+	return j->type == j_string;
+}
+
+int json_is_object(JSON *j) {
+	return j->type == j_object;
+}
+
+int json_is_array(JSON *j) {
+	return j->type == j_array;
+}
+
+JSON *json_get_member(JSON *j, const char *name) {
+	Hash_Tbl *h = j->value;
+	return ht_get(h, name);
+}
+
+double json_get_number(JSON *j, const char *name) {
+	JSON *v = json_get_member(j, name);
 	if(v) 
 		return json_as_number(v);
 	return 0.0;
 }
 
-const char *json_get_string(struct json *j, const char *name) {
-	struct json *v = json_get_member(j, name);
+const char *json_get_string(JSON *j, const char *name) {
+	JSON *v = json_get_member(j, name);
 	if(v) 
 		return json_as_string(v);
 	return NULL;
 }
 
-struct json *json_get_object(struct json *j, const char *name) {
-	struct json *v = json_get_member(j, name);
+JSON *json_get_object(JSON *j, const char *name) {
+	JSON *v = json_get_member(j, name);
 	if(v) 
 		return json_as_object(v);
 	return NULL;	
 }
 
-struct json *json_get_array(struct json *j, const char *name) {
-	struct json *v = json_get_member(j, name);
+JSON *json_get_array(JSON *j, const char *name) {
+	JSON *v = json_get_member(j, name);
 	if(v) 
 		return json_as_array(v);
 	return NULL;
 }
 
-int json_array_len(struct json *j) {
+int json_array_len(JSON *j) {
 	int c = 0;
 	if(j->type != j_array)
 		return 0;
@@ -361,7 +389,7 @@ int json_array_len(struct json *j) {
 	return c;
 }
 
-struct json *json_array_nth(struct json *j, int n) {
+JSON *json_array_nth(JSON *j, int n) {
 	int c = 0;
 	if(j->type != j_array)
 		return 0;
@@ -379,12 +407,12 @@ gcc -o json -DJTEST json.c lexer.c hash.c utils.c
 */
 #ifdef JTEST
 int main(int argc, char *argv[]) {
-	struct json *j;
+	JSON *j;
 	if(argc < 2) 
 		return EXIT_FAILURE;
 	j = json_read(argv[1]);
 	if(!j) {
-		fprintf(stderr, "Unable to parse %s\n", argv[1]);
+		json_error("Unable to parse %s", argv[1]);
 		return EXIT_FAILURE;
 	} else {
 		json_dump(j);

@@ -20,9 +20,9 @@ static const char *pak_file_name = "";
 	and popped as the game states are pushed and popped. */
 struct resource_cache {
 	
-	struct hash_tbl *bmp_cache;
-	struct hash_tbl *wav_cache;
-	struct hash_tbl *mus_cache;
+	Hash_Tbl *bmp_cache;
+	Hash_Tbl *wav_cache;
+	Hash_Tbl *mus_cache;
 	
 	/* I expect as development continues, other 
 	things will be cached as well */
@@ -151,7 +151,7 @@ struct bitmap *re_get_bmp(const char *filename) {
 		all its parents for the desired node. */
 	struct resource_cache *rc = re_cache;	
 	while(rc) {
-		bmp = ht_find(rc->bmp_cache, filename);
+		bmp = ht_get(rc->bmp_cache, filename);
 		if(bmp) {
 			return bmp;
 		}
@@ -183,7 +183,7 @@ struct bitmap *re_get_bmp(const char *filename) {
     }
     if(bmp) {	
         /* Insert it to the cache on the top of the stack. */
-        ht_insert(re_cache->bmp_cache, filename, bmp);
+        ht_put(re_cache->bmp_cache, filename, bmp);
         rlog("Cached bitmap '%s'", filename);
 	}
     
@@ -192,13 +192,13 @@ struct bitmap *re_get_bmp(const char *filename) {
 
 struct bitmap *re_clone_bmp(struct bitmap *b, const char *newname) {
 	struct resource_cache *rc = re_cache;	
-	struct bitmap *clone = ht_find(rc->bmp_cache, newname);
+	struct bitmap *clone = ht_get(rc->bmp_cache, newname);
 	if(clone) {
 		rerror("Attempt to clone bitmap with an existing name %s", newname);
 		return NULL;
 	}
 	clone = bm_copy(b);
-	ht_insert(re_cache->bmp_cache, newname, clone);
+	ht_put(re_cache->bmp_cache, newname, clone);
 	rlog("Cached cloned bitmap as '%s'", newname);
 	return clone;
 }
@@ -208,7 +208,7 @@ Mix_Chunk *re_get_wav(const char *filename) {
 	
 	struct resource_cache *rc = re_cache;	
 	while(rc) {
-		chunk = ht_find(rc->wav_cache, filename);
+		chunk = ht_get(rc->wav_cache, filename);
 		if(chunk) {
 			return chunk;
 		}
@@ -224,7 +224,7 @@ Mix_Chunk *re_get_wav(const char *filename) {
 		return NULL;
 	}
 	
-	ht_insert(re_cache->wav_cache, filename, chunk);
+	ht_put(re_cache->wav_cache, filename, chunk);
 	rlog("Cached WAV '%s'", filename);
 	
 	return chunk;
@@ -235,7 +235,7 @@ Mix_Music *re_get_mus(const char *filename) {
 	
 	struct resource_cache *rc = re_cache;	
 	while(rc) {
-		music = ht_find(rc->mus_cache, filename);
+		music = ht_get(rc->mus_cache, filename);
 		if(music) {
 			return music;
 		}
@@ -251,7 +251,7 @@ Mix_Music *re_get_mus(const char *filename) {
 		return NULL;
 	}
 	
-	ht_insert(re_cache->mus_cache, filename, music);
+	ht_put(re_cache->mus_cache, filename, music);
 	rlog("Cached Music '%s'", filename);
 	
 	return music;

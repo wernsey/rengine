@@ -44,10 +44,10 @@ hash (const char *str, int size)
 }
 
 /* Allocates memory for a hash table */
-struct hash_tbl *
+Hash_Tbl *
 ht_create (int size)
 {
-  struct hash_tbl *h;
+  Hash_Tbl *h;
   int i;
 
   if (size == 0)
@@ -69,7 +69,7 @@ ht_create (int size)
 }
 
 int
-ht_rehash (struct hash_tbl *ht, int new_size)
+ht_rehash (Hash_Tbl *ht, int new_size)
 {
   struct hash_el **buckets, *j, *e, *k;
   int i, h;
@@ -110,7 +110,7 @@ ht_rehash (struct hash_tbl *ht, int new_size)
 }
 
 void *
-ht_insert (struct hash_tbl *h, const char *key, void *value)
+ht_put (Hash_Tbl *h, const char *key, void *value)
 {
   struct hash_el *e;
   int f;
@@ -149,7 +149,7 @@ ht_insert (struct hash_tbl *h, const char *key, void *value)
  * f will contain the hash table bucket
  */
 static struct hash_el *
-search (struct hash_tbl *h, const char *key, int *f)
+search (Hash_Tbl *h, const char *key, int *f)
 {
   struct hash_el *i;
 
@@ -165,7 +165,7 @@ search (struct hash_tbl *h, const char *key, int *f)
 
 /* Returns the value associated with a specific key */
 void *
-ht_find (struct hash_tbl *h, const char *key)
+ht_get (Hash_Tbl *h, const char *key)
 {
   int f;
   struct hash_el *i = search (h, key, &f);
@@ -176,7 +176,7 @@ ht_find (struct hash_tbl *h, const char *key)
 
 /* Finds the next element in the table given a specific key */
 const char *
-ht_next (struct hash_tbl *h, const char *key)
+ht_next (Hash_Tbl *h, const char *key)
 {
   int f;
   struct hash_el *i;
@@ -212,7 +212,7 @@ ht_next (struct hash_tbl *h, const char *key)
 
 /* Deletes an element from the hash table */
 void *
-ht_delete (struct hash_tbl *h, const char *key)
+ht_delete (Hash_Tbl *h, const char *key)
 {
   struct hash_el *i, *p = NULL;
   void *d = NULL;
@@ -245,7 +245,7 @@ ht_delete (struct hash_tbl *h, const char *key)
 
 /* Deallocates an entire hash table */
 void
-ht_free (struct hash_tbl *h, clear_all_dtor dtor)
+ht_free (Hash_Tbl *h, clear_all_dtor dtor)
 {
   struct hash_el *e;
   int i;
@@ -271,7 +271,7 @@ ht_free (struct hash_tbl *h, clear_all_dtor dtor)
 /* Perform the function f() for each key-value pair in the hashtable h
  */
 void
-ht_foreach (struct hash_tbl *h,
+ht_foreach (Hash_Tbl *h,
             int (*f) (const char *key, void *value, void *data), void *data)
 {
   struct hash_el *e;

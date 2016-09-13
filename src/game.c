@@ -23,6 +23,7 @@
 #include "gamedb.h"
 #include "sound.h"
 #include "bmpfont.h"
+#include "json.h"
 
 /* Some Defaults *************************************************/
 
@@ -305,6 +306,7 @@ int main(int argc, char *argv[]) {
 	SDL_version compiled, linked;
 
 	log_init(rlog_filename);
+	json_error = rerror;
 
 	if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_AUDIO) < 0) {
 		rerror("SDL_Init: %s", SDL_GetError());
