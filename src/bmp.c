@@ -3640,7 +3640,7 @@ void bm_fill(Bitmap *b, int x, int y) {
 		w = n;
 		e = n;
 		
-		if(!bm_picker(b, n.x, n.y) == sc)
+		if(bm_picker(b, n.x, n.y) != sc)
 			continue;
 		
 		while(w.x > b->clip.x0) {			

@@ -1,4 +1,4 @@
-#CC=gcc
+CC=gcc
 
 ifeq ($(BUILD),debug)
 # Debug mode: Unoptimized and with debugging symbols

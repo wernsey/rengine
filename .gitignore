@@ -17,6 +17,6 @@ src/rengine.res
 editor/editor.cxx
 editor/editor.h
 
-# Ignore these temporary folders:
+# Some directories for testing/experimentation:
 tmp
 deps

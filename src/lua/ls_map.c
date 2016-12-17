@@ -43,8 +43,9 @@
  *# so that the center and foreground layers are drawn over it.
  *# The foreground layer is drawn last and contains objects in the foreground. 
  */
-static int render_map(lua_State *L) {
-	int layer = luaL_checkinteger(L,1) - 1;
+static int render_map(lua_State *L) {	
+	int layer = luaL_checknumber(L,1) - 1;
+	
 	int sx = 0, sy = 0;
 	struct lustate_data *sd = get_state_data(L);
 	
@@ -59,8 +60,8 @@ static int render_map(lua_State *L) {
 	}
 	
 	if(lua_gettop(L) > 2) {
-		sx = luaL_checkinteger(L,2);
-		sy = luaL_checkinteger(L,3);
+		sx = luaL_checknumber(L,2);
+		sy = luaL_checknumber(L,3);
 	}
 	
 	map_render(sd->map, sd->bmp, layer, sx, sy);
@@ -74,9 +75,8 @@ static int render_map(lua_State *L) {
  *# {{c}} must be between {{1}} and {{Map.COLS}} inclusive.
  */
 static int get_cell_obj(lua_State *L) {
-	
-	int r = luaL_checkinteger(L,1) - 1;
-	int c = luaL_checkinteger(L,2) - 1;	
+	int r = luaL_checknumber(L,1) - 1;
+	int c = luaL_checknumber(L,2) - 1;	
 	struct lustate_data *sd = get_state_data(L);	
 	struct map_cell **o;
 	
@@ -139,9 +139,9 @@ static int cell_set(lua_State *L) {
 	struct map_cell **cp = luaL_checkudata(L,1, "CellObj");
 	struct map_cell *c = *cp;
 	
-	int l = luaL_checkinteger(L,2) - 1;
-	int si = luaL_checkinteger(L,3);
-	int ti = luaL_checkinteger(L,4);
+	int l = luaL_checknumber(L,2) - 1;
+	int si = luaL_checknumber(L,3);
+	int ti = luaL_checknumber(L,4);
 	
 	if(l < 0 || l > 2) {
 		luaL_error(L, "Invalid level passed to CellObj:set()");

@@ -136,8 +136,8 @@ static int bmp_getcolor(lua_State *L) {
 	int r,g,b;
 	struct bitmap **bp = luaL_checkudata(L,1, "BmpObj");
 	if(lua_gettop(L) == 3) {
-		int x = luaL_checkinteger(L,2);
-		int y = luaL_checkinteger(L,3);
+		int x = luaL_checknumber(L,2);
+		int y = luaL_checknumber(L,3);
 		if(x < 0) x = 0;
 		if(x >= (*bp)->w) x = (*bp)->w - 1;
 		if(y < 0) y = 0;
